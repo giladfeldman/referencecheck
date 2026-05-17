@@ -6,3 +6,7 @@ export * from './http/crossref.js';
 export * from './retraction/retractionChecker.js';
 export * from './doi/doiShape.js';
 export * from './citationCount/opencitations.js';
+export * from './openAccess/index.js';
+export * from './preprint/index.js';
+export * from './expressionOfConcern/index.js';
+export * from './replies/index.js';
