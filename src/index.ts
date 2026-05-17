@@ -11,3 +11,4 @@ export * from './preprint/index.js';
 export * from './expressionOfConcern/index.js';
 export * from './replies/index.js';
 export * from './predatory/index.js';
+export * from './dedup/index.js';
