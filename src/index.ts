@@ -5,3 +5,4 @@ export * from './util/formatError.js';
 export * from './http/crossref.js';
 export * from './retraction/retractionChecker.js';
 export * from './doi/doiShape.js';
+export * from './citationCount/opencitations.js';
