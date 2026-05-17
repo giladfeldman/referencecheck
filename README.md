@@ -25,7 +25,7 @@ ongoing.
 - `checkReferenceForPreprint(ref)` — preprint detection (heuristic + Crossref)
 - `checkReferenceForEOC(ref)` — expression-of-concern detection
 - `checkReferenceForReplies(ref)` — errata / reply / comment detection
-- `verifyPredatoryJournal(...)` — predatory-journal screening (Beall's + DOAJ + heuristics)
-- `findDuplicateReferences(refs, config)` — fuzzy reference deduplication
+- `loadBeallsList()` / `checkBeallsList(publisher)` / `checkHeuristics(...)` / `determineVerdict(...)` / `extractJournalMetadata(ref, useOpenAlex?, creds?)` — predatory-journal screening pieces
+- `calculateSimilarity(ref1, ref2, config)` / `findDuplicateGroups(pairs)` / `scoreMetadataCompleteness(ref)` — reference-deduplication pieces
 - `isMalformedDoi(doi)` / `isShortFormDoi(doi)` — DOI-shape validation
 - All result/config types and the structural reference-input interfaces
