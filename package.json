@@ -1,6 +1,6 @@
 {
   "name": "referencecheck",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Reference-integrity checks for academic papers: DOI validation, retraction detection, predatory-journal screening, reference deduplication, citation-count lookup, and open-access / preprint / expression-of-concern / citation-replies detection.",
   "license": "MIT",
   "author": "Gilad Feldman",

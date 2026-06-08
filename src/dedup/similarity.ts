@@ -18,8 +18,33 @@ export function normalizeAuthorName(name: string): string {
 }
 
 /**
- * Compare two author lists and return similarity score (0-1)
- * Handles variations in author names and order-independent matching
+ * Average best-match similarity of every name in `from` against the names in
+ * `to`. One-directional — see compareAuthors for why both directions are averaged.
+ */
+function authorListDirectionalSimilarity(from: string[], to: string[]): number {
+  let total = 0;
+  for (const a of from) {
+    let best = 0;
+    for (const b of to) {
+      const maxLen = Math.max(a.length, b.length);
+      if (maxLen === 0) continue;
+      best = Math.max(best, 1 - distance(a, b) / maxLen);
+    }
+    total += best;
+  }
+  return from.length > 0 ? total / from.length : 0;
+}
+
+/**
+ * Compare two author lists and return similarity score (0-1).
+ *
+ * Symmetric: `compareAuthors(a, b) === compareAuthors(b, a)`. The earlier
+ * implementation averaged best-matches over list 1 only, so the score depended
+ * on argument order whenever the two lists differed in length (D9) — e.g.
+ * ["Smith"] vs ["Smith", "Jones"] scored 1.0 one way and ~0.6 the other, making
+ * dedup similarity non-deterministic with respect to pair ordering. We now
+ * average both directions, which penalizes an unmatched extra author regardless
+ * of which argument it sits in.
  */
 export function compareAuthors(authors1: string, authors2: string): number {
   if (!authors1 || !authors2) {
@@ -37,30 +62,11 @@ export function compareAuthors(authors1: string, authors2: string): number {
     return 0.0;
   }
 
-  // For each author in list 1, find best match in list 2
-  let totalSimilarity = 0;
-  let matchCount = 0;
-
-  for (const author1 of authors1List) {
-    let bestMatch = 0;
-
-    for (const author2 of authors2List) {
-      // Calculate string similarity using Levenshtein distance
-      const maxLen = Math.max(author1.length, author2.length);
-      if (maxLen === 0) continue;
-
-      const dist = distance(author1, author2);
-      const similarity = 1 - (dist / maxLen);
-
-      bestMatch = Math.max(bestMatch, similarity);
-    }
-
-    totalSimilarity += bestMatch;
-    matchCount++;
-  }
-
-  // Average similarity across all authors
-  return matchCount > 0 ? totalSimilarity / matchCount : 0.0;
+  // Average both directions so the score is order-independent (commutative).
+  return (
+    authorListDirectionalSimilarity(authors1List, authors2List) +
+    authorListDirectionalSimilarity(authors2List, authors1List)
+  ) / 2;
 }
 
 /**

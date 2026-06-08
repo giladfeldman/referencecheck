@@ -44,7 +44,11 @@ export function isValidReference(reference: ReferenceInput): boolean {
   // - Title
   // - Source/journal name
   const hasAuthors = (reference.parsed_data?.authors && reference.parsed_data.authors.length > 0) ||
-    /^[A-ZÀ-Ÿ][a-zà-ÿ'-]+,\s*[A-Z]/.test(text); // Author pattern at start
+    // Author pattern at start ("Surname, I."). Unicode-aware (\p{Lu}/\p{Ll}) so
+    // Cyrillic / Greek / accented-Latin surnames are recognized, not only ASCII +
+    // Latin-1 (D6). Cased-script surnames only — CJK references have no
+    // "Surname, Initial" analogue and must carry parsed_data.authors.
+    /^\p{Lu}[\p{Ll}'-]+,\s*\p{Lu}/u.test(text);
 
   const hasYear = !!reference.parsed_data?.year ||
     /\((\d{4}[a-z]?|n\.d\.)\)/.test(text);
