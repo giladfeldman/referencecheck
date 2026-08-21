@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.1.2 — 2026-08-21
+
+**A rate-limited Expression-of-Concern lookup reported as "clean".** Every source
+function returned `ExpressionOfConcernIssue | null`, and `null` meant all of: no
+expression of concern, DOI not found, HTTP 429, 5xx, and timeout. A caller could
+not tell *"we asked and there is nothing"* from *"we never got an answer"*, so a
+Crossref rate-limit storm rendered an entire bibliography clean.
+
+Measured downstream on the Scimeto platform, 2026-08-21: a single real document
+run logged **81 Crossref 429s** while its Expression-of-Concern plugin recorded
+`outcome: completed, issuesFound: 0, referencesChecked: 56`. The user was shown an
+all-clear over references nobody had successfully looked up.
+
+### Added
+- `checkReferenceForEOCDetailed(reference)` → `EocReferenceResult`, reporting
+  `issues`, `sourcesChecked`, `sourcesUnavailable` and `complete`. Prefer it
+  anywhere the result reaches a user: `issues: []` with `complete: false` is not
+  an all-clear, and only this signature can say so.
+- `EocSourceOutcome`, a discriminated `clean | issue | unavailable` per source,
+  with `EocUnavailableReason` = `rate_limited | timeout | server_error | network`.
+
+### Changed
+- A **404 is still `clean`** — the source was reached and holds no record. Only
+  429 / 5xx / timeout / network failures are `unavailable`. That boundary is the
+  whole point: one of them is an answer and the other is silence.
+- `checkReferenceForEOC` keeps its exact previous signature and returns
+  `result.issues`, so existing callers are unaffected.
+
+### Tests
+- 11 new offline tests (`tests/expressionOfConcern/eocCoverage.test.ts`) mocking
+  axios, because the pre-existing suite hits the live APIs and cannot express
+  "and now Crossref rate-limits you". Verified by restoring the 0.1.1 semantics
+  (429 → clean) and watching four of them go red. Suite 112 → 123.
+
+
 ## 0.1.1 — 2026-06-08
 
 Deterministic-core hardening (via `citationguard-iterate`). The pure-logic core
