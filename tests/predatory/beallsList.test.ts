@@ -1,7 +1,7 @@
 /**
  * Beall's-List predatory matching — deterministic-core tests.
  *
- * Added by citationguard-iterate (2026-06-08). The matcher previously had ZERO
+ * Added by the platform's hardening workflow (2026-06-08). The matcher previously had ZERO
  * standalone coverage. D3: the old `a.includes(b) || b.includes(a)` raw-substring
  * test branded legitimate publishers predatory on partial-word overlaps (e.g.
  * "SciTechnology" matched the Beall's entry "SciTechnol"). These tests fail

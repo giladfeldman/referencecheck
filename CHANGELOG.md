@@ -37,7 +37,7 @@ all-clear over references nobody had successfully looked up.
 
 ## 0.1.1 — 2026-06-08
 
-Deterministic-core hardening (via `citationguard-iterate`). The pure-logic core
+Deterministic-core hardening (via the platform's hardening workflow). The pure-logic core
 (DOI shape, Beall's matching, dedup similarity, reference validation) previously
 had **zero** standalone test coverage; this release fixes three correctness bugs
 and adds 37 unit tests. Suite 75 → 112.
@@ -71,4 +71,4 @@ and adds 37 unit tests. Suite 75 → 112.
 
 ## 0.1.0
 
-- Initial behavior-preserving extraction from the CitationGuard platform.
+- Initial behavior-preserving extraction from the Scimeto platform.

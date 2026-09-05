@@ -1,7 +1,7 @@
 /**
  * DOI-shape validation — deterministic-core tests.
  *
- * Added by citationguard-iterate (2026-06-08) to behavior-pin the structural
+ * Added by the platform's hardening workflow (2026-06-08) to behavior-pin the structural
  * DOI heuristics. NOTE: doiShape.ts is an intentional verbatim copy of the
  * worker's entityOwnership.ts helpers ("do not let them diverge"), so these
  * tests document the CURRENT structural behavior and must not be used to justify

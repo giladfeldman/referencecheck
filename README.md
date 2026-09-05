@@ -12,7 +12,7 @@ lifecycle. Credentials (polite-pool contact emails) are passed in as
 parameters; the library never reads environment variables. The predatory
 publisher registry (Beall's List) is bundled.
 
-Extracted from the CitationGuard platform so the community can validate and
+Extracted from the Scimeto platform so the community can validate and
 reuse it. Accuracy iteration is ongoing — see [CHANGELOG.md](./CHANGELOG.md) and
 the [release tags](https://github.com/giladfeldman/referencecheck/tags) for the
 current version. (No version is quoted here on purpose; a hardcoded one goes

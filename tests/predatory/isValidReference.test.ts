@@ -1,7 +1,7 @@
 /**
  * isValidReference — reference-vs-main-text classification tests.
  *
- * Added by citationguard-iterate (2026-06-08). D6: the author-pattern fallback
+ * Added by the platform's hardening workflow (2026-06-08). D6: the author-pattern fallback
  * regex was ASCII + Latin-1 only (`[A-ZÀ-Ÿ]`), so a Cyrillic / Greek-authored
  * reference lost its "author" indicator and could fall below the 2-of-4
  * threshold. These tests fail against that regex and pass against the

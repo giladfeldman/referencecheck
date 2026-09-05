@@ -1,7 +1,7 @@
 /**
  * Reference deduplication — fuzzy author/title/year matching, similarity
  * scoring, transitive-closure duplicate grouping, best-reference selection.
- * Extracted verbatim from the CitationGuard deduplication plugin.
+ * Extracted verbatim from the Scimeto deduplication plugin.
  */
 export * from './types.js';
 export {

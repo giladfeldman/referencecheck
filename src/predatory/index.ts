@@ -1,6 +1,6 @@
 /**
  * Predatory-journal screening — Beall's List + DOAJ + OpenAlex + heuristics.
- * Extracted verbatim from the CitationGuard predatory-journal plugin.
+ * Extracted verbatim from the Scimeto predatory-journal plugin.
  */
 export * from './types.js';
 export { loadBeallsList, checkBeallsList, isKnownLegitimate } from './beallsList.js';

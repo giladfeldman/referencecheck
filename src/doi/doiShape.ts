@@ -1,5 +1,5 @@
 /**
- * DOI-shape validation helpers — copied verbatim from the CitationGuard
+ * DOI-shape validation helpers — copied verbatim from the Scimeto
  * worker's entityOwnership.ts during the Wave 3 referencecheck extraction.
  * The worker keeps its own copy because entityOwnership.ts also hosts the
  * PP-07 entity-ownership registry that is not reference-checking-only. The

@@ -1,7 +1,7 @@
 /**
  * Reference-dedup similarity — deterministic-core tests.
  *
- * Added by citationguard-iterate (2026-06-08). D9: compareAuthors averaged
+ * Added by the platform's hardening workflow (2026-06-08). D9: compareAuthors averaged
  * best-matches over list 1 only, so the score depended on argument order when
  * the lists differed in length. The symmetry test fails against that
  * implementation and passes against the both-directions average.

@@ -1,7 +1,7 @@
 /**
  * Reference-dedup grouping — deterministic-core tests.
  *
- * Added by citationguard-iterate (2026-06-08). Pins the transitive-closure
+ * Added by the platform's hardening workflow (2026-06-08). Pins the transitive-closure
  * grouping and the selectBestReference contract. D12 (selectBestReference throws
  * on an empty array) was triaged as INTENDED defensive behavior — the only
  * caller guards `groupRefs.length > 1` — so this test documents the throw rather

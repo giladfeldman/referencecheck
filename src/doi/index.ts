@@ -1,5 +1,5 @@
 /**
- * DOI-checking surface — re-exports the pure DOI logic that the CitationGuard
+ * DOI-checking surface — re-exports the pure DOI logic that the Scimeto
  * `doi` plugin composes: Crossref validation/lookup, retraction detection,
  * and DOI-shape heuristics. `processDOIs` itself (the DB/lifecycle batch
  * loop) stays in the consuming app — it is not part of this library.

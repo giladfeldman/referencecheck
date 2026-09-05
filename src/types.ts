@@ -2,8 +2,8 @@
  * Structural reference-input types for referencecheck.
  *
  * referencecheck never imports @scimeto/shared. These interfaces are a
- * minimal STRUCTURAL SUBSET of CitationGuard's `Reference` DB-entity type —
- * only the fields the library's functions actually read. Any CitationGuard
+ * minimal STRUCTURAL SUBSET of Scimeto's `Reference` DB-entity type —
+ * only the fields the library's functions actually read. Any Scimeto
  * `Reference` row satisfies `ReferenceInput` by TypeScript structural typing,
  * so the worker adapter layer passes its DB rows directly with no mapping.
  *
@@ -24,7 +24,7 @@ export interface ParsedReferenceInput {
 /**
  * The structural reference shape the referencecheck functions consume.
  * Every field is optional except `id` and `raw_text` — `raw_text` is non-null
- * in the CitationGuard schema and the predatory `isValidReference` /
+ * in the Scimeto schema and the predatory `isValidReference` /
  * `extractJournalMetadata` functions read it unconditionally.
  */
 export interface ReferenceInput {
