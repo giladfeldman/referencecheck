@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.1.3 — 2026-09-10
+
+**The same defect 0.1.2 fixed for Expression of Concern was still live in the
+retraction path.** `checkRetraction` returned `{ isRetracted: false }` for a
+Crossref **429 or timeout** exactly as it did for a genuine clean answer, and
+callers read the boolean bare — so a rate-limit storm printed a clean
+bibliography over references nobody had successfully looked up. On a tool whose
+whole purpose is that check, a retraction lookup that silently passes when it
+did not run is the worst available failure.
+
+Two-sided control on the coverage gap itself: Expression of Concern had 19 test
+references; the retraction path had **zero test files**. The gap was in
+coverage, not in anyone's search for it. The 0.1.2 note above records **81
+Crossref 429s in one real SciMeto run**, so the failure mode is measured.
+
+### Added
+- `RetractionInfo.checked` — true only when a source actually answered. Read it
+  before trusting `isRetracted === false`.
+- `RetractionInfo.sourcesUnavailable` — every source that could not be reached,
+  and why (`rate_limited` / `timeout` / `server_error` / `network`).
+- `checkRetractionDetailed(doi)` → `{ retraction, complete, sourcesUnavailable }`.
+  Prefer it anywhere the result reaches a reader. Mirrors
+  `checkReferenceForEOCDetailed`.
+- `tests/retraction/retractionCoverage.test.ts`, 9 tests, offline and
+  deterministic (axios and `crossrefGet` mocked — a live-API test cannot express
+  "and now Crossref rate-limits you").
+
+### Changed
+- A **404 is now treated as an answer** ("this DOI is not in that index"), while
+  429 / timeout / 5xx / socket errors are treated as no answer at all. That
+  distinction is what the old single `isRetracted: false` collapsed.
+- Crossref answering with an ordinary article now returns an explicit
+  `checked: true` negative rather than falling through to the shared bottom
+  return.
+- `checked` is false when **any** source went unread, even if the other
+  answered: retraction is a positive-detection problem, so an unread index is a
+  real chance of a missed retraction.
+
+### Not changed
+- `checkRetraction`'s signature. This library is consumed by SciMeto through the
+  barrel `src/index.ts`, so the published shape is added to, never broken.
+
+### Verified
+Watched **RED first, on the real module**: with only the two defective lines
+restored (the new types kept, so the failure is in the assertions and not in
+compilation), exactly the 5 defect-detecting tests fail while the 4 controls —
+clean answer, 404-is-an-answer, a real retraction found, a retraction still
+found while the other index is rate-limited — keep passing. Restored: 9/9.
+Full suite 132/132 across 11 files, `tsc --noEmit` clean.
+
+**Note for whoever runs these:** `npx jest` cannot run this repository's tests
+at all (`TS1378: top-level await`); only `npm test`, which sets
+`--experimental-vm-modules`, works. That is pre-existing and applies to the
+0.1.2 Expression-of-Concern tests too.
+
 ## 0.1.2 — 2026-08-21
 
 **A rate-limited Expression-of-Concern lookup reported as "clean".** Every source
