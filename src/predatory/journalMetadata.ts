@@ -1,5 +1,5 @@
 import type { ReferenceInput } from '../types.js';
-import type { JournalMetadata, OpenAlexResult } from './types.js';
+import type { JournalMetadata } from './types.js';
 import type { MetadataCredentials } from '../http/credentials.js';
 import { searchOpenAlexByJournalName, resolveOpenAlexByDOI } from './openAlex.js';
 
@@ -253,8 +253,9 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
     if (metadata.journal.length < 2 || metadata.journal.match(/^\d+$/)) {
       metadata.journal = undefined;
     } else {
-      // Filter out common false positives
-      const lowerJournal = metadata.journal.toLowerCase();
+      // Filter out common false positives.
+      // Every pattern below is case-insensitive (`/i`) or lower-cases inline, so
+      // no pre-lowered copy of the journal name is needed.
 
       // Common false positive patterns
       const falsePositives = [
