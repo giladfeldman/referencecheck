@@ -1,0 +1,11 @@
+{
+  "recordedAt": "2026-09-12T04:08:26.803Z",
+  "request": {
+    "method": "HEAD",
+    "url": "https://doi.org/10.1111/1467-9280.00441"
+  },
+  "status": 302,
+  "headers": {
+    "location": "https://journals.sagepub.com/doi/10.1111/1467-9280.00441"
+  }
+}

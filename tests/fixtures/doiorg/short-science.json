@@ -1,0 +1,11 @@
+{
+  "recordedAt": "2026-09-12T04:08:26.294Z",
+  "request": {
+    "method": "HEAD",
+    "url": "https://doi.org/10/bdps"
+  },
+  "status": 301,
+  "headers": {
+    "location": "https://doi.org/10.1126/SCIENCE.AAF0918"
+  }
+}

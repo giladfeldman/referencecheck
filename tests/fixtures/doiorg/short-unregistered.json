@@ -1,0 +1,11 @@
+{
+  "recordedAt": "2026-09-12T04:08:26.611Z",
+  "request": {
+    "method": "HEAD",
+    "url": "https://doi.org/10/zzzzzzzzzz"
+  },
+  "status": 404,
+  "headers": {
+    "location": null
+  }
+}

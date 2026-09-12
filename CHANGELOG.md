@@ -1,5 +1,80 @@
 # Changelog
 
+## 0.1.5 — 2026-09-12
+
+**A shortDOI is an alias, not a malformed DOI.** `0.1.4` shipped
+`isShortFormDoi`, which lets a caller refuse a lookup on `10/gt3vmw` — correct,
+because handing an unexpanded alias to Crossref returns a 404 or a spurious
+fuzzy match. But refusing was the only thing a caller could do with one, and a
+shortDOI is not a defect: it stands for exactly one canonical DOI, and the
+resolver will say which.
+
+### Added
+
+- **`expandShortDoi(doi, options?)`** — resolves `10/<token>` to its canonical
+  DOI through one manual hop of the doi.org redirect. Measured against the live
+  resolver, 2026-09-12:
+
+  | input | status | Location |
+  |---|---|---|
+  | `10/gt3vmw` | 301 | `https://doi.org/10.1111/ECIN.13244` |
+  | `10/b77m95` | 301 | `https://doi.org/10.1037/H0054651` |
+  | `10/aabbe` | 301 | `https://doi.org/10.1002/(SICI)1097-0258(19980815/30)17:15/16%3C1661::AID-SIM968%3E3.0.CO;2-2` |
+  | `10` | 400 | — |
+  | `10/zzzzzzzzzz` | 404 | — |
+  | `10.1111/1467-9280.00441` | 302 | `https://journals.sagepub.com/...` |
+
+  The discriminator is therefore **not** "there was a redirect": a canonical DOI
+  also redirects, straight to the publisher. An expansion is accepted only when
+  the resolver answers 3xx with another **doi.org** URL whose path is a
+  canonical DOI. Exactly one hop is followed; going further walks into publisher
+  redirect chains that carry no DOI at all.
+
+  Anything that is not the shortDOI form — a canonical DOI, a bare `10`, a
+  non-string — returns `not-short-form` **without a network request**. That
+  bound is the point: this function can only change the verdict for inputs
+  `isShortFormDoi` already identifies.
+
+- **`readExpansionTarget(location)`** — the pure half, for callers that already
+  have a Location header.
+- **`clearShortDoiCache()`** — clears the 24h in-memory expansion cache.
+
+### Two traps this implementation is built around
+
+- **The Location path is taken verbatim.** `10/aabbe` expands to a DOI whose
+  suffix contains parentheses, a colon, angle brackets **and two slashes**. A
+  `/10\.\d{4,9}\/[^\/]+/` style parser truncates it to
+  `10.1002/(SICI)1097-0258(19980815`, which returns Crossref **404** while the
+  verbatim form returns **200**. So the path is read with
+  `decodeURIComponent(new URL(loc).pathname)` and nothing cleverer, and that DOI
+  is a recorded fixture.
+
+- **Case.** The resolver returns the registrant's casing (`10.1111/ECIN.13244`);
+  Crossref normalises to lower case (`10.1111/ecin.13244`). Both resolve, so
+  lookups are safe either way — but a caller that persists or de-duplicates on
+  the redirect's string will hold two spellings of one DOI. Prefer Crossref's
+  `message.DOI`, or lower-case before keying.
+
+### Honesty of the failure modes
+
+`ShortDoiExpansionReason` is exhaustive and has no catch-all: `expanded`,
+`not-short-form`, `not-registered`, `malformed`, `no-redirect`, `off-resolver`,
+`unexpanded-target`, `network-error`. A caller must not be able to collapse
+"this alias is not registered" into "we could not reach the resolver" — those
+are opposite facts about the reference, and only the first licenses telling an
+author their DOI is unusable. For the same reason a `network-error` is **not**
+cached: one unreachable minute must not become an hour of references wrongly
+reported as unresolvable.
+
+### Tests
+
+21 new tests, every HTTP payload a recorded doi.org response
+(`tests/fixtures/doiorg/capture.mjs`). Four sabotages were applied one at a
+time and each reddened only its own tests: reading the suffix by regex → only
+the exotic-suffix test; dropping the doi.org host check → only the two
+off-resolver tests; dropping the short-form guard → only the two
+never-called controls; caching network errors → only the not-cached test.
+
 ## 0.1.4 — 2026-09-12
 
 **0.1.3 shipped the coverage flags over Crossref detection code that could never
