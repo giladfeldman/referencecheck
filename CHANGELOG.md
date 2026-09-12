@@ -43,12 +43,17 @@ meta-science bibliography is full of.
 - **`update-to` is deliberately NOT read as evidence of retraction.** It appears
   on the retraction *notice* and names the paper the notice retracts, so reading
   it would invert the relation and flag every notice as a retracted paper.
-- **The title heuristic is now a case-sensitive publisher-marker prefix**
-  (`RETRACTED…`, `RETRACTED ARTICLE…`, `WITHDRAWN…`) instead of a
-  `title.includes('retract')` substring test. On a 14-work corpus of genuinely
-  retracted papers drawn from Crossref's own `update-type:retraction` filter,
-  `updated-by` caught **14 of 14** while a capitalised title marker appeared on
-  only **9 of 14** — the heuristic is a supplement, never the rule.
+- **The title heuristic is now a delimited publisher marker** — ALL-CAPS,
+  bracketed, or followed by a colon or dash (`RETRACTED:`, `RETRACTED ARTICLE:`,
+  `Retracted:`, `[Retracted]`, `WITHDRAWN`, `REMOVED:`) — instead of a
+  `title.includes('retract')` substring test that flagged every healthy paper
+  whose title begins "Retracted Publications…".
+
+  A first cut of this release used an ALL-CAPS-only rule. The review below
+  showed that loses real retractions: `10.1109/icaccs60874.2024.10717184`
+  ("Retracted: Faux Reality Detector") and `10.3892/ol.2018.7943` ("[Retracted]
+  Pediatric sarcomas (Review)") are genuinely retracted and deposit an **empty**
+  `updated-by`, so the title is their only signal.
 - **The `message.type === 'retraction'` branch is removed: it was dead code.**
   `retraction` is not a Crossref work type — the filter returns HTTP 400 where
   `type:journal-article` returns 200 over 123M works, and the `/types` registry
@@ -89,6 +94,74 @@ meta-science bibliography is full of.
   one that would have caught this.
 - `tsconfig.test.json` so test-only helpers compile outside `rootDir: ./src`.
 
+### Found by a three-model review, and fixed before release
+
+The first cut of v0.1.4 was reviewed by **Fable 5** (anthropic), **Sonnet 5**
+(anthropic) and **Grok 4.6** (xai). Two providers, not three — the OpenAI seat was
+unavailable and was substituted. Every finding below was **reproduced through the
+compiled library against the live Crossref API** before anything was changed, and
+each has a regression test watched failing against the pre-fix code.
+
+- **False clean: `withdrawal` and `removal` were not detected.** Crossref serves
+  these as first-class `updated-by` types whose labels contain no "retract", so a
+  retraction-only matcher reported genuinely pulled papers as clean —
+  `10.1002/14651858.cd009522` (a withdrawn Cochrane review),
+  `10.1016/j.crad.2024.02.007`, `10.1016/j.asr.2025.03.045` (an Elsevier removal).
+  Detection now covers `retraction`, `partial_retraction`, `removal` and
+  `withdrawal`. Found independently by all three seats.
+- **False clean: a Crossref 404 was treated as a clean bill of health.**
+  OpenRetractions is a retraction index, so a 404 there means "not retracted".
+  Crossref is a bibliographic register, so a 404 there means "not a Crossref
+  work" and says nothing about retraction. `10.5281/zenodo.3242591` (a Zenodo
+  DOI) and LaCour's DOI with one character appended both returned
+  `checked: true, complete: true, isRetracted: false`. A Crossref 404 is now the
+  new unavailable reason **`not_indexed`**. The asymmetry is deliberate and
+  per-source.
+- **False clean: `sources: []` returned a confident clean having consulted
+  nothing.** `checked` now also requires `sourcesChecked.length > 0`.
+- **False clean: title markers publishers actually use were missed** — see the
+  title-heuristic note above.
+- **False RETRACTED: a withdrawn preprint was reported as retracted.**
+  `10.31234/osf.io/etvnm_v1` is a PsyArXiv preprint titled simply "WITHDRAWN".
+  OSF preprints are routinely withdrawn because the work was published elsewhere,
+  not for misconduct. Flagging it is right; calling it *retracted* to a psychology
+  author is a false claim about their bibliography. Hence `retractionType`.
+- **Wrong number: the title path returned the paper's PUBLICATION date in
+  `retractionDate`.** There is no notice to date on that path, so the field is now
+  absent rather than wrong.
+- **Understated verdict: selection was by array position.**
+  `10.33552/ojdoh.2018.01.000503` lists twelve notices with `partial_retraction`
+  ahead of `retraction`, and the weaker one was reported. Selection is now by
+  severity, then by earliest date — `10.1007/s11277-021-09072-0` carries a
+  publisher retraction dated 2021-09-11 and a Retraction Watch record dated
+  2022-12-06, and the retraction happened on the earlier date.
+- **Corrected claim: the "14 of 14" coverage figure in the first cut was
+  circular.** That corpus was drawn from Crossref's own `update-type:retraction`
+  filter, so it had the relation by construction and could not measure what
+  `updated-by` misses. On five well-known retractions chosen independently (Mehra
+  2020, STAP, Stapel 2011, Séralini 2012, Hwang 2005) `updated-by` carried the
+  retraction **5 of 5** and a capitalised title marker only **3 of 5** — but the
+  two empty-`updated-by` cases above prove coverage is good, not total. Stated in
+  the module header as a known limit rather than implied away.
+
+### Added by that review
+
+- **`RetractionInfo.retractionType`** — `retraction` | `partial_retraction` |
+  `removal` | `withdrawal`. **`isRetracted` means "this work has been pulled and
+  must not be cited as an ordinary reference"**, so a consumer reading only the
+  boolean cannot silently drop a withdrawal. Anything that renders a verdict to a
+  reader must use `retractionType` for the wording — `retractionReason` now names
+  it in words too ("Withdrawn", "Partially retracted").
+- `tests/retraction/retractionUpdateTypes.test.ts` — 16 tests, 12 of which fail
+  against the pre-review code; the 4 that pass are the two-sided controls, which
+  must pass on both.
+- Eight further recorded Crossref fixtures covering every case above.
+
+**Consumer action:** Scimeto should read `retractionType` and stop rendering the
+word "retracted" for a withdrawal or removal, and should surface `not_indexed`
+distinctly — a Zenodo or DataCite DOI is now honestly reported as unchecked
+rather than silently clean.
+
 ### Changed — read this before upgrading
 
 **OpenRetractions is no longer consulted by default.** `api.openretractions.com`
@@ -99,8 +172,9 @@ the default list would mark **every** lookup incomplete forever — an alarm tha
 fires on every reference tells a reader nothing and would drown the genuine
 Crossref failures it exists to surface.
 
-It costs no coverage: Crossref now relays the same Retraction Watch data and
-detected 14 of 14 in the corpus above. The source is **not deleted** — pass
+It costs no coverage: Crossref's `updated-by` entries carry
+`source: "retraction-watch"`, so Crossref relays the same data OpenRetractions
+was built on. The source is **not deleted** — pass
 `{ sources: ['openretractions', 'crossref'] }` to consult it if the host
 returns, and its behaviour stays pinned by tests. Dropping it also removes a
 failing DNS lookup from every single reference check.

@@ -1,0 +1,580 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2025,
+          12,
+          31
+        ]
+      ],
+      "date-time": "2025-12-31T17:57:43Z",
+      "timestamp": 1767203863419,
+      "version": "build-2238731810"
+    },
+    "update-to": [
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "addendum",
+        "label": "Addendum",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "clarification",
+        "label": "Clarification",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "corrigendum",
+        "label": "Corrigendum",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "correction",
+        "label": "Correction",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "corrigendum",
+        "label": "Corrigendum",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "erratum",
+        "label": "Erratum",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "expression_of_concern",
+        "label": "Expression of concern",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "new_edition",
+        "label": "New edition",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "new_version",
+        "label": "New version",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "partial_retraction",
+        "label": "Partial retraction",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "removal",
+        "label": "Removal",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "withdrawal",
+        "label": "Withdrawal",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      }
+    ],
+    "publisher": "Iris Publishers LLC",
+    "issue": "1",
+    "content-domain": {
+      "domain": [
+        "www.irispublishers.com"
+      ],
+      "crossmark-restriction": true
+    },
+    "short-container-title": [
+      "OJDOH"
+    ],
+    "published-print": {
+      "date-parts": [
+        [
+          2018,
+          8,
+          17
+        ]
+      ]
+    },
+    "DOI": "10.33552/ojdoh.2018.01.000503",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [
+        [
+          2019,
+          2,
+          7
+        ]
+      ],
+      "date-time": "2019-02-07T03:55:58Z",
+      "timestamp": 1549511758000
+    },
+    "update-policy": "https://doi.org/10.33552/123456789",
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "Reinforcing Teaching Strategies with Demonstrational Videos in Dental Education"
+    ],
+    "prefix": "10.33552",
+    "volume": "1",
+    "member": "19081",
+    "published-online": {
+      "date-parts": [
+        [
+          2018,
+          9,
+          6
+        ]
+      ]
+    },
+    "updated-by": [
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "clarification",
+        "label": "Clarification",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "addendum",
+        "label": "Addendum",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "correction",
+        "label": "Correction",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "new_edition",
+        "label": "New edition",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "expression_of_concern",
+        "label": "Expression of concern",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "corrigendum",
+        "label": "Corrigendum",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "erratum",
+        "label": "Erratum",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "new_version",
+        "label": "New version",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "withdrawal",
+        "label": "Withdrawal",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "partial_retraction",
+        "label": "Partial retraction",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "removal",
+        "label": "Removal",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      },
+      {
+        "DOI": "10.33552/ojdoh.2018.01.000503",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2018,
+              9,
+              6
+            ]
+          ],
+          "date-time": "2018-09-06T00:00:00Z",
+          "timestamp": 1536192000000
+        }
+      }
+    ],
+    "container-title": [
+      "Online Journal of Dentistry &amp; Oral Health"
+    ],
+    "original-title": [],
+    "deposited": {
+      "date-parts": [
+        [
+          2022,
+          2,
+          3
+        ]
+      ],
+      "date-time": "2022-02-03T11:44:25Z",
+      "timestamp": 1643888665000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://irispublishers.com/ojdoh/fulltext/reinforcing-teaching-strategies-with-demonstrational-videos-in-dental-education.ID.000503.php"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2018,
+          8,
+          17
+        ]
+      ]
+    },
+    "references-count": 0,
+    "journal-issue": {
+      "issue": "1",
+      "published-online": {
+        "date-parts": [
+          [
+            2018,
+            9,
+            6
+          ]
+        ]
+      },
+      "published-print": {
+        "date-parts": [
+          [
+            2018,
+            8,
+            17
+          ]
+        ]
+      }
+    },
+    "URL": "https://doi.org/10.33552/ojdoh.2018.01.000503",
+    "relation": {},
+    "ISSN": [
+      "2641-1962"
+    ],
+    "issn-type": [
+      {
+        "value": "2641-1962",
+        "type": "electronic"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [
+        [
+          2018,
+          8,
+          17
+        ]
+      ]
+    }
+  },
+  "__fixture": {
+    "doi": "10.33552/ojdoh.2018.01.000503",
+    "why": "Twelve update entries listing `partial_retraction` BEFORE `retraction`. Selection by array position reports the weaker verdict.",
+    "capturedAt": "2026-09-12",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}
