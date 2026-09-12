@@ -1,0 +1,176 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2026,
+          1,
+          21
+        ]
+      ],
+      "date-time": "2026-01-21T01:38:50Z",
+      "timestamp": 1768959530565,
+      "version": "3.49.0"
+    },
+    "publisher": "Wyższa Szkoła Informatyki i Zarządzania z siedzibą w Rzeszowie",
+    "issue": "2",
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [
+      "SC"
+    ],
+    "abstract": "<jats:p>The study analyzes repeated offenders of scientific misconduct among authors affiliated with Indian institutions. To do so, we searched the SCOPUS database for retraction notices of articles written or cowritten by such authors. Broad categories of reasons for retractions, institutions, and the types of retracted publications were discussed. Most retractions (12.5% out of 239 retractions analysed) were from authors affiliated with S.V. University. The main reasons behind retractions were ethical misconduct (139, 58.2%) and scientific distortion (43, 18%). About one in ten authors who have at least one article retracted had more than one retracted publication.</jats:p>",
+    "DOI": "10.57656/sc-2025-0013",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [
+        [
+          2026,
+          1,
+          20
+        ]
+      ],
+      "date-time": "2026-01-20T13:17:59Z",
+      "timestamp": 1768915079000
+    },
+    "page": "40-46",
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "Retracted Publications in Indian Science: Reasons and Institutions"
+    ],
+    "prefix": "10.57656",
+    "volume": "27",
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0001-9653-3108",
+        "authenticated-orcid": false,
+        "given": "Marcin",
+        "family": "Kozak",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-8938-0155",
+        "authenticated-orcid": false,
+        "given": "Bakthavachalam",
+        "family": "Elango",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "member": "51935",
+    "published-online": {
+      "date-parts": [
+        [
+          2025,
+          12,
+          31
+        ]
+      ]
+    },
+    "container-title": [
+      "Social Communication"
+    ],
+    "original-title": [],
+    "link": [
+      {
+        "URL": "https://journals.wsiz.edu.pl/sc/article/download/1267/1155",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://journals.wsiz.edu.pl/sc/article/download/1267/1155",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [
+        [
+          2026,
+          1,
+          20
+        ]
+      ],
+      "date-time": "2026-01-20T13:17:59Z",
+      "timestamp": 1768915079000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://journals.wsiz.edu.pl/sc/article/view/1267"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2025,
+          12,
+          31
+        ]
+      ]
+    },
+    "references-count": 0,
+    "journal-issue": {
+      "issue": "2",
+      "published-online": {
+        "date-parts": [
+          [
+            2025,
+            12,
+            31
+          ]
+        ]
+      }
+    },
+    "URL": "https://doi.org/10.57656/sc-2025-0013",
+    "relation": {},
+    "ISSN": [
+      "2450-7563"
+    ],
+    "issn-type": [
+      {
+        "value": "2450-7563",
+        "type": "electronic"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [
+        [
+          2025,
+          12,
+          31
+        ]
+      ]
+    }
+  },
+  "__fixture": {
+    "doi": "10.57656/sc-2025-0013",
+    "why": "The false-positive control that matters for a meta-science tool: a HEALTHY paper whose title is \"Retracted Publications in Indian Science\". The old substring heuristic reports this as retracted.",
+    "capturedAt": "2026-09-12",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}
