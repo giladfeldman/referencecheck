@@ -34,14 +34,38 @@ const CASES = [
     'The false-positive control that matters for a meta-science tool: a HEALTHY paper whose title is "Retracted Publications in Indian Science". The old substring heuristic reports this as retracted.'],
   ['retraction-notice.json', '10.1126/science.aac6638',
     'The retraction NOTICE for LaCour. Carries `update-to`, not `updated-by` — proof that `update-to` points the other way and must never be read as "this DOI was retracted".'],
+
+  // Added after the 2026-09-12 three-model review, which reproduced a false
+  // clean or a false positive on every one of these against the live API.
+  ['withdrawn-cochrane.json', '10.1002/14651858.cd009522',
+    'A withdrawn Cochrane review. `updated-by` type is `withdrawal`, not `retraction`, and its label contains no "retract" — reported CLEAN before this.'],
+  ['withdrawn-with-erratum.json', '10.1016/j.crad.2024.02.007',
+    'A withdrawal alongside an erratum, so the selector must not be confused by a second entry.'],
+  ['removed-elsevier.json', '10.1016/j.asr.2025.03.045',
+    'Elsevier `removal`, listed AFTER an erratum — reported CLEAN before this.'],
+  ['retracted-title-case.json', '10.1109/icaccs60874.2024.10717184',
+    'IEEE "Retracted: Faux Reality Detector" with an EMPTY `updated-by`. The title is the only signal, and a case-sensitive ALL-CAPS rule misses it.'],
+  ['retracted-bracketed.json', '10.3892/ol.2018.7943',
+    'Spandidos "[Retracted] Pediatric sarcomas (Review)", also with an empty `updated-by`.'],
+  ['withdrawn-preprint.json', '10.31234/osf.io/etvnm_v1',
+    'A PsyArXiv preprint titled simply "WITHDRAWN". Flagged, but as a WITHDRAWAL — calling this "retracted" to a psychology author is a false claim.'],
+  ['multi-update-severity.json', '10.33552/ojdoh.2018.01.000503',
+    'Twelve update entries listing `partial_retraction` BEFORE `retraction`. Selection by array position reports the weaker verdict.'],
+  ['multi-retraction-dates.json', '10.1007/s11277-021-09072-0',
+    'Two `retraction` entries: a publisher notice dated 2021-09-11 and a Retraction Watch record dated 2022-12-06. The retraction happened on the earlier date.'],
 ];
 
 for (const [file, doi, why] of CASES) {
   const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, { headers: UA });
   if (res.status !== 200) throw new Error(`${doi} -> HTTP ${res.status}`);
   const body = await res.json();
+  // `reference` is large and no code path under test reads it. `abstract` is
+  // ARTICLE PROSE, and a test fixture is no place to keep a copy of someone
+  // else's published text — it is metadata we need, not content. Neither field
+  // is read by the retraction checker, so stripping both costs nothing.
   delete body.message.reference;
   delete body.message['reference-count'];
+  delete body.message.abstract;
   body.__fixture = { doi, why, capturedAt: new Date().toISOString().slice(0, 10), note: 'Verbatim Crossref body; `reference` array stripped.' };
   await writeFile(join(HERE, file), JSON.stringify(body, null, 2) + '\n');
   console.log('captured', file, '<-', doi);

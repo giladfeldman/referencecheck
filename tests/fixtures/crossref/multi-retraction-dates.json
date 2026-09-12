@@ -1,0 +1,349 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2025,
+          12,
+          31
+        ]
+      ],
+      "date-time": "2025-12-31T01:02:06Z",
+      "timestamp": 1767142926720,
+      "version": "build-2238731810"
+    },
+    "update-to": [
+      {
+        "DOI": "10.1007/s11277-021-09072-0",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "retraction-watch",
+        "updated": {
+          "date-parts": [
+            [
+              2022,
+              12,
+              6
+            ]
+          ],
+          "date-time": "2022-12-06T00:00:00Z",
+          "timestamp": 1670284800000
+        },
+        "record-id": "42746"
+      },
+      {
+        "DOI": "10.1007/s11277-021-09072-0",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2021,
+              9,
+              11
+            ]
+          ],
+          "date-time": "2021-09-11T00:00:00Z",
+          "timestamp": 1631318400000
+        }
+      }
+    ],
+    "publisher": "Springer Science and Business Media LLC",
+    "issue": "S1",
+    "license": [
+      {
+        "start": {
+          "date-parts": [
+            [
+              2021,
+              9,
+              11
+            ]
+          ],
+          "date-time": "2021-09-11T00:00:00Z",
+          "timestamp": 1631318400000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "https://www.springernature.com/gp/researchers/text-and-data-mining"
+      },
+      {
+        "start": {
+          "date-parts": [
+            [
+              2021,
+              9,
+              11
+            ]
+          ],
+          "date-time": "2021-09-11T00:00:00Z",
+          "timestamp": 1631318400000
+        },
+        "content-version": "vor",
+        "delay-in-days": 0,
+        "URL": "https://www.springernature.com/gp/researchers/text-and-data-mining"
+      }
+    ],
+    "content-domain": {
+      "domain": [
+        "link.springer.com"
+      ],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [
+      "Wireless Pers Commun"
+    ],
+    "published-print": {
+      "date-parts": [
+        [
+          2022,
+          12
+        ]
+      ]
+    },
+    "DOI": "10.1007/s11277-021-09072-0",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [
+        [
+          2021,
+          9,
+          12
+        ]
+      ],
+      "date-time": "2021-09-12T08:04:13Z",
+      "timestamp": 1631433853000
+    },
+    "page": "39-39",
+    "update-policy": "https://doi.org/10.1007/springer_crossmark_policy",
+    "source": "Crossref",
+    "is-referenced-by-count": 2,
+    "title": [
+      "RETRACTED ARTICLE: Deep Reinforcement Learning-Based Smart Manufacturing Plants with a Novel Digital Twin Training Model"
+    ],
+    "prefix": "10.1007",
+    "volume": "127",
+    "author": [
+      {
+        "given": "Minghong",
+        "family": "She",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "member": "297",
+    "published-online": {
+      "date-parts": [
+        [
+          2021,
+          9,
+          11
+        ]
+      ]
+    },
+    "updated-by": [
+      {
+        "DOI": "10.1007/s11277-021-09072-0",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "retraction-watch",
+        "updated": {
+          "date-parts": [
+            [
+              2022,
+              12,
+              6
+            ]
+          ],
+          "date-time": "2022-12-06T00:00:00Z",
+          "timestamp": 1670284800000
+        },
+        "record-id": "42746"
+      },
+      {
+        "DOI": "10.1007/s11277-021-09072-0",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2021,
+              9,
+              11
+            ]
+          ],
+          "date-time": "2021-09-11T00:00:00Z",
+          "timestamp": 1631318400000
+        }
+      }
+    ],
+    "container-title": [
+      "Wireless Personal Communications"
+    ],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https://link.springer.com/content/pdf/10.1007/s11277-021-09072-0.pdf",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://link.springer.com/article/10.1007/s11277-021-09072-0/fulltext.html",
+        "content-type": "text/html",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://link.springer.com/content/pdf/10.1007/s11277-021-09072-0.pdf",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [
+        [
+          2022,
+          12,
+          28
+        ]
+      ],
+      "date-time": "2022-12-28T11:13:04Z",
+      "timestamp": 1672225984000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://link.springer.com/10.1007/s11277-021-09072-0"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2021,
+          9,
+          11
+        ]
+      ]
+    },
+    "references-count": 35,
+    "journal-issue": {
+      "issue": "S1",
+      "published-print": {
+        "date-parts": [
+          [
+            2022,
+            12
+          ]
+        ]
+      }
+    },
+    "alternative-id": [
+      "9072"
+    ],
+    "URL": "https://doi.org/10.1007/s11277-021-09072-0",
+    "relation": {},
+    "ISSN": [
+      "0929-6212",
+      "1572-834X"
+    ],
+    "issn-type": [
+      {
+        "value": "0929-6212",
+        "type": "print"
+      },
+      {
+        "value": "1572-834X",
+        "type": "electronic"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [
+        [
+          2021,
+          9,
+          11
+        ]
+      ]
+    },
+    "assertion": [
+      {
+        "value": "28 August 2021",
+        "order": 1,
+        "name": "accepted",
+        "label": "Accepted",
+        "group": {
+          "name": "ArticleHistory",
+          "label": "Article History"
+        }
+      },
+      {
+        "value": "11 September 2021",
+        "order": 2,
+        "name": "first_online",
+        "label": "First Online",
+        "group": {
+          "name": "ArticleHistory",
+          "label": "Article History"
+        }
+      },
+      {
+        "value": "6 December 2022",
+        "order": 3,
+        "name": "change_date",
+        "label": "Change Date",
+        "group": {
+          "name": "ArticleHistory",
+          "label": "Article History"
+        }
+      },
+      {
+        "value": "Clarification",
+        "order": 4,
+        "name": "change_type",
+        "label": "Change Type",
+        "group": {
+          "name": "ArticleHistory",
+          "label": "Article History"
+        }
+      },
+      {
+        "value": "This article was retracted on 6 December 2022",
+        "order": 5,
+        "name": "change_details",
+        "label": "Change Details",
+        "group": {
+          "name": "ArticleHistory",
+          "label": "Article History"
+        }
+      },
+      {
+        "value": "This content has been made available to all.",
+        "name": "free",
+        "label": "Free to read"
+      }
+    ]
+  },
+  "__fixture": {
+    "doi": "10.1007/s11277-021-09072-0",
+    "why": "Two `retraction` entries: a publisher notice dated 2021-09-11 and a Retraction Watch record dated 2022-12-06. The retraction happened on the earlier date.",
+    "capturedAt": "2026-09-12",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}

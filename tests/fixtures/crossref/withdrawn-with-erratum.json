@@ -1,0 +1,408 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2026,
+          6,
+          7
+        ]
+      ],
+      "date-time": "2026-06-07T19:59:51Z",
+      "timestamp": 1780862391551,
+      "version": "3.54.1"
+    },
+    "update-to": [
+      {
+        "DOI": "10.1016/j.crad.2024.02.007",
+        "type": "withdrawal",
+        "label": "Withdrawal",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2024,
+              7,
+              1
+            ]
+          ],
+          "date-time": "2024-07-01T00:00:00Z",
+          "timestamp": 1719792000000
+        }
+      }
+    ],
+    "publisher": "Elsevier BV",
+    "issue": "7",
+    "license": [
+      {
+        "start": {
+          "date-parts": [
+            [
+              2024,
+              7,
+              1
+            ]
+          ],
+          "date-time": "2024-07-01T00:00:00Z",
+          "timestamp": 1719792000000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "https://www.elsevier.com/tdm/userlicense/1.0/"
+      },
+      {
+        "start": {
+          "date-parts": [
+            [
+              2024,
+              7,
+              1
+            ]
+          ],
+          "date-time": "2024-07-01T00:00:00Z",
+          "timestamp": 1719792000000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "https://www.elsevier.com/legal/tdmrep-license"
+      }
+    ],
+    "funder": [
+      {
+        "DOI": "10.13039/501100001809",
+        "name": "National Natural Science Foundation of China",
+        "doi-asserted-by": "publisher",
+        "award": [
+          "81971569"
+        ],
+        "award-info": [
+          {
+            "award-number": [
+              "81971569"
+            ]
+          }
+        ],
+        "id": [
+          {
+            "id": "10.13039/501100001809",
+            "id-type": "DOI",
+            "asserted-by": "publisher"
+          }
+        ]
+      },
+      {
+        "DOI": "10.13039/501100001809",
+        "name": "National Natural Science Foundation of China",
+        "doi-asserted-by": "publisher",
+        "award": [
+          "82272068"
+        ],
+        "award-info": [
+          {
+            "award-number": [
+              "82272068"
+            ]
+          }
+        ],
+        "id": [
+          {
+            "id": "10.13039/501100001809",
+            "id-type": "DOI",
+            "asserted-by": "publisher"
+          }
+        ]
+      }
+    ],
+    "content-domain": {
+      "domain": [
+        "clinicalkey.com",
+        "clinicalkey.com.au",
+        "clinicalkey.es",
+        "clinicalkey.fr",
+        "clinicalkey.jp",
+        "clinicalradiologyonline.net",
+        "elsevier.com",
+        "sciencedirect.com"
+      ],
+      "crossmark-restriction": true
+    },
+    "short-container-title": [
+      "Clinical Radiology"
+    ],
+    "published-print": {
+      "date-parts": [
+        [
+          2024,
+          7
+        ]
+      ]
+    },
+    "DOI": "10.1016/j.crad.2024.02.007",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [
+        [
+          2024,
+          3,
+          13
+        ]
+      ],
+      "date-time": "2024-03-13T12:12:31Z",
+      "timestamp": 1710331951000
+    },
+    "page": "536-543",
+    "update-policy": "https://doi.org/10.1016/elsevier_cm_policy",
+    "source": "Crossref",
+    "is-referenced-by-count": 5,
+    "title": [
+      "Withdrawal notice to ‘Relationship between coronary microvascular dysfunction (CMD) and left ventricular diastolic function in patients with symptoms of myocardial ischemia with non-obstructive coronary artery disease (INOCA) by cardiovascular magnetic resonance feature-tracking’ ClinRad Volume 79, Issue 7, July 2024, Pages 536-543"
+    ],
+    "prefix": "10.1016",
+    "volume": "79",
+    "author": [
+      {
+        "given": "H.",
+        "family": "Kong",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "J.",
+        "family": "Cao",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "J.",
+        "family": "Tian",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "J.",
+        "family": "Yong",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "J.",
+        "family": "An",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "X.",
+        "family": "Song",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Y.",
+        "family": "He",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "78",
+    "updated-by": [
+      {
+        "DOI": "10.1016/j.crad.2024.02.007",
+        "type": "withdrawal",
+        "label": "Withdrawal",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2024,
+              7,
+              1
+            ]
+          ],
+          "date-time": "2024-07-01T00:00:00Z",
+          "timestamp": 1719792000000
+        }
+      },
+      {
+        "DOI": "10.1016/j.crad.2026.107394",
+        "type": "erratum",
+        "label": "Erratum",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2026,
+              7,
+              1
+            ]
+          ],
+          "date-time": "2026-07-01T00:00:00Z",
+          "timestamp": 1782864000000
+        }
+      }
+    ],
+    "container-title": [
+      "Clinical Radiology"
+    ],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https://api.elsevier.com/content/article/PII:S0009926024001296?httpAccept=text/xml",
+        "content-type": "text/xml",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://api.elsevier.com/content/article/PII:S0009926024001296?httpAccept=text/plain",
+        "content-type": "text/plain",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      }
+    ],
+    "deposited": {
+      "date-parts": [
+        [
+          2026,
+          6,
+          7
+        ]
+      ],
+      "date-time": "2026-06-07T19:50:53Z",
+      "timestamp": 1780861853000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://linkinghub.elsevier.com/retrieve/pii/S0009926024001296"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2024,
+          7
+        ]
+      ]
+    },
+    "references-count": 35,
+    "journal-issue": {
+      "issue": "7",
+      "published-print": {
+        "date-parts": [
+          [
+            2024,
+            7
+          ]
+        ]
+      }
+    },
+    "alternative-id": [
+      "S0009926024001296"
+    ],
+    "URL": "https://doi.org/10.1016/j.crad.2024.02.007",
+    "relation": {},
+    "ISSN": [
+      "0009-9260"
+    ],
+    "issn-type": [
+      {
+        "value": "0009-9260",
+        "type": "print"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [
+        [
+          2024,
+          7
+        ]
+      ]
+    },
+    "assertion": [
+      {
+        "value": "Elsevier",
+        "name": "publisher",
+        "label": "This article is maintained by"
+      },
+      {
+        "value": "Withdrawal notice to ‘Relationship between coronary microvascular dysfunction (CMD) and left ventricular diastolic function in patients with symptoms of myocardial ischemia with non-obstructive coronary artery disease (INOCA) by cardiovascular magnetic resonance feature-tracking’ ClinRad Volume 79, Issue 7, July 2024, Pages 536-543",
+        "name": "articletitle",
+        "label": "Article Title"
+      },
+      {
+        "value": "Clinical Radiology",
+        "name": "journaltitle",
+        "label": "Journal Title"
+      },
+      {
+        "value": "https://doi.org/10.1016/j.crad.2024.02.007",
+        "name": "articlelink",
+        "label": "CrossRef DOI link to publisher maintained version"
+      },
+      {
+        "value": "article",
+        "name": "content_type",
+        "label": "Content Type"
+      },
+      {
+        "value": "© 2026 Published by Elsevier Ltd on behalf of The Royal College of Radiologists.",
+        "name": "copyright",
+        "label": "Copyright"
+      }
+    ]
+  },
+  "__fixture": {
+    "doi": "10.1016/j.crad.2024.02.007",
+    "why": "A withdrawal alongside an erratum, so the selector must not be confused by a second entry.",
+    "capturedAt": "2026-09-12",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2025,
+          9,
+          11
+        ]
+      ],
+      "date-time": "2025-09-11T21:26:59Z",
+      "timestamp": 1757626019967,
+      "version": "3.44.0"
+    },
+    "posted": {
+      "date-parts": [
+        [
+          2025,
+          4,
+          15
+        ]
+      ]
+    },
+    "group-title": "PsyArXiv",
+    "publisher": "Center for Open Science",
+    "license": [
+      {
+        "start": {
+          "date-parts": [
+            [
+              2025,
+              4,
+              15
+            ]
+          ],
+          "date-time": "2025-04-15T00:00:00Z",
+          "timestamp": 1744675200000
+        },
+        "content-version": "unspecified",
+        "delay-in-days": 0,
+        "URL": "https://creativecommons.org/licenses/by/4.0/legalcode"
+      }
+    ],
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [],
+    "DOI": "10.31234/osf.io/etvnm_v1",
+    "type": "posted-content",
+    "created": {
+      "date-parts": [
+        [
+          2025,
+          4,
+          15
+        ]
+      ],
+      "date-time": "2025-04-15T15:39:51Z",
+      "timestamp": 1744731591000
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "WITHDRAWN"
+    ],
+    "prefix": "10.31234",
+    "member": "15934",
+    "container-title": [],
+    "original-title": [],
+    "deposited": {
+      "date-parts": [
+        [
+          2025,
+          9,
+          9
+        ]
+      ],
+      "date-time": "2025-09-09T21:01:16Z",
+      "timestamp": 1757451676000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://osf.io/etvnm_v1"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2025,
+          4,
+          15
+        ]
+      ]
+    },
+    "references-count": 0,
+    "URL": "https://doi.org/10.31234/osf.io/etvnm_v1",
+    "relation": {},
+    "subject": [],
+    "published": {
+      "date-parts": [
+        [
+          2025,
+          4,
+          15
+        ]
+      ]
+    },
+    "subtype": "preprint"
+  },
+  "__fixture": {
+    "doi": "10.31234/osf.io/etvnm_v1",
+    "why": "A PsyArXiv preprint titled simply \"WITHDRAWN\". Flagged, but as a WITHDRAWAL — calling this \"retracted\" to a psychology author is a false claim.",
+    "capturedAt": "2026-09-12",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}

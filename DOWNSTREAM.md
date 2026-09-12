@@ -67,6 +67,24 @@ tells a paper author that a perfectly good reference is retracted. Meta-science
 bibliographies are full of papers about retraction — 8 of 8 in a Crossref search — and
 v0.1.3 flagged all of them.
 
+### Consumer action outstanding from v0.1.4
+
+Two things this release added that the consumer must actually read, or the
+release is not shipped (see "Releasing", step 4):
+
+1. **`retractionType`** (`retraction` | `partial_retraction` | `removal` |
+   `withdrawal`). `isRetracted` now means "pulled from the literature — do not
+   cite as an ordinary reference", which is the right flag for a safety check but
+   the wrong word for a report. A withdrawn preprint is not a retracted paper,
+   and a psychology bibliography is full of preprints withdrawn because the work
+   was published elsewhere. Rendering "RETRACTED" over a withdrawal is a false
+   claim about a real paper, in the same family as the false clean.
+2. **The `not_indexed` unavailable reason.** A Crossref 404 means "not a Crossref
+   work" — a DataCite or Zenodo DOI, or a typo — not "not retracted". Those
+   references are now honestly `complete: false` instead of silently clean, and
+   the consumer should show them as unchecked rather than folding them into the
+   clean count.
+
 ### Precedent: a library defect that looked like a consumer defect
 
 `v0.1.2` (2026-08-21) fixed one worth remembering. Every EOC source function returned
