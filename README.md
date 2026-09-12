@@ -1,7 +1,8 @@
 # referencecheck
 
 Reference-integrity checks for academic papers: DOI validation against
-Crossref, retraction detection (OpenRetractions + Crossref), predatory-journal
+Crossref, retraction detection (Crossref `updated-by` relations, which relay
+Retraction Watch data; OpenRetractions opt-in), predatory-journal
 screening (Beall's List + DOAJ + OpenAlex + heuristics), reference
 deduplication (fuzzy author/title/year matching), citation-count lookup
 (OpenCitations), and open-access / preprint / expression-of-concern /
@@ -41,7 +42,7 @@ the default branch, so upstream changes land in your build silently.
 ## API
 
 - `validateDOI(doi, creds?)` / `findDOIFromReference(text, creds?)` — Crossref DOI validation + lookup
-- `checkRetraction(doi)` / `checkMultipleRetractions(dois)` — retraction detection
+- `checkRetraction(doi, options?)` / `checkRetractionDetailed(doi, options?)` / `checkMultipleRetractions(dois, options?)` — retraction detection. `options` takes `creds` (Crossref polite-pool contact) and `sources` (defaults to `DEFAULT_RETRACTION_SOURCES`, which is Crossref alone — see the 0.1.4 CHANGELOG entry for why OpenRetractions is opt-in). Prefer `checkRetractionDetailed` anywhere the result reaches a reader: its `complete` flag is false whenever a source went unread, so "not retracted" is never confused with "could not check".
 - `getCitationCount(doi)` / `getCitingWorks(doi)` — OpenCitations citation data
 - `checkReferenceForOpenAccess(ref)` — Unpaywall open-access detection
 - `checkReferenceForPreprint(ref)` — preprint detection (heuristic + Crossref)

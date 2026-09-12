@@ -1,0 +1,203 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2026,
+          1,
+          21
+        ]
+      ],
+      "date-time": "2026-01-21T17:58:49Z",
+      "timestamp": 1769018329637,
+      "version": "3.49.0"
+    },
+    "publisher": "American Association for the Advancement of Science (AAAS)",
+    "issue": "6215",
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [
+      "Science"
+    ],
+    "published-print": {
+      "date-parts": [
+        [
+          2014,
+          12,
+          12
+        ]
+      ]
+    },
+    "abstract": "<jats:p>\n            Can a single conversation change minds on divisive social issues, such as same-sex marriage? A randomized placebo-controlled trial assessed whether gay (\n            <jats:italic>n</jats:italic>\n            = 22) or straight (\n            <jats:italic>n</jats:italic>\n            = 19) messengers were effective at encouraging voters (\n            <jats:italic>n</jats:italic>\n            = 972) to support same-sex marriage and whether attitude change persisted and spread to others in voters’ social networks. The results, measured by an unrelated panel survey, show that both gay and straight canvassers produced large effects initially, but only gay canvassers’ effects persisted in 3-week, 6-week, and 9-month follow-ups. We also find strong evidence of within-household transmission of opinion change, but only in the wake of conversations with gay canvassers. Contact with gay canvassers further caused substantial change in the ratings of gay men and lesbians more generally. These large, persistent, and contagious effects were confirmed by a follow-up experiment. Contact with minorities coupled with discussion of issues pertinent to them is capable of producing a cascade of opinion change.\n          </jats:p>",
+    "DOI": "10.1126/science.1256151",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [
+        [
+          2014,
+          12,
+          11
+        ]
+      ],
+      "date-time": "2014-12-11T19:10:03Z",
+      "timestamp": 1418325003000
+    },
+    "page": "1366-1369",
+    "source": "Crossref",
+    "is-referenced-by-count": 66,
+    "title": [
+      "When contact changes minds: An experiment on transmission of support for gay equality"
+    ],
+    "prefix": "10.1126",
+    "volume": "346",
+    "author": [
+      {
+        "given": "Michael J.",
+        "family": "LaCour",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "Department of Political Science, University of California, Los Angeles (UCLA), Los Angeles, CA, USA."
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Donald P.",
+        "family": "Green",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Department of Political Science, Columbia University, New York, NY, USA."
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "member": "221",
+    "updated-by": [
+      {
+        "DOI": "10.1126/science.aac6638",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "retraction-watch",
+        "updated": {
+          "date-parts": [
+            [
+              2015,
+              6,
+              5
+            ]
+          ],
+          "date-time": "2015-06-05T00:00:00Z",
+          "timestamp": 1433462400000
+        },
+        "record-id": "520"
+      }
+    ],
+    "container-title": [
+      "Science"
+    ],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https://www.science.org/doi/pdf/10.1126/science.1256151",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [
+        [
+          2024,
+          1,
+          10
+        ]
+      ],
+      "date-time": "2024-01-10T21:04:01Z",
+      "timestamp": 1704920641000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://www.science.org/doi/10.1126/science.1256151"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2014,
+          12,
+          12
+        ]
+      ]
+    },
+    "references-count": 25,
+    "journal-issue": {
+      "issue": "6215",
+      "published-print": {
+        "date-parts": [
+          [
+            2014,
+            12,
+            12
+          ]
+        ]
+      }
+    },
+    "alternative-id": [
+      "10.1126/science.1256151"
+    ],
+    "URL": "https://doi.org/10.1126/science.1256151",
+    "relation": {},
+    "ISSN": [
+      "0036-8075",
+      "1095-9203"
+    ],
+    "issn-type": [
+      {
+        "value": "0036-8075",
+        "type": "print"
+      },
+      {
+        "value": "1095-9203",
+        "type": "electronic"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [
+        [
+          2014,
+          12,
+          12
+        ]
+      ]
+    }
+  },
+  "__fixture": {
+    "doi": "10.1126/science.1256151",
+    "why": "LaCour & Green 2014. Retracted, but the title contains no retraction marker — the case the title heuristic cannot see.",
+    "capturedAt": "2026-09-12",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}

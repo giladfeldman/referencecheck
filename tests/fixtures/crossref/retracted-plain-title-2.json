@@ -1,0 +1,207 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2026,
+          3,
+          11
+        ]
+      ],
+      "date-time": "2026-03-11T22:55:31Z",
+      "timestamp": 1773269731674,
+      "version": "3.50.1"
+    },
+    "publisher": "Japanese Association for Laboratory Animal Science",
+    "issue": "1",
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [
+      "Exp. Anim."
+    ],
+    "published-print": {
+      "date-parts": [
+        [
+          2005
+        ]
+      ]
+    },
+    "DOI": "10.1538/expanim.54.1",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [
+        [
+          2005,
+          2,
+          23
+        ]
+      ],
+      "date-time": "2005-02-23T06:04:23Z",
+      "timestamp": 1109138663000
+    },
+    "page": "1-6",
+    "source": "Crossref",
+    "is-referenced-by-count": 74,
+    "title": [
+      "Effect of Treadmill Exercise on Bone Mass in Female Rats"
+    ],
+    "prefix": "10.1538",
+    "volume": "54",
+    "author": [
+      {
+        "given": "Jun",
+        "family": "IWAMOTO",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "Department of Sports Medicine, Keio University School of Medicine"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Tsuyoshi",
+        "family": "TAKEDA",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Department of Sports Medicine, Keio University School of Medicine"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Yoshihiro",
+        "family": "SATO",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Department of Neurology, Mitate Hospital"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "member": "439",
+    "updated-by": [
+      {
+        "DOI": "10.1538/expanim.54.1.r1",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "retraction-watch",
+        "updated": {
+          "date-parts": [
+            [
+              2022,
+              8,
+              1
+            ]
+          ],
+          "date-time": "2022-08-01T00:00:00Z",
+          "timestamp": 1659312000000
+        },
+        "record-id": "38511"
+      }
+    ],
+    "container-title": [
+      "Experimental Animals"
+    ],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "http://www.jstage.jst.go.jp/article/expanim/54/1/54_1_1/_pdf",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [
+        [
+          2024,
+          1,
+          23
+        ]
+      ],
+      "date-time": "2024-01-23T17:50:20Z",
+      "timestamp": 1706032220000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "http://www.jstage.jst.go.jp/article/expanim/54/1/54_1_1/_article"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2005
+        ]
+      ]
+    },
+    "references-count": 31,
+    "journal-issue": {
+      "issue": "1",
+      "published-print": {
+        "date-parts": [
+          [
+            2005
+          ]
+        ]
+      }
+    },
+    "URL": "https://doi.org/10.1538/expanim.54.1",
+    "relation": {},
+    "ISSN": [
+      "1341-1357",
+      "1881-7122"
+    ],
+    "issn-type": [
+      {
+        "value": "1341-1357",
+        "type": "print"
+      },
+      {
+        "value": "1881-7122",
+        "type": "electronic"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [
+        [
+          2005
+        ]
+      ]
+    }
+  },
+  "__fixture": {
+    "doi": "10.1538/expanim.54.1",
+    "why": "Second plain-titled retraction, so the corpus does not rest on one paper.",
+    "capturedAt": "2026-09-12",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}
