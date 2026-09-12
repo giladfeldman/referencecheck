@@ -1,3 +1,7 @@
 node_modules/
 dist/
 *.log
+
+# Local Claude Code gate skills. This repo is PUBLIC; the gate skills reference
+# a private local toolchain and must not be published.
+.claude/

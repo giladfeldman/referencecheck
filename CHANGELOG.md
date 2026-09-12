@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.1.6 — 2026-09-12
+
+**axios was pinned to `^1.6.2`, resolving to `1.16.1` — the range covers 10
+published advisories, one of them HIGH.** axios is this library's only runtime
+HTTP dependency (every Crossref, doi.org, OpenAlex, OpenCitations and Unpaywall
+call goes through it), so a consumer installing `referencecheck` inherited all
+ten regardless of whether any code here exercises the vulnerable path.
+
+Measured with `npm audit` against the previously locked `1.16.1`, 2026-09-12:
+
+| severity | count | worst finding |
+|---|---|---|
+| high | 1 | `GHSA-gcfj-64vw-6mp9` — the Node HTTP adapter can reuse an inherited proxy after interceptor-config cloning, leaking proxy credentials to the wrong host |
+| moderate | 9 | prototype-pollution via cloned/nested request options (4 GHSAs), DoS via unbounded `formToJSON`/`formDataToJSON` recursion (3 GHSAs), `maxBodyLength` bypass on HTTP/2 and fetch-adapter streamed uploads (2 GHSAs) |
+
+All ten advisories close at `axios@1.18.0`; every one of their ranges reads
+`< 1.18.0`, none `< 1.20.0`.
+
+### Changed
+
+- `dependencies.axios` range raised `^1.6.2` → `^1.18.0`; installed version is
+  now `1.20.0`. `npm audit` reports 0 vulnerabilities (info/low/moderate/high/
+  critical) after the bump, verified against the same lockfile mechanism.
+- No source change and no behavior change — this is a dependency-range bump
+  only. Existing tests are unaffected; they exercise this library's own logic,
+  not axios's internals.
+
+**What a consumer must do:** repin the tag
+(`github:giladfeldman/referencecheck#v0.1.6`) and reinstall. Because npm
+resolves this package via git tag + lockfile rather than the registry, `npm
+audit` in a consumer tree will not surface this on its own until the lockfile
+is regenerated against the new tag — see `DOWNSTREAM.md` for why `npm ls` and
+`npm install --dry-run` can both report a version that is not actually
+installed.
+
 ## 0.1.5 — 2026-09-12
 
 **A shortDOI is an alias, not a malformed DOI.** `0.1.4` shipped
