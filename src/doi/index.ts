@@ -9,3 +9,5 @@ export type { CrossrefResult } from '../http/crossref.js';
 export { checkRetraction, checkMultipleRetractions } from '../retraction/retractionChecker.js';
 export type { RetractionInfo } from '../retraction/retractionChecker.js';
 export { isMalformedDoi, isShortFormDoi } from './doiShape.js';
+export { expandShortDoi, readExpansionTarget, clearShortDoiCache } from './shortDoi.js';
+export type { ShortDoiExpansion, ShortDoiExpansionReason, ExpandShortDoiOptions } from './shortDoi.js';

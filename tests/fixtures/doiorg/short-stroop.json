@@ -1,0 +1,11 @@
+{
+  "recordedAt": "2026-09-12T04:08:26.100Z",
+  "request": {
+    "method": "HEAD",
+    "url": "https://doi.org/10/b77m95"
+  },
+  "status": 301,
+  "headers": {
+    "location": "https://doi.org/10.1037/H0054651"
+  }
+}

@@ -51,4 +51,5 @@ the default branch, so upstream changes land in your build silently.
 - `loadBeallsList()` / `checkBeallsList(publisher)` / `checkHeuristics(...)` / `determineVerdict(...)` / `extractJournalMetadata(ref, useOpenAlex?, creds?)` — predatory-journal screening pieces
 - `calculateSimilarity(ref1, ref2, config)` / `findDuplicateGroups(pairs)` / `scoreMetadataCompleteness(ref)` — reference-deduplication pieces
 - `isMalformedDoi(doi)` / `isShortFormDoi(doi)` — DOI-shape validation
+- `expandShortDoi(doi)` — resolve a shortDOI (`10/gt3vmw`) to its canonical DOI via one hop of the doi.org redirect
 - All result/config types and the structural reference-input interfaces

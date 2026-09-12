@@ -1,0 +1,11 @@
+{
+  "recordedAt": "2026-09-12T04:08:27.008Z",
+  "request": {
+    "method": "HEAD",
+    "url": "https://doi.org/10/aabbe"
+  },
+  "status": 301,
+  "headers": {
+    "location": "https://doi.org/10.1002/(SICI)1097-0258(19980815/30)17:15/16%3C1661::AID-SIM968%3E3.0.CO;2-2"
+  }
+}
