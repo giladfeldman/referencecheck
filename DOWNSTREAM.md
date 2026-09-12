@@ -47,6 +47,55 @@ So:
    a false positive tells an author a good reference is retracted. Both reach a
    researcher, and only the first one gets looked for.
 
+### npm cannot tell you which version is installed — only which one SHOULD be
+
+**Measured 2026-09-12, in a consumer tree during the v0.1.4 → v0.1.5 repin.** Both of npm's
+obvious answers to "did the bump land?" are read from the **lockfile**, not from disk, and
+both reported a version that was not installed:
+
+```
+npm ls referencecheck --depth=0   ->  referencecheck@0.1.5 (git+ssh://...#1130251d7f...)
+npm install --dry-run             ->  up to date in 2s
+```
+
+while the package actually on disk was **0.1.3** — no `updated-by` in its compiled retraction
+checker, no `expandShortDoi`, no `DEFAULT_RETRACTION_SOURCES`.
+
+There is a narrow window where npm does tell the truth: while `package.json` and the lockfile
+**disagree**, `npm ls` prints `0.1.3 invalid: "...#v0.1.4"` and `npm install --dry-run` plans
+`change referencecheck 0.1.3 => 0.1.4`. That is a manifest-versus-lockfile check. The moment
+the two agree — which is the normal state after a correctly executed repin — npm goes quiet
+and stays quiet however stale the install is.
+
+Three states, three behaviours, all measured:
+
+| state | `npm install` does | `npm ls` says |
+|---|---|---|
+| spec bumped, lockfile NOT moved | exits 0, "up to date", disk unchanged | `invalid` |
+| spec + lockfile moved, disk stale | "up to date", disk unchanged | the LOCKFILE's version |
+| lockfile correct, disk missing the package | installs it | correct |
+
+So the only honest check is to **load the module and look at what it actually exports**:
+
+```js
+const mod = await import('<consumer>/node_modules/referencecheck/dist/index.js');
+typeof mod.expandShortDoi === 'function'   // a symbol only the new version has
+```
+
+Pick a symbol the NEW version introduced, not a version string: `package.json` on disk can be
+right while `dist/` is a stale build, and the whole point of this repo's `prepare` script is
+that `dist/` is produced at install time. A version string is a claim; an export is the thing.
+
+When the install is genuinely stuck, `npm install` will not shift it —
+`rm -rf node_modules/referencecheck && npm install` does.
+
+**What saves the release anyway, and why this is a local-verification hazard rather than a
+shipping one:** the consumer's pre-push gate checks out each pushed commit into a throwaway
+worktree and runs `npm ci` there whenever the lockfile has changed, so the gate installs from
+the lockfile and tests the version being shipped. A deploy installs fresh for the same reason.
+It is the *shared developer checkout* that silently runs the old library — which is exactly the
+tree a human looks at when asking "is the fix live?".
+
 ### Precedent: green tests over code that could not run (v0.1.4, 2026-09-12)
 
 `v0.1.3` added the coverage flags this file asks for — and added them over Crossref
@@ -114,7 +163,10 @@ pass locally and fail on deploy.
    `npm install`**. `npm install` rewrites the spec line but can leave the lockfile's
    `resolved` field on the previous commit, so the pin reads as bumped while the
    installed code is the old one. Verify it landed by checking that each lockfile's
-   `resolved` sha equals `git rev-parse vX.Y.Z^{}` from this repo. Then update the
+   `resolved` sha equals `git rev-parse vX.Y.Z^{}` from this repo. **Then confirm the bump
+   actually reached disk by importing the package and checking for a symbol only the new
+   version exports — `npm ls` and `npm install` both read the lockfile and will happily
+   report a version that is not installed** (see the npm section above). Then update the
    consumer to actually use what the release added, and run `npm run verify`
 5. deploy Scimeto — a released fix nobody deployed is a fix nobody has
 
