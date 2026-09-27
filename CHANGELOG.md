@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased
+
+**Documentation only; no change to library behaviour.**
+
+### Added
+- README rewritten to cover every check: method and data sources (cited by DOI), install, a
+  runnable quickstart (an offline block and a live-API block, each with its real output),
+  how to read the results, configuration, limitations and failure modes, maintainer scripts,
+  how to cite. The full reference for all 84 exports, every result field and every issue code
+  is in `docs/API.md`.
+- `CITATION.cff` and `CONTRIBUTING.md`.
+- Documentation-drift gate `scripts/check-docs-coverage.mjs` (`npm run docs:check`). It derives
+  the public surface from `src/index.ts` with the TypeScript compiler, plus issue codes,
+  `process.env` reads and maintainer-script flags, and fails when any is missing from the
+  docs, when the changelog, README install pin and `CITATION.cff` disagree with
+  `package.json`, or when the README quickstart does not run against a fresh build
+  (`--online` also runs the live-API block). Pinned two-sided by
+  `tests/docsCoverageGate.test.ts`.
+
+### Fixed (documentation)
+- README install pin named v0.1.1; it now names the current release.
+- "the library never reads environment variables": `formatError` reads `NODE_ENV`. The README
+  and the `MetadataCredentials` comment now say so.
+- `getOpenAlexEmail`'s comment said it reads `OPENALEX_EMAIL` and falls back to
+  `CROSSREF_EMAIL`; it reads only `creds.openAlexEmail`, else `DEFAULT_POLITE_EMAIL`.
+- `crossrefGet`'s comment said 5xx responses back off 2 s, 4 s, 8 s; it retries only 502, 503
+  and 504, waiting 2 s then 4 s.
+
+### Documented (previously undocumented behaviour)
+- The expression-of-concern `KnownList` source is a stub that always reports clean and is
+  listed in `sourcesChecked`.
+- Several checks return the same value on a network failure as on a clean answer
+  (open access, preprint, replies, `checkReferenceForEOC`, citation counts, `checkDOAJ`).
+- Declared-but-unused fields and values (`PluginConfig.use*`, `cacheExpiry`,
+  `journal_validation_checked_at`, open-access `bronze`/`closed`, reply type `correction`).
+- `isMalformedDoi` checks shape only (`10.1037/0` is not flagged).
+
 ## 0.1.7 — 2026-09-27
 
 **The fixture capture scripts no longer carry a hardcoded contact address.**

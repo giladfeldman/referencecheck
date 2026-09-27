@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use referencecheck in your research, please cite it as below."
+type: software
+title: "referencecheck: Reference-integrity checks for academic papers"
+version: "0.1.7"
+license: MIT
+repository-code: "https://github.com/giladfeldman/referencecheck"
+authors:
+  - family-names: Feldman
+    given-names: Gilad
+    affiliation: University of Innsbruck
+keywords:
+  - references
+  - retractions
+  - DOI
+  - predatory journals
+  - research integrity
+  - meta-science

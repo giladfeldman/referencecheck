@@ -4,11 +4,10 @@ import type { MetadataCredentials } from '../http/credentials.js';
 import { DEFAULT_POLITE_EMAIL } from '../http/credentials.js';
 
 /**
- * Get OpenAlex email from environment (for polite pool)
- * According to OpenAlex docs: https://docs.openalex.org/how-to-use-the-api/api-overview
- *
- * Set OPENALEX_EMAIL environment variable for better rate limiting.
- * Falls back to CROSSREF_EMAIL or default email.
+ * The contact email sent to OpenAlex (its polite pool):
+ * `creds.openAlexEmail`, else DEFAULT_POLITE_EMAIL. No environment variable is
+ * read, and `creds.crossrefEmail` is not used as a fallback.
+ * OpenAlex docs: https://docs.openalex.org/how-to-use-the-api/api-overview
  */
 export function getOpenAlexEmail(creds?: MetadataCredentials): string {
   return creds?.openAlexEmail || DEFAULT_POLITE_EMAIL;

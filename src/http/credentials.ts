@@ -1,6 +1,7 @@
 /**
  * Credentials threaded into referencecheck's HTTP clients. referencecheck
- * never reads process.env; the consuming app populates this from its own
+ * never reads credentials from process.env (its only environment read is
+ * NODE_ENV, in formatError); the consuming app populates this from its own
  * environment. Every field is optional — when absent, each client falls back
  * to the same default it used before extraction (the polite-pool contact
  * email). The consuming app reads process.env at its own adapter boundary and

@@ -48,7 +48,7 @@ export function getCrossrefUserAgent(creds?: MetadataCredentials): string {
  *
  * - 429 honors the Retry-After header (seconds). Falls back to exponential
  *   backoff if absent. Caps the wait per attempt at 30s.
- * - 5xx uses exponential backoff (2s, 4s, 8s).
+ * - 502/503/504 wait 2s, then 4s, before the next attempt (other 5xx are not retried).
  * - Up to 3 attempts. After exhausting retries, throws the last error so
  *   callers can decide how to surface the failure.
  *

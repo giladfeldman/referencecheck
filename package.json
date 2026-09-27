@@ -45,7 +45,8 @@
     "prepare": "npm run build",
     "copy-data": "node scripts/copy-data.mjs",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "docs:check": "node scripts/check-docs-coverage.mjs"
   },
   "dependencies": {
     "axios": "^1.18.0",
