@@ -1,7 +1,12 @@
 /**
  * Re-capture the Crossref fixtures in this directory from the LIVE API.
  *
- *   node tests/fixtures/crossref/capture.mjs
+ *   $env:CROSSREF_MAILTO = "you@example.org"; node tests/fixtures/crossref/capture.mjs
+ *
+ * CROSSREF_MAILTO (required) is the contact address sent in the User-Agent so
+ * Crossref routes the requests to its polite pool. It is read from the
+ * environment and has no default, so no one's address is committed here; the
+ * script refuses to run without it.
  *
  * These fixtures exist because the previous retraction tests were hand-built and
  * asserted a field Crossref does not serve (`message.update`), so the suite was
@@ -18,7 +23,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const UA = { 'User-Agent': 'referencecheck-fixture-capture/1.0 (mailto:author.name@mail.example.com)' };
+const MAILTO = process.env.CROSSREF_MAILTO?.trim();
+if (!MAILTO) {
+  console.error('CROSSREF_MAILTO is not set. Set it to your contact email for the Crossref polite pool, e.g.\n' +
+    '  $env:CROSSREF_MAILTO = "you@example.org"; node tests/fixtures/crossref/capture.mjs');
+  process.exit(1);
+}
+const UA = { 'User-Agent': `referencecheck-fixture-capture/1.0 (mailto:${MAILTO})` };
 
 /** Each entry: [filename, DOI, why this case is in the corpus]. */
 const CASES = [

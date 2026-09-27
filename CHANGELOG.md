@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.1.7 — 2026-09-27
+
+**The fixture capture scripts no longer carry a hardcoded contact address.**
+Both `tests/fixtures/crossref/capture.mjs` and `tests/fixtures/doiorg/capture.mjs`
+sent a committed email address as the polite-pool `mailto` in their User-Agent.
+They now read it from the `CROSSREF_MAILTO` environment variable, have no
+default, and exit with an explanation when it is unset or blank:
+
+```powershell
+$env:CROSSREF_MAILTO = "you@example.org"; node tests/fixtures/crossref/capture.mjs
+```
+
+### Added
+
+- `tests/hygiene/noPersonalEmail.test.ts` fails when any file `git ls-files`
+  reports contains an `@gmail.com` or `@hku.hk` address. One address is allowed
+  in one file: `DEFAULT_POLITE_EMAIL` in `src/http/credentials.ts`, the
+  library's shipped polite-pool fallback. It carries two controls — it must see
+  tracked files, and its pattern must match planted addresses — so a broken
+  scan cannot pass as a clean tree.
+
+### Unchanged
+
+- No file under `src/` changed, so library behaviour is identical to 0.1.6,
+  including the `DEFAULT_POLITE_EMAIL` fallback sent to Crossref and OpenAlex
+  when a consumer supplies no `creds`.
+
+**What a consumer must do:** nothing. Repinning to 0.1.7 is optional.
+
 ## 0.1.6 — 2026-09-12
 
 **axios was pinned to `^1.6.2`, resolving to `1.16.1` — the range covers 10

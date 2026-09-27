@@ -1,7 +1,13 @@
 /**
  * Record real doi.org HEAD responses for the short-DOI expansion tests.
  *
- * Run from the repo root:  node tests/fixtures/doiorg/capture.mjs
+ * Run from the repo root:
+ *
+ *   $env:CROSSREF_MAILTO = "you@example.org"; node tests/fixtures/doiorg/capture.mjs
+ *
+ * CROSSREF_MAILTO (required) is the contact address sent in the User-Agent. It
+ * is read from the environment and has no default, so no one's address is
+ * committed here; the script refuses to run without it.
  *
  * These are recorded, not hand-built. A hand-built redirect fixture can only
  * tell you your fixture is wrong; it cannot tell you the rule is. Every case
@@ -14,6 +20,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const DIR = dirname(fileURLToPath(import.meta.url));
+
+const MAILTO = process.env.CROSSREF_MAILTO?.trim();
+if (!MAILTO) {
+  console.error('CROSSREF_MAILTO is not set. Set it to your contact email, e.g.\n' +
+    '  $env:CROSSREF_MAILTO = "you@example.org"; node tests/fixtures/doiorg/capture.mjs');
+  process.exit(1);
+}
 
 const CASES = {
   // Short forms that expand. All three are cited in real Scimeto documents.
@@ -37,7 +50,7 @@ for (const [file, doi] of Object.entries(CASES)) {
   const r = await fetch('https://doi.org/' + encodeURI(doi), {
     method: 'HEAD',
     redirect: 'manual',
-    headers: { 'User-Agent': 'referencecheck/capture (mailto:collaborativeopenscience@gmail.com)' },
+    headers: { 'User-Agent': `referencecheck/capture (mailto:${MAILTO})` },
   });
   const record = {
     recordedAt: new Date().toISOString(),
