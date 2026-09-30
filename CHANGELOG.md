@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.8 — 2026-09-30
 
 **Documentation only; no change to library behaviour.**
 

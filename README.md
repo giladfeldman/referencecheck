@@ -67,14 +67,14 @@ tag:
 ```jsonc
 // package.json
 "dependencies": {
-  "referencecheck": "github:giladfeldman/referencecheck#v0.1.7"
+  "referencecheck": "github:giladfeldman/referencecheck#v0.1.8"
 }
 ```
 
 or from the command line:
 
 ```bash
-npm install github:giladfeldman/referencecheck#v0.1.7
+npm install github:giladfeldman/referencecheck#v0.1.8
 ```
 
 npm clones the repository and runs the `prepare` script, which compiles `dist/` and copies the
@@ -119,7 +119,7 @@ const verdict = determineVerdict(checkBeallsList(publisher), { found: false }, h
 console.log(verdict.status, verdict.source, verdict.confidence);
 ```
 
-Output (v0.1.7):
+Output (v0.1.8):
 
 ```text
 true false true
