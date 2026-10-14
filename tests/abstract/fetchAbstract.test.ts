@@ -9,6 +9,7 @@ import {
   normalizeAbstractDoi,
   type JsonGet,
 } from '../../src/abstract/index.js';
+import { withIdentity } from './_identity.js';
 
 const LONG = 'Participants who slept less recalled fewer words in a free-recall test. '.repeat(4);
 const DOI = '10.1234/example.5';
@@ -22,7 +23,7 @@ function fakeGet(routes: Record<string, unknown>): JsonGet & { calls: string[] }
     if (!host) throw new Error(`unrouted ${url}`);
     const v = routes[host];
     if (v instanceof Error) throw v;
-    return v ?? null;
+    return withIdentity(url, v ?? null);
   }) as unknown as JsonGet & { calls: string[] };
   fn.calls = calls;
   return fn;

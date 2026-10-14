@@ -501,7 +501,8 @@ Tries the sources in `ABSTRACT_SOURCES` order — `crossref` (publisher-deposite
 | `cache` | an `AbstractCache` (`get(doi)`, `set(doi, result)`), keyed by normalised DOI; `MemoryAbstractCache` is the in-process default |
 | `sources` | the sources to try, in order (default `ABSTRACT_SOURCES`, with `semanticscholar` skipped unless `semanticScholarApiKey` is set: its keyless pool answers HTTP 429 so often that a miss would read as `error`) |
 | `httpGet` | a `JsonGet` — `(url, headers) => Promise<json \| null>`, `null` meaning 404; default `axiosJsonGet` |
-| `now` | clock for `retrievedAt` |
+| `now` | clock for `retrievedAt` and cache age |
+| `notFoundMaxAgeDays` | a cached `not_found` older than this is looked up again (default 30); a cached `found` does not expire |
 
 Returns an `AbstractResult`:
 
@@ -523,15 +524,21 @@ interface AbstractResult {
 `AbstractAttempt.outcome` is `found`, `absent` (the source answered without an abstract;
 `detail: 'no record'` when it has no record of the DOI at all), `too_short` (under
 `MIN_ABSTRACT_CHARS`; the text is kept as `shortAbstract`) or `error` (the request failed, or the
-source answered 200 with a body of an unexpected shape, such as an HTML block page). A record is
-accepted only when it is the requested DOI (Europe PMC hits are matched on their `doi`).
+source answered 200 with an empty body or a body of an unexpected shape, such as an HTML block
+page, or a record for ANOTHER DOI). A record is accepted only when it is the requested DOI: Crossref
+`message.DOI`, OpenAlex `doi`, Semantic Scholar `externalIds.DOI` and Europe PMC `doi` are each
+checked with `sameDoi`. An OpenAlex index with a gap or a reused position is an `error`, never a
+reconstructed text. When a field holds several abstracts (translations), the English one, else the
+first, is used.
 
 **`not_found` and `error` are different facts.** `not_found` means every source answered and
 none had a usable abstract. `error` means none had one *and* at least one source failed, so the
 abstract may exist. Only `found` and `not_found` are written to the cache; an `error` is retried
 on the next lookup. A cached `not_found` answers only a lookup that asks no more sources than
-its `sourcesTried` (a `crossref`-only miss is not reused by a full cascade); a cached `found`
-answers any lookup.
+its `sourcesTried` (a `crossref`-only miss is not reused by a full cascade) and only while it is
+younger than `notFoundMaxAgeDays`; a cached `found` answers a lookup that allows its `source`.
+`MemoryAbstractCache` copies results in and out, so mutating a returned result changes nothing
+cached. An empty `sources` list is refused.
 
 ### `fetchAbstracts(dois, options?)`
 
@@ -544,7 +551,8 @@ under its original text with status `invalid_doi` (never dropped).
 - `cleanAbstractMarkup(raw)` — strips JATS/HTML tags (and a JATS title), decodes entities, drops
   a leading "Abstract"/"Summary" heading.
 - `invertedIndexToText(index)` — rebuilds text from an OpenAlex inverted `index`.
-- `normalizeAbstractDoi(doi)` — the DOI key used by the cache, or `null`.
+- `normalizeAbstractDoi(doi)` — the DOI key used by the cache (prefixes removed, URL-encoding decoded, lower-cased), or `null`.
+- `sameDoi(a, b)` — whether two DOI strings name the same work: case-insensitive, and repeated slashes are equivalent (`10.1037//0882-…` is `10.1037/0882-…`). Every source's record must pass it against the requested DOI, or the attempt is an `error`.
 - `axiosJsonGet` — the default `JsonGet`.
 
 ## Issue codes
