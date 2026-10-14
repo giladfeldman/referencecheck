@@ -41,6 +41,20 @@ describe('documentation-drift gate', () => {
     expect(gate.checkReleaseMetadata(surface, code)).toEqual([]);
   });
 
+  it('fails when the README how-to-cite version drifts from package.json', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'referencecheck-docs-cite-'));
+    const root = process.cwd();
+    for (const f of ['package.json', 'CHANGELOG.md', 'CITATION.cff']) {
+      fs.copyFileSync(path.join(root, f), path.join(dir, f));
+    }
+    const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+    expect(readme).toMatch(/\(Version \d+\.\d+\.\d+\)/);
+    fs.writeFileSync(path.join(dir, 'README.md'), readme.replace(/\(Version \d+\.\d+\.\d+\)/, '(Version 0.0.1)'));
+    const problems: string[] = gate.checkReleaseMetadata(surface, code, dir);
+    fs.rmSync(dir, { recursive: true, force: true });
+    expect(problems.some((p) => p.startsWith('README how-to-cite:'))).toBe(true);
+  });
+
   it.each([
     ['export', 'plantedUndocumentedExport'],
     ['field', 'plantedUndocumentedField'],

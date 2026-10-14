@@ -195,6 +195,7 @@ export function checkReleaseMetadata(surface, code, root = ROOT) {
   const checks = [
     ['README.md', /referencecheck#v(\d+\.\d+\.\d+)/, 'install pin'],
     ['CITATION.cff', /^version:\s*"?(\d+\.\d+\.\d+)/m, 'citation'],
+    ['README.md', /\(Version (\d+\.\d+\.\d+)\)/, 'README how-to-cite'],
   ];
   for (const [rel, re, label] of checks) {
     const file = path.join(root, rel);

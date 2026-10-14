@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.2.0 — 2026-10-14
+
+### Added
+- `fetchAbstract(doi, options?)` and `fetchAbstracts(dois, options?)`: the abstract of a work by
+  DOI, trying Crossref (publisher JATS), OpenAlex (`abstract_inverted_index`), Semantic Scholar
+  (only when `semanticScholarApiKey` is passed) and Europe PMC, first usable (>= 200 characters)
+  wins. Every source tried is reported in `attempts` (`found`, `absent`, `too_short`, `error`).
+- `status` keeps three facts apart: `found`; `not_found` (every source answered, none had one);
+  `error` (none had one and at least one source failed, so absence is not established).
+- Cross-document cache keyed by normalised DOI (`AbstractCache`, `MemoryAbstractCache`); only
+  `found` and `not_found` are cached, an `error` is retried.
+- `MetadataCredentials.semanticScholarApiKey` (optional).
+- Results carry `sourcesTried` and `shortAbstract` (the longest text under 200 characters, kept
+  when nothing longer exists); `fetchAbstracts` returns `invalid_doi` for an input that is not a
+  DOI instead of dropping it.
+
+### Guarantees checked before release (review 2026-10-14)
+- A cached `not_found` is reused only by a lookup asking no more sources than it consulted.
+- A 200 response with an unexpected body (HTML block page, error envelope) is `error`, never
+  "no abstract", and is not cached.
+- A Europe PMC hit is accepted only when its DOI is the requested one.
+- Every source's record must name the requested DOI (`sameDoi`; repeated slashes are
+  equivalent): a merged or redirected record for another work is an `error`, never `found`.
+- An empty 200 body, a malformed record, or an OpenAlex index with gaps or reused positions is an
+  `error`, never "no abstract" or a silently altered text.
+- A cached `found` answers only lookups that allow its source; a cached `not_found` expires after
+  `notFoundMaxAgeDays` (default 30); `MemoryAbstractCache` copies in and out.
+- Markup: named entities decoded, one abstract per field (English first), literal `<` text kept,
+  a "Summary"/"Abstract" heading stripped only as a heading.
+- Reviewed by two other models (tier-3 cross-model consult) before release; every confirmed finding has a regression test in `tests/abstract/consult.test.ts`.
+- The documentation gate normalises CRLF before parsing the README (a Windows checkout made it
+  report "no offline js block").
+
+### What a consumer does differently
+- Nothing changes for existing checks. To use abstracts, pass an `AbstractCache` backed by your
+  database so lookups are shared across documents.
+
 ## 0.1.8 — 2026-09-30
 
 **Documentation only; no change to library behaviour.**

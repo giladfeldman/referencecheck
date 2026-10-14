@@ -67,14 +67,14 @@ tag:
 ```jsonc
 // package.json
 "dependencies": {
-  "referencecheck": "github:giladfeldman/referencecheck#v0.1.8"
+  "referencecheck": "github:giladfeldman/referencecheck#v0.2.0"
 }
 ```
 
 or from the command line:
 
 ```bash
-npm install github:giladfeldman/referencecheck#v0.1.8
+npm install github:giladfeldman/referencecheck#v0.2.0
 ```
 
 npm clones the repository and runs the `prepare` script, which compiles `dist/` and copies the
@@ -302,7 +302,7 @@ If you use referencecheck in research, please cite the software (see
 [CITATION.cff](./CITATION.cff)):
 
 > Feldman, G. (2026). *referencecheck: Reference-integrity checks for academic papers*
-> (Version 0.1.7) [Computer software]. https://github.com/giladfeldman/referencecheck
+> (Version 0.2.0) [Computer software]. https://github.com/giladfeldman/referencecheck
 
 Please also cite the data sources your results depend on (see [Method](#method)).
 
