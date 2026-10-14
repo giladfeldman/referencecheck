@@ -183,6 +183,7 @@ are in **[docs/API.md](./docs/API.md)**.
 | Citations | `getCitationCount(doi)`, `getCitingWorks(doi)` |
 | Predatory journals | `extractJournalMetadata(reference, useOpenAlex?, creds?)`, `isValidReference(reference)`, `loadBeallsList()`, `checkBeallsList(publisher)`, `isKnownLegitimate(publisher)`, `checkDOAJ(issn)`, `searchOpenAlexByJournalName(journalName, creds?)`, `resolveOpenAlexByDOI(doi, creds?)`, `getOpenAlexEmail(creds?)`, `checkHeuristics(journalName, config)`, `determineVerdict(beallsResult, doajResult, heuristicsResult, publisher?)` |
 | Deduplication | `calculateSimilarity(ref1, ref2, config)`, `compareAuthors(authors1, authors2)`, `compareTitle(title1, title2)`, `compareYear(year1, year2)`, `normalizeAuthorName(name)`, `scoreMetadataCompleteness(ref)`, `findDuplicateGroups(pairs)`, `selectBestReference(refs)` |
+| Abstracts | `fetchAbstract(doi, options?)`, `fetchAbstracts(dois, options?)`, `MemoryAbstractCache`, `ABSTRACT_SOURCES`, `MIN_ABSTRACT_CHARS`, `cleanAbstractMarkup(raw)`, `invertedIndexToText(index)`, `normalizeAbstractDoi(doi)`, `axiosJsonGet` |
 | HTTP helpers | `crossrefGet(url, config?, creds?)`, `getCrossrefUserAgent(creds?)`, `formatError(error, context?)`, `DEFAULT_POLITE_EMAIL` |
 
 The per-reference checks take a `ReferenceInput`: `{ id, raw_text, doi?, suggested_doi?,
@@ -210,6 +211,11 @@ checks.
 - **Predatory verdict:** `determineVerdict` returns `status` (`legitimate`, `predatory`,
   `unknown`), the deciding `source` (`bealls_list`, `doaj`, `heuristics`, `combined`), a
   `confidence`, a plain-language `reasoning`, and the `sources` that contributed.
+- **Abstracts:** `fetchAbstract` returns `status` `found`, `not_found` or `error`, the
+  `source` that supplied the text, and one `attempts` entry per source tried (`outcome`:
+  `found`, `absent`, `too_short`, `error`). `not_found` means every source answered without
+  an abstract; `error` means a source failed, so absence is not established. Only `found` and
+  `not_found` are cached.
 - **shortDOI expansion:** `expandShortDoi` never returns a bare failure; `reason` is one of
   `expanded`, `not-short-form`, `not-registered`, `malformed`, `no-redirect`, `off-resolver`,
   `unexpanded-target`, `network-error`.
@@ -229,7 +235,8 @@ await extractJournalMetadata(reference, true, creds);
 Without them the requests use the library's default contact address, `DEFAULT_POLITE_EMAIL`.
 Not every check takes credentials: the preprint, expression-of-concern and replies checks use
 the default Crossref identity, and the open-access check uses a fixed Unpaywall contact
-address. The library has no API keys and needs none.
+address. The library needs no API keys; `fetchAbstract` sends an optional
+`semanticScholarApiKey` from the credentials when you pass one.
 
 **Environment variables.** The library itself reads one: `NODE_ENV`. When it is
 `development`, `formatError` appends the first lines of an error's stack trace to the message.

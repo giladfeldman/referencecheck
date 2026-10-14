@@ -58,7 +58,8 @@ interface ParsedReferenceInput {
 ```ts
 interface MetadataCredentials {
   crossrefEmail?: string;   // contact address for Crossref's polite pool
-  openAlexEmail?: string;   // contact address for OpenAlex's polite pool
+  openAlexEmail?: string;
+  semanticScholarApiKey?: string; // optional, used by fetchAbstract   // contact address for OpenAlex's polite pool
 }
 ```
 
@@ -478,6 +479,65 @@ interface DeduplicationResults {
   error?: { code: string; message: string };
 }
 ```
+
+## Abstracts
+
+Abstract lookup by DOI, for claim checks that compare a citing sentence with the cited
+source's abstract. The library fetches and caches; it never judges.
+
+### `fetchAbstract(doi, options?)`
+
+Tries the sources in `ABSTRACT_SOURCES` order — `crossref` (publisher-deposited JATS),
+`openalex` (rebuilt from `abstract_inverted_index` by `invertedIndexToText`),
+`semanticscholar`, `europepmc` — and stops at the first that yields at least
+`MIN_ABSTRACT_CHARS` (200) characters. Throws only when `doi` is not a DOI after
+`normalizeAbstractDoi` (lower-cased, `https://doi.org/` and `doi:` prefixes removed).
+
+`FetchAbstractOptions`:
+
+| Field | Meaning |
+|---|---|
+| `credentials` | `MetadataCredentials`; `crossrefEmail` / `openAlexEmail` for the polite pools, `semanticScholarApiKey` sent as `x-api-key` |
+| `cache` | an `AbstractCache` (`get(doi)`, `set(doi, result)`), keyed by normalised DOI; `MemoryAbstractCache` is the in-process default |
+| `sources` | the sources to try, in order (default `ABSTRACT_SOURCES`, with `semanticscholar` skipped unless `semanticScholarApiKey` is set: its keyless pool answers HTTP 429 so often that a miss would read as `error`) |
+| `httpGet` | a `JsonGet` — `(url, headers) => Promise<json \| null>`, `null` meaning 404; default `axiosJsonGet` |
+| `now` | clock for `retrievedAt` |
+
+Returns an `AbstractResult`:
+
+```ts
+interface AbstractResult {
+  doi: string;                 // normalised
+  status: AbstractStatus;      // 'found' | 'not_found' | 'error'
+  abstract: string | null;     // markup removed by cleanAbstractMarkup
+  source: AbstractSource | null;
+  title: string | null;
+  year: number | null;
+  attempts: AbstractAttempt[]; // one per source tried: { source, outcome, detail? }
+  retrievedAt: string;         // ISO timestamp
+}
+```
+
+`AbstractAttempt.outcome` is `found`, `absent` (the source answered without an abstract),
+`too_short` (under `MIN_ABSTRACT_CHARS`) or `error` (the request failed).
+
+**`not_found` and `error` are different facts.** `not_found` means every source answered and
+none had a usable abstract. `error` means none had one *and* at least one source failed, so the
+abstract may exist. Only `found` and `not_found` are written to the cache; an `error` is retried
+on the next lookup.
+
+### `fetchAbstracts(dois, options?)`
+
+Sequential lookup of many DOIs (polite to free APIs); each distinct normalised DOI is fetched
+once. Returns a `Map` from normalised DOI to `AbstractResult`.
+
+### Helpers
+
+- `cleanAbstractMarkup(raw)` — strips JATS/HTML tags (and a JATS title), decodes entities, drops
+  a leading "Abstract"/"Summary" heading.
+- `invertedIndexToText(index)` — rebuilds text from an OpenAlex inverted `index`.
+- `normalizeAbstractDoi(doi)` — the DOI key used by the cache, or `null`.
+- `axiosJsonGet` — the default `JsonGet`.
 
 ## Issue codes
 

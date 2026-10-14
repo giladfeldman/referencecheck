@@ -12,6 +12,8 @@ export interface MetadataCredentials {
   crossrefEmail?: string;
   /** Polite-pool contact email for OpenAlex. Was OPENALEX_EMAIL || CROSSREF_EMAIL. */
   openAlexEmail?: string;
+  /** Optional Semantic Scholar API key (x-api-key header) for fetchAbstract. Without it the keyless, rate-limited pool is used. */
+  semanticScholarApiKey?: string;
 }
 
 /** The default polite-pool contact email used when none is supplied —
