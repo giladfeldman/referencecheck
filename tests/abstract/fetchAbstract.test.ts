@@ -30,7 +30,7 @@ function fakeGet(routes: Record<string, unknown>): JsonGet & { calls: string[] }
 
 const crossref = (abstract?: string) => ({ message: { abstract, title: ['T'], issued: { 'date-parts': [[2019]] } } });
 const openalex = (text?: string) => ({
-  title: 'T', publication_year: 2019,
+  id: 'W1', title: 'T', publication_year: 2019,
   abstract_inverted_index: text ? Object.fromEntries(
     text.split(' ').reduce((m, w, i) => m.set(w, [...(m.get(w) ?? []), i]), new Map<string, number[]>()),
   ) : null,
@@ -49,7 +49,7 @@ describe('fetchAbstract cascade', () => {
     const get = fakeGet({
       'api.crossref.org': crossref(undefined),
       'api.openalex.org': openalex('Short stub.'),
-      'api.semanticscholar.org': { abstract: LONG, title: 'T', year: 2019 },
+      'api.semanticscholar.org': { paperId: 'P1', abstract: LONG, title: 'T', year: 2019 },
       'ebi.ac.uk': null,
     });
     const r = await fetchAbstract(DOI, { httpGet: get, credentials: { semanticScholarApiKey: 'k' } });
@@ -59,7 +59,7 @@ describe('fetchAbstract cascade', () => {
 
   it('skips Semantic Scholar by default without a key, uses it with one', async () => {
     const routes = { 'api.crossref.org': crossref(undefined), 'api.openalex.org': null,
-      'api.semanticscholar.org': { abstract: LONG }, 'ebi.ac.uk': null };
+      'api.semanticscholar.org': { paperId: 'P1', abstract: LONG }, 'ebi.ac.uk': null };
     const noKey = fakeGet(routes);
     const r1 = await fetchAbstract(DOI, { httpGet: noKey });
     expect(r1.attempts.map((a) => a.source)).toEqual(['crossref', 'openalex', 'europepmc']);

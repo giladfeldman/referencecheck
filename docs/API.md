@@ -514,22 +514,30 @@ interface AbstractResult {
   title: string | null;
   year: number | null;
   attempts: AbstractAttempt[]; // one per source tried: { source, outcome, detail? }
+  sourcesTried: AbstractSource[]; // the sources this lookup consulted
+  shortAbstract: string | null;   // longest text under MIN_ABSTRACT_CHARS seen, when nothing longer was found
   retrievedAt: string;         // ISO timestamp
 }
 ```
 
-`AbstractAttempt.outcome` is `found`, `absent` (the source answered without an abstract),
-`too_short` (under `MIN_ABSTRACT_CHARS`) or `error` (the request failed).
+`AbstractAttempt.outcome` is `found`, `absent` (the source answered without an abstract;
+`detail: 'no record'` when it has no record of the DOI at all), `too_short` (under
+`MIN_ABSTRACT_CHARS`; the text is kept as `shortAbstract`) or `error` (the request failed, or the
+source answered 200 with a body of an unexpected shape, such as an HTML block page). A record is
+accepted only when it is the requested DOI (Europe PMC hits are matched on their `doi`).
 
 **`not_found` and `error` are different facts.** `not_found` means every source answered and
 none had a usable abstract. `error` means none had one *and* at least one source failed, so the
 abstract may exist. Only `found` and `not_found` are written to the cache; an `error` is retried
-on the next lookup.
+on the next lookup. A cached `not_found` answers only a lookup that asks no more sources than
+its `sourcesTried` (a `crossref`-only miss is not reused by a full cascade); a cached `found`
+answers any lookup.
 
 ### `fetchAbstracts(dois, options?)`
 
 Sequential lookup of many DOIs (polite to free APIs); each distinct normalised DOI is fetched
-once. Returns a `Map` from normalised DOI to `AbstractResult`.
+once. Returns a `Map` from normalised DOI to `AbstractResult`; an input that is not a DOI is kept
+under its original text with status `invalid_doi` (never dropped).
 
 ### Helpers
 

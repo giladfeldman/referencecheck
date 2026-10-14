@@ -76,6 +76,12 @@ describe('documentation-drift gate', () => {
     expect(() => gate.quickstartBlocks(onlineOnly)).toThrow();
   });
 
+  it('finds the offline block in a CRLF README (Windows autocrlf checkout)', () => {
+    const crlf = ['## Quickstart', '', '```js', 'await f();', '```', ''].join('\r\n');
+    const blocks: { online: boolean }[] = gate.quickstartBlocks(crlf);
+    expect(blocks.some((b) => !b.online)).toBe(true);
+  });
+
   it('marks the README network block so the offline gate skips it', () => {
     const blocks: { online: boolean }[] = gate.quickstartBlocks();
     expect(blocks.some((b) => !b.online)).toBe(true);

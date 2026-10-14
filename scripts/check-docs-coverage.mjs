@@ -214,7 +214,9 @@ export function checkReleaseMetadata(surface, code, root = ROOT) {
 
 // --------------------------------------------------------------------------- quickstart
 export function quickstartBlocks(readme) {
-  const text = readme ?? fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+  // Normalise CRLF: a Windows checkout with core.autocrlf=true has CRLF in the working tree, and the
+  // fence regexes below match on '\n' only, which made the gate report "no offline js block".
+  const text = (readme ?? fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8')).replace(/\r\n/g, '\n');
   const start = text.indexOf(QUICKSTART_HEADING);
   if (start < 0) throw new Error(`README.md has no '${QUICKSTART_HEADING}' section`);
   const next = text.indexOf('\n## ', start + QUICKSTART_HEADING.length);
