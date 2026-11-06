@@ -311,10 +311,6 @@ Please also cite the data sources your results depend on (see [Method](#method))
 Bug reports and pull requests are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the
 development setup and the checks a change must pass.
 
-## License
-
-MIT — see [LICENSE](./LICENSE).
-
 <!-- license-citation:start -->
 ## License and citation
 
