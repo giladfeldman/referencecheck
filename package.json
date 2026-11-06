@@ -2,7 +2,7 @@
   "name": "referencecheck",
   "version": "0.2.0",
   "description": "Reference-integrity checks for academic papers: DOI validation, retraction detection, predatory-journal screening, reference deduplication, citation-count lookup, and open-access / preprint / expression-of-concern / citation-replies detection.",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "author": "Gilad Feldman",
   "repository": {
     "type": "git",
