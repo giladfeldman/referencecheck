@@ -21,6 +21,7 @@
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { crossrefFixture as fixture } from '../fixtures/crossrefFixture.js';
+import { formatDateParts } from '../../src/util/normalize.js';
 
 const crossrefGetMock = jest.fn<any>();
 const axiosGetMock = jest.fn<any>();
@@ -309,6 +310,26 @@ describe('retraction timing relative to the citing paper', () => {
     const r = await checkRetraction(JAMA, { citing: { publishedDate: '2013-07-31' }, checkReplacement: false });
     expect(r.retractionDate).toBe(expected);
     expect(r.timing.timing).toBe(timing);
+  });
+
+  // One shape, one writer: every date this module returns is written by the
+  // shared formatDateParts. The retraction date keeps an invalid deposit
+  // visible; the citing date accepts only a real calendar date (never a guess).
+  it.each([
+    [[2019], true], [[2019, 3], true], [[2019, 3, 5], true], [[2019, 12, 31], true],
+    [[2020, 2, 29], true], [[2019, 2, 29], false], [[2019, 13, 1], false],
+    [['2019'], false], [[], false], [[null], false],
+  ])('date-parts %j: retractionDate and the citing date agree with formatDateParts', async (parts, real) => {
+    const expected = formatDateParts(parts);
+    const body = clone(fixture('retracted-rw-jama.json'));
+    body.data.message['updated-by'][0].updated = { 'date-parts': [parts] };
+    const citing = clone(fixture('not-retracted.json'));
+    citing.data.message.published = { 'date-parts': [parts] };
+    delete citing.data.message.issued;
+    serve({ [JAMA]: body, [CITING]: citing });
+    const r = await checkRetraction(JAMA, { citing: { doi: CITING }, checkReplacement: false });
+    expect(r.retractionDate).toBe(expected);
+    expect(r.timing.citingPublishedDate).toBe(real ? expected : undefined);
   });
 
   it('unknown / no_retraction_date on the title-marker path (no notice to date)', async () => {

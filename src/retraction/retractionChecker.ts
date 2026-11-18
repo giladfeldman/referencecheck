@@ -610,10 +610,12 @@ function datePartsToString(field: any): string | null {
   const [y, m, d] = parts;
   const valid = validPartialDate(y, m ?? undefined, m == null ? undefined : d ?? undefined);
   if (!valid) return null;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return [String(valid.y), valid.m && pad(valid.m), valid.d && pad(valid.d)]
-    .filter(Boolean)
-    .join('-');
+  return formatPartialDate(valid);
+}
+
+/** The one writer of a validated date: the shared `formatDateParts`. */
+function formatPartialDate(d: PartialDate): string {
+  return formatDateParts([d.y, d.m, d.d].filter((n) => n !== undefined)) as string;
 }
 
 /**
@@ -752,9 +754,7 @@ export function compareRetractionTiming(
 function displayDate(value: string | undefined): string | undefined {
   if (!value) return undefined;
   const d = parsePartialDate(value);
-  if (!d) return value;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return [String(d.y), d.m && pad(d.m), d.d && pad(d.d)].filter(Boolean).join('-');
+  return d ? formatPartialDate(d) : value;
 }
 
 const TYPE_PARTICIPLE: Record<RetractionUpdateType, string> = {
