@@ -14,3 +14,4 @@ export * from './replies/index.js';
 export * from './predatory/index.js';
 export * from './dedup/index.js';
 export * from './abstract/index.js';
+export * from './util/normalize.js';

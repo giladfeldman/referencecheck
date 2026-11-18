@@ -1,0 +1,309 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2026,
+          4,
+          8
+        ]
+      ],
+      "date-time": "2026-04-08T05:03:02Z",
+      "timestamp": 1775624582190,
+      "version": "3.50.1"
+    },
+    "publisher": "Elsevier BV",
+    "issue": "2",
+    "license": [
+      {
+        "start": {
+          "date-parts": [
+            [
+              2004,
+              5,
+              1
+            ]
+          ],
+          "date-time": "2004-05-01T00:00:00Z",
+          "timestamp": 1083369600000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "https://www.elsevier.com/tdm/userlicense/1.0/"
+      }
+    ],
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [
+      "Lung Cancer"
+    ],
+    "published-print": {
+      "date-parts": [
+        [
+          2004,
+          5
+        ]
+      ]
+    },
+    "DOI": "10.1016/j.lungcan.2003.10.006",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [
+        [
+          2004,
+          4,
+          13
+        ]
+      ],
+      "date-time": "2004-04-13T10:22:09Z",
+      "timestamp": 1081851729000
+    },
+    "page": "193-198",
+    "source": "Crossref",
+    "is-referenced-by-count": 68,
+    "title": [
+      "Recoverin as a paraneoplastic antigen in lung cancer: the occurrence of anti-recoverin autoantibodies in sera and recoverin in tumors"
+    ],
+    "prefix": "10.1016",
+    "volume": "44",
+    "author": [
+      {
+        "given": "Alexandr V",
+        "family": "Bazhin",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Marina S",
+        "family": "Savchenko",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Olga N",
+        "family": "Shifrina",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Sofia A",
+        "family": "Demoura",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Svetlana Yu",
+        "family": "Chikina",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Gabriele",
+        "family": "Jaques",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Eugenia A",
+        "family": "Kogan",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Alexandr G",
+        "family": "Chuchalin",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Pavel P",
+        "family": "Philippov",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "member": "78",
+    "updated-by": [
+      {
+        "DOI": "10.1016/j.lungcan.2026.109332",
+        "type": "expression_of_concern",
+        "label": "Expression of concern",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2026,
+              2,
+              13
+            ]
+          ],
+          "date-time": "2026-02-13T00:00:00Z",
+          "timestamp": 1770940800000
+        }
+      },
+      {
+        "DOI": "10.1016/j.lungcan.2026.109332",
+        "type": "expression_of_concern",
+        "label": "Expression of concern",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2026,
+              5,
+              1
+            ]
+          ],
+          "date-time": "2026-05-01T00:00:00Z",
+          "timestamp": 1777593600000
+        }
+      }
+    ],
+    "container-title": [
+      "Lung Cancer"
+    ],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https://api.elsevier.com/content/article/PII:S0169500203005233?httpAccept=text/xml",
+        "content-type": "text/xml",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://api.elsevier.com/content/article/PII:S0169500203005233?httpAccept=text/plain",
+        "content-type": "text/plain",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      }
+    ],
+    "deposited": {
+      "date-parts": [
+        [
+          2021,
+          6,
+          15
+        ]
+      ],
+      "date-time": "2021-06-15T15:28:15Z",
+      "timestamp": 1623770895000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://linkinghub.elsevier.com/retrieve/pii/S0169500203005233"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2004,
+          5
+        ]
+      ]
+    },
+    "references-count": 24,
+    "journal-issue": {
+      "issue": "2",
+      "published-print": {
+        "date-parts": [
+          [
+            2004,
+            5
+          ]
+        ]
+      }
+    },
+    "alternative-id": [
+      "S0169500203005233"
+    ],
+    "URL": "https://doi.org/10.1016/j.lungcan.2003.10.006",
+    "relation": {},
+    "ISSN": [
+      "0169-5002"
+    ],
+    "issn-type": [
+      {
+        "value": "0169-5002",
+        "type": "print"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [
+        [
+          2004,
+          5
+        ]
+      ]
+    }
+  },
+  "__fixture": {
+    "doi": "10.1016/j.lungcan.2003.10.006",
+    "why": "Expression of concern recorded by the publisher, paper not retracted. Reported CLEAN before 0.3.0.",
+    "capturedAt": "2026-11-18",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}

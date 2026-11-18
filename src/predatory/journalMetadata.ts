@@ -1,7 +1,7 @@
 import type { ReferenceInput } from '../types.js';
 import type { JournalMetadata } from './types.js';
 import type { MetadataCredentials } from '../http/credentials.js';
-import { searchOpenAlexByJournalName, resolveOpenAlexByDOI } from './openAlex.js';
+import { searchOpenAlexByJournalName, resolveOpenAlexByDOI, journalKey } from './openAlex.js';
 
 /**
  * Validate if a reference looks like an actual reference entry
@@ -146,7 +146,9 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
     // Format: "Author (Year). Title. Journal Name, Volume(Issue), Pages"
     // Or: "Author (Year). Title. Journal Name, Volume, Pages"
     if (!metadata.journal) {
-      const yearMatch = rawText.match(/\((\d{4}[a-z]?)\)/);
+      // The year anchor accepts a date after the year, "(2019, March 3)", like the shared
+      // parseYear reader (2026-11-18); "(2019)" alone missed every APA reference with a date.
+      const yearMatch = rawText.match(/\(((?:1[5-9]|20)\d{2}[a-z]?)(?:,[^()]*)?\)/);
 
       if (yearMatch && yearMatch.index !== undefined) {
         // Find the title (usually ends with a period after the year)
@@ -360,7 +362,7 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
           }
           // Update journal name if OpenAlex has a better/canonical version
           if (openAlexResult.journalTitle &&
-            openAlexResult.journalTitle.toLowerCase() !== metadata.journal.toLowerCase()) {
+            journalKey(openAlexResult.journalTitle) !== journalKey(metadata.journal)) {
             metadata.journal = openAlexResult.journalTitle;
           }
         }

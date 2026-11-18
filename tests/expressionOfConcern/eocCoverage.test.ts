@@ -48,6 +48,9 @@ jest.unstable_mockModule('../../src/http/crossref.js', () => ({
 const { checkReferenceForEOCDetailed, checkReferenceForEOC } =
   await import('../../src/expressionOfConcern/expressionOfConcernService.js');
 
+import { readFileSync } from 'node:fs';
+const fixture = (rel: string) => JSON.parse(readFileSync(`tests/fixtures/${rel}`, 'utf8'));
+
 const REF = { id: 'r1', raw_text: 'Smith, J. (2020).', doi: '10.1/abc' } as any;
 
 /** Crossref answers cleanly; PubMed has nothing indexed. */
@@ -136,13 +139,14 @@ describe('a source that answered is not the same as a source that did not', () =
 });
 
 describe('findings still surface, and still surface while a sibling source is down', () => {
+  // Recorded bodies (tests/fixtures/*/eoc-*.json). The hand-built bodies these two
+  // tests used before 0.3.0 encoded fields Crossref and Europe PMC do not serve, so
+  // they passed over a check that could never fire.
   it('returns the Crossref expression-of-concern issue', async () => {
-    crossrefGetMock.mockResolvedValue({
-      data: { message: { relation: { 'is-expression-of-concern-for': [{}] }, 'container-title': ['J. Test'] } },
-    });
-    axiosGetMock.mockResolvedValue({ data: { resultList: { result: [] } } });
+    crossrefGetMock.mockResolvedValue({ data: fixture('crossref/eoc-publisher.json') });
+    axiosGetMock.mockResolvedValue({ data: fixture('europepmc/not-found.json') });
 
-    const r = await checkReferenceForEOCDetailed(REF);
+    const r = await checkReferenceForEOCDetailed({ ...REF, doi: '10.1016/j.lungcan.2003.10.006' });
     expect(r.complete).toBe(true);
     expect(r.issues).toHaveLength(1);
     expect(r.issues[0].code).toBe('EOC_DETECTED');
@@ -151,11 +155,9 @@ describe('findings still surface, and still surface while a sibling source is do
   it('a PubMed finding survives a Crossref outage, and the result stays incomplete', async () => {
     // Both facts matter: the finding is real AND the coverage is partial.
     crossrefGetMock.mockRejectedValue(httpError(429));
-    axiosGetMock.mockResolvedValue({
-      data: { resultList: { result: [{ pmid: '123', commentsCorrectionsList: [{ type: 'ExpressionOfConcern' }] }] } },
-    });
+    axiosGetMock.mockResolvedValue({ data: fixture('europepmc/eoc-in.json') });
 
-    const r = await checkReferenceForEOCDetailed(REF);
+    const r = await checkReferenceForEOCDetailed({ ...REF, doi: '10.1371/journal.pone.0061107' });
     expect(r.issues.map(i => i.code)).toEqual(['EOC_PUBMED']);
     expect(r.complete).toBe(false);
   });
@@ -179,7 +181,7 @@ describe('back-compatibility and scope', () => {
     bothClean();
     await checkReferenceForEOCDetailed({ id: 'r3', raw_text: 'x', suggested_doi: '10.9/zzz' } as any);
     expect(crossrefGetMock).toHaveBeenCalledWith(
-      expect.stringContaining('10.9/zzz'),
+      expect.stringContaining('10.9%2Fzzz'),
       expect.anything(),
     );
   });

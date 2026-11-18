@@ -1,10 +1,13 @@
 /**
- * DOI-shape validation helpers — copied verbatim from the Scimeto
- * worker's entityOwnership.ts during the Wave 3 referencecheck extraction.
- * The worker keeps its own copy because entityOwnership.ts also hosts the
- * PP-07 entity-ownership registry that is not reference-checking-only. The
- * two copies are intentionally identical; do not let them diverge.
+ * DOI-shape validation helpers, first copied from the Scimeto worker during the
+ * Wave 3 extraction. The worker no longer keeps a copy (2026-11-18: it imports
+ * these from referencecheck), so this is the one definition.
+ *
+ * Both read the DOI through `cleanDoiInput`, like every other DOI reader in the
+ * library: before 2026-11-18 `https://doi.org/10.1037/x` was "malformed" here
+ * while `validateDOI` accepted it — one input, two readings.
  */
+import { cleanDoiInput } from '../util/normalize.js';
 
 /**
  * Heuristic: returns true if `doi` looks malformed/truncated. Replication
@@ -14,7 +17,7 @@
  */
 export function isMalformedDoi(doi: string): boolean {
   if (typeof doi !== 'string') return true;
-  const d = doi.trim();
+  const d = cleanDoiInput(doi);
   if (!d) return true;
   // Standard DOI shape: '10.<registrant>/<suffix>' (suffix at least 1 char).
   if (/^10\.\d{3,9}\/\S+$/.test(d)) return false;
@@ -33,5 +36,5 @@ export function isMalformedDoi(doi: string): boolean {
  */
 export function isShortFormDoi(doi: string): boolean {
   if (typeof doi !== 'string') return false;
-  return /^10\/[A-Za-z0-9._-]+$/.test(doi.trim());
+  return /^10\/[A-Za-z0-9._-]+$/.test(cleanDoiInput(doi));
 }

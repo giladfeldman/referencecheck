@@ -78,7 +78,7 @@ When a field is absent the library sends `DEFAULT_POLITE_EMAIL`, a fixed project
 ### `validateDOI(doi, creds?)`
 
 Returns `Promise<{ valid; data?: CrossrefResult; error?; source?: 'crossref' | 'resolver' }>`.
-Strips a `https://doi.org/` prefix, asks Crossref, and on a Crossref 404 asks doi.org
+Reads the DOI through `cleanDoiInput` (resolver URL, `doi:` label, whitespace and percent-encoding removed, like every other DOI reader here), asks Crossref, and on a Crossref 404 asks doi.org
 whether the DOI resolves (`source: 'resolver'`, `score: 50`, no metadata). Results are cached
 in memory for 30 minutes.
 
@@ -88,7 +88,7 @@ interface CrossrefResult {
   doi?: string;
   title?: string;
   authors?: string[];        // "Family, Given"
-  publishedDate?: string;    // Crossref date-parts joined with "-", not zero-padded: "1998-2"
+  publishedDate?: string;    // ISO, at the precision Crossref gives: "1998-02", "2019-03-05" (before 0.3.0: "1998-2")
   journal?: string;
   score: number;             // 100 from a DOI lookup, 50 from the resolver fallback, Crossref's relevance score from a search
   rawData?: any;             // the Crossref message
@@ -105,14 +105,53 @@ Finds the DOI of a free-text reference, or `null`. Tries Crossref's Simple Text 
 the bibliographic search (top 5, relevance score of at least 50). A candidate is accepted only
 if its year is within one year of the reference's and at least one author surname matches.
 Theses, dissertations, unpublished manuscripts, personal communications, and works "in
-preparation", "submitted" or "under review" are skipped without a request.
+preparation", "submitted" or "under review" are skipped without a request. Surnames and years
+are read with the shared readers (accents folded on both sides, `(2019, March 3)` read as 2019).
+
+### `findDOIFromReferenceDetailed(referenceText, creds?)` — preferred
+
+The same search, with its coverage stated. `null` from `findDOIFromReference` covers four
+different facts; this returns `Promise<DoiSearchOutcome>`:
+
+```ts
+interface DoiSearchOutcome {
+  result: CrossrefResult | null;
+  status: 'found' | 'no_match' | 'skipped_unpublishable' | 'lookup_failed';
+  rejected: RejectedDoiCandidate[];   // every candidate the author/year check refused
+  belowScoreThreshold: number;        // search candidates under relevance 50, dropped unchecked
+  errors: string[];                   // per-stage errors, in order
+}
+
+interface RejectedDoiCandidate {
+  doi: string;
+  stage: 'simple_text_query' | 'search';
+  reason: string;                     // "Author mismatch: ...", "Year mismatch: ...", "DOI did not validate: ..."
+}
+```
+
+`lookup_failed` means the search never got an answer: it is not evidence that no DOI exists.
+
+## Shared input readers
+
+Every function that reads a DOI, a year, an author list or a name/title goes through these,
+so one input is read the same way everywhere (bound by `tests/parity/`).
+
+| Export | Returns |
+|---|---|
+| `cleanDoiInput(doi)` | the DOI with surrounding whitespace, a resolver URL (`http(s)://`, `dx.`/`www.`, or bare `doi.org/`) or a `doi:` label removed and percent-encoding decoded; case kept; `''` for a non-string |
+| `doiForUrl(doi)` | `encodeURIComponent(cleanDoiInput(doi))`, the only form a DOI takes inside a request URL |
+| `parseYear(value)` | the first stand-alone year 1500–2099 in a string or number (`"(2019, March 3)"` → 2019), or `null` (`"in press"`, `"n.d."`) |
+| `foldForMatch(text)` | lower-cased, accents removed (`Müller` → `muller`), letters and digits of every script kept, everything else one space |
+| `splitAuthorList(authors)` | one entry per author from an array or a string; `;`, `&` and "and" always separate; a comma separates unless what follows is only initials or a suffix (`Smith, J., Jones, K.` → 2 authors) |
+| `formatDateParts(parts)` | Crossref `date-parts` as ISO at the given precision: `[2019, 3, 5]` → `"2019-03-05"`, `[2019]` → `"2019"`, else `undefined` |
+| `journalKey(name)` | `foldForMatch(name)` with the words "and" and "the" dropped: the key both sides of a journal-name comparison use (`Journal of Personality & Social Psychology` = `Journal of Personality and Social Psychology`) |
 
 ## DOI shape and shortDOIs
 
 | Export | Returns |
 |---|---|
-| `isMalformedDoi(doi)` | `true` unless the trimmed string is `10.` + 3–9 digits + `/` + a suffix without spaces, or the shortDOI form `10/<token>`; `true` for a non-string. Shape only: `10.1037/0` returns `false` |
-| `isShortFormDoi(doi)` | `true` for `10/<token>` |
+| `isMalformedDoi(doi)` | `true` unless `cleanDoiInput(doi)` is `10.` + 3–9 digits + `/` + a suffix without spaces, or the shortDOI form `10/<token>`; `true` for a non-string. Shape only: `10.1037/0` returns `false` |
+| `isShortFormDoi(doi)` | `true` for `10/<token>`, also when written `https://doi.org/10/<token>` or `doi:10/<token>` |
 | `expandShortDoi(doi, options?)` | `Promise<ShortDoiExpansion>`: one request to doi.org, reading the redirect. Non-shortDOI input returns `not-short-form` with no request. Cached 24 h |
 | `readExpansionTarget(location)` | the pure half: `{ doi }` from a redirect `Location`, or `{ reason }` (`no-redirect`, `off-resolver`, `unexpanded-target`) |
 | `clearShortDoiCache()` | empties the expansion cache |
@@ -205,16 +244,19 @@ interface EocReferenceResult {
 }
 
 interface EocSourceReport { source: string; reason: EocUnavailableReason; detail?: string }
-type EocUnavailableReason = 'rate_limited' | 'timeout' | 'server_error' | 'network';
+type EocUnavailableReason = 'rate_limited' | 'timeout' | 'server_error' | 'network' | 'malformed_response';
 type EocSourceOutcome =
   | { status: 'clean' }
   | { status: 'issue'; issue: ExpressionOfConcernIssue }
   | { status: 'unavailable'; reason: EocUnavailableReason; detail?: string };
 ```
 
-Sources: Crossref relations (`is-expression-of-concern-for`, `has-expression-of-concern`,
-`is-corrected-by`) and Europe PMC's corrections list for the first search hit on the DOI
-(reported as `PubMed`). `KnownList` is **not implemented**: it always returns `clean`, so it
+Sources: Crossref `updated-by` entries of type `expression_of_concern`, and Europe PMC's
+`commentCorrectionList` (entries of type "Expression of concern in") for the record whose DOI
+matches, from a `DOI:"..."` search with `resultType=core` (reported as `PubMed`). A 200 that
+carries no work record (Crossref) or no result list (Europe PMC) is `malformed_response`, not
+`clean`. One concern found by both sources gives one issue per source. Before 0.3.0 neither
+source could fire (see the CHANGELOG). `KnownList` is **not implemented**: it always returns `clean`, so it
 appears in `sourcesChecked` without a lookup. A reference with no DOI returns
 `complete: true` with no sources.
 
@@ -230,7 +272,7 @@ The findings only (`ExpressionOfConcernIssue[]`); cannot say whether any source 
 interface ExpressionOfConcernIssue {
   type: 'expression-of-concern';
   severity: 'warning' | 'error';
-  code: string;             // EOC_DETECTED, CORRECTION_NOTICE, EOC_PUBMED
+  code: string;             // EOC_DETECTED (Crossref), EOC_PUBMED (Europe PMC)
   description: string;
   location: string;
   suggestion?: string;
@@ -238,6 +280,13 @@ interface ExpressionOfConcernIssue {
   metadata?: { doi?; journalName?; dateIssued?; details?; source? };
 }
 ```
+
+`metadata.dateIssued` is the date of the expression-of-concern notice (Crossref: the earliest
+`updated-by` date, ISO, e.g. `"2023-01-11"`); Europe PMC gives no notice date, so it is absent
+for `EOC_PUBMED`. `metadata.details` names the notice (Crossref: `notice: <doi>; recorded by:
+publisher, retraction-watch`; Europe PMC: `notice: MED <PMID of the notice>`). The Europe PMC request waits up to 15 s:
+its `core` search, the only one carrying the corrections list, measured up to 10.8 s on a
+record's first request.
 
 ## Replies and errata
 
@@ -443,10 +492,10 @@ All local; no network.
 | Export | Returns |
 |---|---|
 | `calculateSimilarity(ref1, ref2, config)` | `authorWeighting × authors + titleWeighting × title + (1 − both) × year`, from `normalized_authors`, `normalized_title`, `normalized_year` |
-| `compareAuthors(authors1, authors2)` | 0–1, symmetric; best Levenshtein match per author, averaged both ways; 0.5 when both are empty |
-| `compareTitle(title1, title2)` | `1 − Levenshtein distance / longer length`; 0.5 when both are empty |
-| `compareYear(year1, year2)` | 1 same year, 0.5 one year apart, 0 otherwise; 0.5 when both are missing |
-| `normalizeAuthorName(name)` | `"Smith, J."` → `"smith j"` |
+| `compareAuthors(authors1, authors2)` | 0–1, symmetric; each argument a string or a string array, split with `splitAuthorList` and folded with `foldForMatch`; best Levenshtein match per author, averaged both ways; 0.5 when both are empty |
+| `compareTitle(title1, title2)` | `1 − Levenshtein distance / longer length` after `foldForMatch` (non-Latin titles compared, not emptied); 0.5 when both are empty |
+| `compareYear(year1, year2)` | years read with `parseYear`: 1 same year, 0.5 one year apart, 0 otherwise; a value with no year (`"in press"`) counts as missing: 0.5 when both are, 0 when one is |
+| `normalizeAuthorName(name)` | `foldForMatch(name)`: `"Smith, J."` → `"smith j"`, `"Müller"` → `"muller"` |
 | `scoreMetadataCompleteness(ref)` | 0–1 weighted presence of title, authors, year, DOI, source, volume, pages |
 | `findDuplicateGroups(pairs)` | `DuplicateGroup[]` by transitive closure (A=B and B=C gives one group) |
 | `selectBestReference(refs)` | the most complete reference; throws on an empty array |
@@ -551,7 +600,7 @@ under its original text with status `invalid_doi` (never dropped).
 - `cleanAbstractMarkup(raw)` — strips JATS/HTML tags (and a JATS title), decodes entities, drops
   a leading "Abstract"/"Summary" heading.
 - `invertedIndexToText(index)` — rebuilds text from an OpenAlex inverted `index`.
-- `normalizeAbstractDoi(doi)` — the DOI key used by the cache (prefixes removed, URL-encoding decoded, lower-cased), or `null`.
+- `normalizeAbstractDoi(doi)` — the DOI key used by the cache (`cleanDoiInput`, lower-cased), or `null`.
 - `sameDoi(a, b)` — whether two DOI strings name the same work: case-insensitive, and repeated slashes are equivalent (`10.1037//0882-…` is `10.1037/0882-…`). Every source's record must pass it against the requested DOI, or the attempt is an `error`.
 - `axiosJsonGet` — the default `JsonGet`.
 
@@ -563,7 +612,6 @@ under its original text with status `invalid_doi` (never dropped).
 | `HAS_PREPRINT_VERSION` | info | `checkReferenceForPreprint` | the cited work has a preprint version |
 | `OA_AVAILABLE` | info | `checkReferenceForOpenAccess` | Unpaywall lists an open-access copy |
 | `EOC_DETECTED` | warning | expression-of-concern checks | Crossref records an expression of concern |
-| `CORRECTION_NOTICE` | warning | expression-of-concern checks | Crossref records a correction or concern notice |
 | `EOC_PUBMED` | warning | expression-of-concern checks | Europe PMC lists an expression of concern |
 | `HAS_ERRATA` | warning | `checkReferenceForReplies` | an erratum or correction exists |
 | `HAS_AUTHOR_REPLY` | info | `checkReferenceForReplies` | an author reply exists |

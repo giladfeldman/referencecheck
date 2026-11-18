@@ -4,6 +4,10 @@
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { checkReferenceForEOC, getSeverityCounts } from '../../src/expressionOfConcern/expressionOfConcernService.js';
+
+// These tests call the live Crossref and Europe PMC APIs; Europe PMC's core search can take
+// over 10 s on a record's first request (measured 2026-11-18), so the 5 s default is too short.
+jest.setTimeout(40000);
 import type { ReferenceInput } from '../../src/types.js';
 
 describe('Expression of Concern Detection Service', () => {

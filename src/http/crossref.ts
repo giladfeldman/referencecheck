@@ -7,6 +7,7 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { formatError } from '../util/formatError.js';
 import type { MetadataCredentials } from './credentials.js';
 import { DEFAULT_POLITE_EMAIL } from './credentials.js';
+import { cleanDoiInput, foldForMatch, formatDateParts, parseYear } from '../util/normalize.js';
 
 export interface CrossrefResult {
   found: boolean;
@@ -116,7 +117,7 @@ export async function validateDOI(doi: string, creds?: MetadataCredentials): Pro
 }> {
   try {
     // Clean DOI (remove https://doi.org/ prefix if present)
-    const cleanDOI = doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').trim();
+    const cleanDOI = cleanDoiInput(doi);
 
     // Check in-memory cache first (SP3)
     const cacheKey = cleanDOI.toLowerCase();
@@ -136,18 +137,7 @@ export async function validateDOI(doi: string, creds?: MetadataCredentials): Pro
         const validResult = {
           valid: true,
           source: 'crossref' as const,
-          data: {
-            found: true,
-            doi: message.DOI,
-            title: message.title?.[0] || message['short-title']?.[0],
-            authors: message.author?.map((a: any) =>
-              a.family ? `${a.family}${a.given ? `, ${a.given}` : ''}` : ''
-            ).filter(Boolean) || [],
-            publishedDate: message.published?.['date-parts']?.[0]?.join('-'),
-            journal: message['container-title']?.[0] || message['short-container-title']?.[0],
-            score: 100,
-            rawData: message,
-          },
+          data: toCrossrefResult(message, 100),
         };
         doiValidationCache.set(cacheKey, { result: validResult, timestamp: Date.now() });
         return validResult;
@@ -233,19 +223,14 @@ function isUnpublishableWork(referenceText: string): boolean {
  * Extract year from reference text
  */
 function extractYearFromReference(referenceText: string): number | null {
-  // Common patterns: (2019), 2019., (2019a), etc.
-  const yearPatterns = [
-    /\((\d{4})[a-z]?\)/,  // (2019) or (2019a)
-    /\b(19\d{2}|20\d{2})\b/,  // standalone year
-  ];
-
-  for (const pattern of yearPatterns) {
-    const match = referenceText.match(pattern);
-    if (match) {
-      return parseInt(match[1], 10);
-    }
+  // A year inside parentheses wins: (2019), (2019a), (2019, March 3). Otherwise the first
+  // stand-alone year. Both go through the shared parseYear (2026-11-18): the old first
+  // pattern missed "(2019, March 3)" and fell through to whatever year came first.
+  for (const group of referenceText.match(/\([^()]*\)/g) ?? []) {
+    const y = parseYear(group);
+    if (y !== null) return y;
   }
-  return null;
+  return parseYear(referenceText);
 }
 
 /**
@@ -254,25 +239,27 @@ function extractYearFromReference(referenceText: string): number | null {
 function extractAuthorsFromReference(referenceText: string): string[] {
   // Common patterns for authors at start of reference
   // e.g., "Smith, J. A., & Jones, B. C. (2019)" or "Smith, J.A. (2019)"
-  const beforeYear = referenceText.split(/\(\d{4}/)[0] || '';
+  const beforeYear = referenceText.split(/\(\s*(?:1[5-9]|20)\d{2}/)[0] || '';
 
   // Extract last names (capitalized words before commas or &)
   const authorSection = beforeYear.trim();
   const lastNames: string[] = [];
 
-  // Pattern to match "LastName, Initials" format
-  const authorPattern = /([A-Z][a-zA-Z'-]+)(?:\s*,\s*[A-Z]\.?)+/g;
+  // Pattern to match "LastName, Initials" format. Unicode letters (2026-11-18): the
+  // ASCII class [A-Z][a-zA-Z] stopped at the first accent, so "Müller, K." yielded no
+  // surname and the author check was silently skipped.
+  const authorPattern = /(\p{Lu}[\p{L}'’-]+)(?:\s*,\s*\p{Lu}\.?)+/gu;
   let match;
   while ((match = authorPattern.exec(authorSection)) !== null) {
-    lastNames.push(match[1].toLowerCase());
+    lastNames.push(foldForMatch(match[1]));
   }
 
   // Also try simpler pattern for single author or non-standard format
   if (lastNames.length === 0) {
-    const simplePattern = /^([A-Z][a-zA-Z'-]+)/;
+    const simplePattern = /^(\p{Lu}[\p{L}'’-]+)/u;
     const simpleMatch = authorSection.match(simplePattern);
     if (simpleMatch) {
-      lastNames.push(simpleMatch[1].toLowerCase());
+      lastNames.push(foldForMatch(simpleMatch[1]));
     }
   }
 
@@ -314,7 +301,8 @@ function validateDOIMatch(
 
   // Get authors from Crossref result
   const crossrefAuthors: string[] = (crossrefResult.author || [])
-    .map((a: any) => a.family?.toLowerCase() || '')
+    // Folded like the reference side, so Crossref's "Müller" meets a reference's "Muller".
+    .map((a: any) => foldForMatch(a.family))
     .filter(Boolean);
 
   // Author validation: at least one author last name must match
@@ -336,15 +324,81 @@ function validateDOIMatch(
   return { isValid: true };
 }
 
+/** Why a Crossref candidate was not accepted as a reference's DOI. */
+export interface RejectedDoiCandidate {
+  doi: string;
+  stage: 'simple_text_query' | 'search';
+  reason: string;
+}
+
+/**
+ * The DOI search with its coverage stated (2026-11-18).
+ *
+ * `findDOIFromReference` returns `null` for four different things: no candidate matched,
+ * the reference is a thesis or similar and was skipped, every candidate was rejected by the
+ * author/year check, and Crossref could not be reached. A caller reporting "no DOI found"
+ * could not tell them apart, and rejected candidates were only logged: a reject path with
+ * no count. This variant says which it was and lists every rejected candidate.
+ *
+ * `status`:
+ *  - `found`: `result` is the accepted match.
+ *  - `no_match`: the search answered and nothing passed; see `rejected` and `belowScoreThreshold`.
+ *  - `skipped_unpublishable`: not looked up (thesis, unpublished, in preparation, ...).
+ *  - `lookup_failed`: the search stage never got an answer. NOT evidence that no DOI exists.
+ */
+export interface DoiSearchOutcome {
+  result: CrossrefResult | null;
+  status: 'found' | 'no_match' | 'skipped_unpublishable' | 'lookup_failed';
+  rejected: RejectedDoiCandidate[];
+  /** Search candidates dropped for a relevance score under 50, before any author/year check. */
+  belowScoreThreshold: number;
+  /** Errors from either stage, in order. The simple-text stage failing alone is not `lookup_failed`. */
+  errors: string[];
+}
+
+/** One Crossref work record as a CrossrefResult. Shared by validateDOI and the search (was two copies). */
+function toCrossrefResult(message: any, score: number): CrossrefResult {
+  return {
+    found: true,
+    doi: message.DOI,
+    title: message.title?.[0] || message['short-title']?.[0],
+    authors: message.author?.map((a: any) =>
+      a.family ? `${a.family}${a.given ? `, ${a.given}` : ''}` : ''
+    ).filter(Boolean) || [],
+    publishedDate: formatDateParts(message.published?.['date-parts']?.[0]),
+    journal: message['container-title']?.[0] || message['short-container-title']?.[0],
+    score,
+    rawData: message,
+  };
+}
+
 /**
  * Find DOI from reference text using Crossref Simple Text Query
- * Now with improved validation to prevent false matches
+ * Now with improved validation to prevent false matches.
+ * Returns null for every kind of miss; use {@link findDOIFromReferenceDetailed} to tell
+ * "no DOI matched" from "could not search".
  */
 export async function findDOIFromReference(referenceText: string, creds?: MetadataCredentials): Promise<CrossrefResult | null> {
+  return (await findDOIFromReferenceDetailed(referenceText, creds)).result;
+}
+
+export async function findDOIFromReferenceDetailed(
+  referenceText: string,
+  creds?: MetadataCredentials
+): Promise<DoiSearchOutcome> {
+  const outcome: DoiSearchOutcome = {
+    result: null,
+    status: 'no_match',
+    rejected: [],
+    belowScoreThreshold: 0,
+    errors: [],
+  };
+
   // Skip DOI lookup for works that typically don't have DOIs
   if (isUnpublishableWork(referenceText)) {
-    console.log(`⏭️ Skipping DOI lookup for unpublishable work: ${referenceText.substring(0, 80)}...`);
-    return null;
+    console.log(`Skipping DOI lookup for unpublishable work: ${referenceText.substring(0, 80)}...`);
+    outcome.status = 'skipped_unpublishable';
+    return outcome;
   }
 
   try {
@@ -364,15 +418,12 @@ export async function findDOIFromReference(referenceText: string, creds?: Metada
     );
 
     if (response.status === 200) {
-      const text = response.data;
-
       // Parse pipe-delimited response format
       // Format: DOI|Title|Authors|Year|Journal
-      const lines = text.split('\n').filter((line: string) => line.trim());
+      const lines = String(response.data ?? '').split('\n').filter((line: string) => line.trim());
 
       if (lines.length > 0) {
-        const firstLine = lines[0];
-        const parts = firstLine.split('|');
+        const parts = lines[0].split('|');
 
         if (parts.length >= 1 && parts[0].trim().startsWith('10.')) {
           const doi = parts[0].trim();
@@ -382,31 +433,40 @@ export async function findDOIFromReference(referenceText: string, creds?: Metada
             // Additional validation: check if the result actually matches the reference
             const matchValidation = validateDOIMatch(referenceText, validation.data.rawData);
             if (matchValidation.isValid) {
-              return validation.data;
-            } else {
-              console.log(`⚠️ DOI ${doi} rejected: ${matchValidation.reason}`);
+              outcome.result = validation.data;
+              outcome.status = 'found';
+              return outcome;
             }
+            console.log(`DOI ${doi} rejected: ${matchValidation.reason}`);
+            outcome.rejected.push({ doi, stage: 'simple_text_query', reason: matchValidation.reason ?? 'mismatch' });
+          } else {
+            outcome.rejected.push({
+              doi,
+              stage: 'simple_text_query',
+              reason: `DOI did not validate: ${validation.error ?? 'no Crossref metadata'}`,
+            });
           }
         }
       }
     }
   } catch (error: any) {
-    console.warn('Simple Text Query failed, trying search API:', error.message);
+    console.warn('Simple Text Query failed, trying search API:', error?.message);
+    outcome.errors.push(`simple_text_query: ${error?.message ?? String(error)}`);
   }
 
   // Fallback to search API with improved validation
-  return findDOIFromSearchAPI(referenceText, creds);
+  await findDOIFromSearchAPI(referenceText, creds, outcome);
+  return outcome;
 }
 
 /**
- * Find DOI using Crossref search API with improved validation
+ * Find DOI using Crossref search API with improved validation. Writes into `outcome`.
  */
-async function findDOIFromSearchAPI(referenceText: string, creds?: MetadataCredentials): Promise<CrossrefResult | null> {
-  // Skip if unpublishable (double-check in case called directly)
-  if (isUnpublishableWork(referenceText)) {
-    return null;
-  }
-
+async function findDOIFromSearchAPI(
+  referenceText: string,
+  creds: MetadataCredentials | undefined,
+  outcome: DoiSearchOutcome
+): Promise<void> {
   try {
     const response = await crossrefGet(CROSSREF_API, {
       params: {
@@ -418,52 +478,43 @@ async function findDOIFromSearchAPI(referenceText: string, creds?: MetadataCrede
     }, creds);
 
     if (response.status !== 200) {
-      return null;
+      outcome.status = 'lookup_failed';
+      outcome.errors.push(`search: HTTP ${response.status}`);
+      return;
     }
 
-    const data = response.data;
-    const items = data.message?.items || [];
-
-    if (items.length === 0) {
-      return null;
-    }
+    const items = response.data?.message?.items || [];
 
     // Try each result until we find a valid match
     for (const item of items) {
       // Require higher minimum score (50 instead of 30) for better accuracy
-      if (item.score < 50) {
+      if (!(item.score >= 50)) {
+        outcome.belowScoreThreshold += 1;
         continue;
       }
 
       // Validate the match against the reference
       const matchValidation = validateDOIMatch(referenceText, item);
       if (!matchValidation.isValid) {
-        console.log(`⚠️ DOI ${item.DOI} rejected (score: ${item.score}): ${matchValidation.reason}`);
+        console.log(`DOI ${item.DOI} rejected (score: ${item.score}): ${matchValidation.reason}`);
+        outcome.rejected.push({ doi: item.DOI, stage: 'search', reason: matchValidation.reason ?? 'mismatch' });
         continue;
       }
 
       // Found a valid match!
-      console.log(`✅ DOI ${item.DOI} accepted (score: ${item.score})`);
-      return {
-        found: true,
-        doi: item.DOI,
-        title: item.title?.[0] || item['short-title']?.[0],
-        authors: item.author?.map((a: any) =>
-          a.family ? `${a.family}${a.given ? `, ${a.given}` : ''}` : ''
-        ).filter(Boolean) || [],
-        publishedDate: item.published?.['date-parts']?.[0]?.join('-'),
-        journal: item['container-title']?.[0] || item['short-container-title']?.[0],
-        score: item.score,
-        rawData: item,
-      };
+      console.log(`DOI ${item.DOI} accepted (score: ${item.score})`);
+      outcome.result = toCrossrefResult(item, item.score);
+      outcome.status = 'found';
+      return;
     }
 
     // No valid match found among the results
-    console.log(`⚠️ No valid DOI match found for: ${referenceText.substring(0, 80)}...`);
-    return null;
+    console.log(`No valid DOI match found for: ${referenceText.substring(0, 80)}...`);
+    outcome.status = 'no_match';
   } catch (error: any) {
-    console.error('Crossref search API error:', error.message);
-    return null;
+    console.error('Crossref search API error:', error?.message);
+    outcome.status = 'lookup_failed';
+    outcome.errors.push(`search: ${error?.message ?? String(error)}`);
   }
 }
 

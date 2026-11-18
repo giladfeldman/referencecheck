@@ -1,5 +1,80 @@
 # Changelog
 
+## 0.3.0 — 2026-11-18
+
+A sweep for one defect class across the whole library: **the same input read differently in
+different code paths**. Each input shape now has one reader (`src/util/normalize.ts`), and
+`tests/parity/` holds a variant matrix per reader family that was watched failing on 0.2.0.
+The same sweep found a second class, **a check that reads a field its source does not serve,
+so it can never fire and reports clean**: the expression-of-concern check, below.
+
+### Fixed
+- **Expressions of concern were never detected.** Both sources read fields their APIs do not
+  serve, so every paper was reported clean. Crossref: the check read
+  `relation['has-expression-of-concern' | 'is-expression-of-concern-for']` (not a Crossref
+  relation type) and `relationship` (not a Crossref field); Crossref records a concern as an
+  `updated-by` entry of type `expression_of_concern`, which is now read. Europe PMC: the check
+  read `commentsCorrectionsList` from a `lite` search; the field is `commentCorrectionList`, it
+  is served only with `resultType=core`, and the entry type is "Expression of concern in". The
+  query is now scoped to the DOI field and the hit must carry the DOI. Proven on recorded
+  responses (`tests/fixtures/crossref/eoc-*.json`, `tests/fixtures/europepmc/`); the two old
+  tests used hand-built bodies with the same wrong fields.
+- **A 200 with no record was "clean".** Crossref `message || {}` and Europe PMC `result || []`
+  turned an empty, HTML or list body into a clean answer. It is now `unavailable` with the new
+  reason `malformed_response`, and `complete` is false.
+- **`metadata.dateIssued`** held the paper's own issue date, unpadded (`2013-7-31`). It is now
+  the date of the concern notice, ISO; absent for Europe PMC, which gives none.
+- **DOIs.** A DOI was cleaned in eleven places with four rules. `doi:10.x/y`, `DOI: 10.x/y`,
+  `https://www.doi.org/…`, `doi.org/…`, a leading space before a resolver URL, or a
+  percent-encoded DOI were read differently by different checks: the retraction check reported
+  `originalPaperDOI: "doi:10.x/y"`, the preprint prefix detector missed every URL-form DOI,
+  `isMalformedDoi("https://doi.org/10.1037/x")` returned `true` while `validateDOI` accepted it,
+  and the expression-of-concern, preprint, replies and open-access checks put the raw string
+  into the request URL without encoding (a `#` in a DOI cut the request short). Every DOI
+  reader now uses `cleanDoiInput`, and every request URL encodes the DOI. Matrix: 9 consumers
+  × 49 written forms, plus the pure readers.
+- **Years.** `compareYear` (deduplication) read `"(2019)"` and `"c. 1984"` as no year, and
+  scored two `"in press"` references as a mismatch (0.0) while two missing years scored 0.5.
+  The DOI matcher's year rule missed `"(2019, March 3)"` and fell through to the first number
+  in the text. Both now use `parseYear`; a value with no year counts as missing.
+- **Author lists.** `calculateSimilarity` joined `normalized_authors` with ", " and
+  `compareAuthors` split on every comma, so `["Smith, J.", "Jones, K."]` was compared as four
+  people while `["J. Smith", "K. Jones"]` was two. Arrays are now passed through; strings go
+  through `splitAuthorList`, which keeps "Surname, Initials" together.
+- **Names and titles.** The ASCII-only fold turned "Müller" into "m ller" and emptied every
+  Cyrillic, Greek or Chinese name and title, which then scored 0.0 as if absent, so two
+  identical non-Latin titles were "different". The DOI matcher's surname pattern found no
+  surname in "Müller, K." (the author check was silently skipped) and rejected Crossref
+  "Müller" against a reference "Muller". All now use the Unicode-aware `foldForMatch`.
+- **Journal names.** OpenAlex journal matching compared lower-cased text only, so "Revista de
+  Psicologia" did not match "Revista de Psicología", nor "&" match "and"; the APA journal
+  extractor's year anchor missed "(2019, March 3)". Both fixed (`journalKey`).
+- **Preprints.** The EarthArXiv URL pattern was misspelled (`earharxiv.org`) and never matched.
+
+### Added
+- `findDOIFromReferenceDetailed(referenceText, creds?)`: the DOI search with `status`
+  (`found`, `no_match`, `skipped_unpublishable`, `lookup_failed`), every rejected candidate
+  with its reason, and the count dropped under the relevance threshold. `findDOIFromReference`
+  returned `null` for all four, and rejected candidates were only logged.
+- Shared readers, exported: `cleanDoiInput`, `doiForUrl`, `parseYear`, `foldForMatch`,
+  `splitAuthorList`, `formatDateParts`, `journalKey`.
+- `compareAuthors` accepts a string array as well as a string.
+
+### Changed
+- `CORRECTION_NOTICE` is gone: it read a field Crossref does not serve and never fired, and a
+  correction is not an expression of concern (corrections are `HAS_ERRATA`).
+- `EocUnavailableReason` gains `malformed_response`.
+- `CrossrefResult.publishedDate` is ISO at Crossref's precision: `"2019-03-05"`, `"1998-02"`
+  (was `"2019-3-5"`, `"1998-2"`). `validateDOI` and the DOI search now share one record mapper.
+
+### What a consumer does differently
+- Expect new expression-of-concern findings: the check works for the first time. One concern
+  found by both sources is two issues (one per source). Nothing else is required. A consumer that rendered `publishedDate` sees zero-padded dates. A
+  consumer that wants to say "DOI search failed" rather than "no DOI found" switches to
+  `findDOIFromReferenceDetailed`. Deduplication scores change only for inputs the old rules
+  misread (non-Latin or accented names and titles, "Surname, Initials" lists, years with
+  parentheses or no digits).
+
 ## 0.2.0 — 2026-10-14
 
 ### Added

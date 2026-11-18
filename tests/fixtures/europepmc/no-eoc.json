@@ -1,0 +1,408 @@
+{
+  "version": "6.9",
+  "hitCount": 1,
+  "request": {
+    "queryString": "DOI:\"10.1038/nature12373\"",
+    "resultType": "core",
+    "cursorMark": "*",
+    "pageSize": 1,
+    "sort": "",
+    "synonym": false
+  },
+  "resultList": {
+    "result": [
+      {
+        "id": "23903748",
+        "source": "MED",
+        "pmid": "23903748",
+        "pmcid": "PMC4221854",
+        "fullTextIdList": {
+          "fullTextId": [
+            "PMC4221854"
+          ]
+        },
+        "doi": "10.1038/nature12373",
+        "title": "Nanometre-scale thermometry in a living cell.",
+        "authorString": "Kucsko G, Maurer PC, Yao NY, Kubo M, Noh HJ, Lo PK, Park H, Lukin MD.",
+        "authorList": {
+          "author": [
+            {
+              "fullName": "Kucsko G",
+              "lastName": "Kucsko",
+              "firstName": "G",
+              "initials": "G",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0000-0002-4189-3154"
+              },
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "Department of Physics, Harvard University, Cambridge, Massachusetts 02138, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Maurer PC",
+              "lastName": "Maurer",
+              "firstName": "P C",
+              "initials": "PC",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0000-0001-9033-5135"
+              }
+            },
+            {
+              "fullName": "Yao NY",
+              "lastName": "Yao",
+              "firstName": "N Y",
+              "initials": "NY"
+            },
+            {
+              "fullName": "Kubo M",
+              "lastName": "Kubo",
+              "firstName": "M",
+              "initials": "M"
+            },
+            {
+              "fullName": "Noh HJ",
+              "lastName": "Noh",
+              "firstName": "H J",
+              "initials": "HJ"
+            },
+            {
+              "fullName": "Lo PK",
+              "lastName": "Lo",
+              "firstName": "P K",
+              "initials": "PK",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0000-0001-5255-1718"
+              }
+            },
+            {
+              "fullName": "Park H",
+              "lastName": "Park",
+              "firstName": "H",
+              "initials": "H",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0000-0001-9576-8829"
+              }
+            },
+            {
+              "fullName": "Lukin MD",
+              "lastName": "Lukin",
+              "firstName": "M D",
+              "initials": "MD"
+            }
+          ]
+        },
+        "authorIdList": {
+          "authorId": [
+            {
+              "type": "ORCID",
+              "value": "0000-0001-5255-1718"
+            },
+            {
+              "type": "ORCID",
+              "value": "0000-0001-9033-5135"
+            },
+            {
+              "type": "ORCID",
+              "value": "0000-0001-9576-8829"
+            },
+            {
+              "type": "ORCID",
+              "value": "0000-0002-4189-3154"
+            },
+            {
+              "type": "ORCID",
+              "value": "0009-0002-4951-7513"
+            }
+          ]
+        },
+        "dataLinksTagsList": {
+          "dataLinkstag": [
+            "altmetrics",
+            "supporting_data"
+          ]
+        },
+        "journalInfo": {
+          "issue": "7460",
+          "volume": "500",
+          "journalIssueId": 2061175,
+          "dateOfPublication": "2013 Aug",
+          "monthOfPublication": 8,
+          "yearOfPublication": 2013,
+          "journal": {
+            "medlineAbbreviation": "Nature",
+            "title": "Nature",
+            "essn": "1476-4687",
+            "issn": "0028-0836",
+            "isoabbreviation": "Nature",
+            "nlmid": "0410462"
+          },
+          "printPublicationDate": "2013-08-01"
+        },
+        "pubYear": "2013",
+        "pageInfo": "54-58",
+        "affiliation": "Department of Physics, Harvard University, Cambridge, Massachusetts 02138, USA.",
+        "publicationStatus": "ppublish",
+        "language": "eng",
+        "pubModel": "Print",
+        "pubTypeList": {
+          "pubType": [
+            "Research Support, Non-U.S. Gov't",
+            "research-article",
+            "Research Support, U.S. Gov't, Non-P.H.S.",
+            "Journal Article",
+            "Research Support, N.I.H., Extramural"
+          ]
+        },
+        "grantsList": {
+          "grant": [
+            {
+              "agency": "Swiss National Science Foundation",
+              "grantId": "143918",
+              "orderIn": 0
+            },
+            {
+              "agency": "NIH HHS",
+              "acronym": "OD",
+              "grantId": "5DP1OD003893-03",
+              "orderIn": 0
+            },
+            {
+              "agency": "NHGRI NIH HHS",
+              "acronym": "HG",
+              "grantId": "1P50HG006193-01",
+              "orderIn": 0
+            },
+            {
+              "agency": "NIDA NIH HHS",
+              "acronym": "DA",
+              "grantId": "DP1 DA035083",
+              "orderIn": 0
+            },
+            {
+              "agency": "NIH HHS",
+              "acronym": "OD",
+              "grantId": "DP1 OD003893",
+              "orderIn": 0
+            },
+            {
+              "agency": "NHGRI NIH HHS",
+              "acronym": "HG",
+              "grantId": "P50 HG006193",
+              "orderIn": 0
+            }
+          ]
+        },
+        "meshHeadingList": {
+          "meshHeading": [
+            {
+              "majorTopic_YN": "N",
+              "descriptorName": "Fibroblasts",
+              "meshQualifierList": {
+                "meshQualifier": [
+                  {
+                    "majorTopic_YN": "Y",
+                    "abbreviation": "CY",
+                    "qualifierName": "cytology"
+                  }
+                ]
+              }
+            },
+            {
+              "majorTopic_YN": "N",
+              "descriptorName": "Humans"
+            },
+            {
+              "majorTopic_YN": "N",
+              "descriptorName": "Gold"
+            },
+            {
+              "majorTopic_YN": "N",
+              "descriptorName": "Nitrogen"
+            },
+            {
+              "majorTopic_YN": "Y",
+              "descriptorName": "Thermometers"
+            },
+            {
+              "majorTopic_YN": "N",
+              "descriptorName": "Temperature"
+            },
+            {
+              "majorTopic_YN": "N",
+              "descriptorName": "Cell Survival"
+            },
+            {
+              "majorTopic_YN": "N",
+              "descriptorName": "Nanotechnology",
+              "meshQualifierList": {
+                "meshQualifier": [
+                  {
+                    "majorTopic_YN": "N",
+                    "abbreviation": "IS",
+                    "qualifierName": "instrumentation"
+                  }
+                ]
+              }
+            },
+            {
+              "majorTopic_YN": "N",
+              "descriptorName": "Color"
+            },
+            {
+              "majorTopic_YN": "N",
+              "descriptorName": "Metal Nanoparticles",
+              "meshQualifierList": {
+                "meshQualifier": [
+                  {
+                    "majorTopic_YN": "Y",
+                    "abbreviation": "CH",
+                    "qualifierName": "chemistry"
+                  }
+                ]
+              }
+            },
+            {
+              "majorTopic_YN": "N",
+              "descriptorName": "Nanodiamonds",
+              "meshQualifierList": {
+                "meshQualifier": [
+                  {
+                    "majorTopic_YN": "Y",
+                    "abbreviation": "CH",
+                    "qualifierName": "chemistry"
+                  }
+                ]
+              }
+            },
+            {
+              "majorTopic_YN": "N",
+              "descriptorName": "Single-Cell Analysis"
+            },
+            {
+              "majorTopic_YN": "N",
+              "descriptorName": "Thermometry",
+              "meshQualifierList": {
+                "meshQualifier": [
+                  {
+                    "majorTopic_YN": "Y",
+                    "abbreviation": "IS",
+                    "qualifierName": "instrumentation"
+                  },
+                  {
+                    "majorTopic_YN": "Y",
+                    "abbreviation": "MT",
+                    "qualifierName": "methods"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "chemicalList": {
+          "chemical": [
+            {
+              "name": "Gold",
+              "registryNumber": "7440-57-5"
+            },
+            {
+              "name": "Nanodiamonds",
+              "registryNumber": "0"
+            },
+            {
+              "name": "Nitrogen",
+              "registryNumber": "N762921K75"
+            }
+          ]
+        },
+        "subsetList": {
+          "subset": [
+            {
+              "code": "IM",
+              "name": "Index Medicus"
+            }
+          ]
+        },
+        "fullTextUrlList": {
+          "fullTextUrl": [
+            {
+              "availability": "Subscription required",
+              "availabilityCode": "S",
+              "documentStyle": "doi",
+              "site": "DOI",
+              "url": "https://doi.org/10.1038/nature12373"
+            },
+            {
+              "availability": "Free",
+              "availabilityCode": "F",
+              "documentStyle": "html",
+              "site": "Europe_PMC",
+              "url": "https://europepmc.org/articles/PMC4221854"
+            },
+            {
+              "availability": "Free",
+              "availabilityCode": "F",
+              "documentStyle": "pdf",
+              "site": "Europe_PMC",
+              "url": "https://europepmc.org/articles/PMC4221854?pdf=render"
+            },
+            {
+              "availability": "Free",
+              "availabilityCode": "F",
+              "documentStyle": "doi",
+              "site": "DOI",
+              "url": "https://doi.org/10.1038/nature12373"
+            }
+          ]
+        },
+        "commentCorrectionList": {
+          "commentCorrection": [
+            {
+              "source": "MED",
+              "id": "23903745",
+              "type": "Comment in",
+              "orderIn": 1
+            }
+          ]
+        },
+        "isOpenAccess": "N",
+        "inEPMC": "Y",
+        "inPMC": "Y",
+        "citedByCount": 720,
+        "hasReferences": "Y",
+        "hasTextMinedTerms": "Y",
+        "hasDbCrossReferences": "N",
+        "hasPDF": "Y",
+        "hasBook": "N",
+        "hasSuppl": "Y",
+        "hasLabsLinks": "Y",
+        "hasData": "Y",
+        "authMan": "Y",
+        "epmcAuthMan": "N",
+        "nihAuthMan": "Y",
+        "manuscriptId": "NIHMS636072",
+        "hasTMAccessionNumbers": "N",
+        "dateOfCompletion": "2013-09-13",
+        "dateOfCreation": "2013-08-02",
+        "dateOfRevision": "2026-11-08",
+        "firstPublicationDate": "2013-08-01",
+        "firstIndexDate": "2013-08-02",
+        "fullTextReceivedDate": "2025-02-05",
+        "hasEvaluations": "N"
+      }
+    ]
+  },
+  "__fixture": {
+    "doi": "10.1038/nature12373",
+    "why": "Negative control: an indexed paper with no expression of concern.",
+    "capturedAt": "2026-11-18",
+    "note": "Verbatim Europe PMC search body; abstractText and commentCorrection.reference removed."
+  }
+}

@@ -18,6 +18,7 @@
 import axios from 'axios';
 import type { MetadataCredentials } from '../http/credentials.js';
 import { DEFAULT_POLITE_EMAIL } from '../http/credentials.js';
+import { cleanDoiInput } from '../util/normalize.js';
 
 /** Shortest text accepted as an abstract; shorter is usually a title echo or a stub. */
 export const MIN_ABSTRACT_CHARS = 200;
@@ -108,15 +109,10 @@ export interface FetchAbstractOptions {
 }
 
 export function normalizeAbstractDoi(doi: string): string | null {
-  let d = (doi || '').trim().replace(/^https?:\/\/(dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, '');
-  if (/%[0-9a-f]{2}/i.test(d)) {
-    try {
-      d = decodeURIComponent(d);
-    } catch {
-      return null;
-    }
-  }
-  d = d.toLowerCase();
+  // The shared reader (src/util/normalize.ts). An escape it could not decode survives
+  // it and is rejected here, as before.
+  const d = cleanDoiInput(doi).toLowerCase();
+  if (/%[0-9a-f]{2}/i.test(d)) return null;
   return d.startsWith('10.') && d.includes('/') ? d : null;
 }
 

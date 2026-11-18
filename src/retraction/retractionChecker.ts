@@ -111,6 +111,7 @@
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
 import type { MetadataCredentials } from '../http/credentials.js';
+import { cleanDoiInput } from '../util/normalize.js';
 
 export type RetractionUnavailableReason =
   | 'rate_limited'
@@ -358,7 +359,7 @@ export async function checkRetraction(
   const { creds, sources = DEFAULT_RETRACTION_SOURCES } = options;
 
   // Clean DOI
-  const cleanDOI = doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').trim();
+  const cleanDOI = cleanDoiInput(doi);
   const sourcesChecked: RetractionSourceName[] = [];
   const sourcesUnavailable: RetractionSourceUnavailable[] = [];
 

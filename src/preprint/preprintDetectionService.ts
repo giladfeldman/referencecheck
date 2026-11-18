@@ -6,6 +6,7 @@
 import type { ReferenceInput } from '../types.js';
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
+import { cleanDoiInput } from '../util/normalize.js';
 
 export interface PreprintIssue {
   type: 'preprint-status';
@@ -55,14 +56,15 @@ const KNOWN_PREPRINT_URL_PATTERNS: Array<{ pattern: RegExp; server: string }> = 
   { pattern: /\bsocarxiv\.org\b/i, server: 'SocArXiv' },
   { pattern: /\bengrxiv\.org\b/i, server: 'engrXiv' },
   { pattern: /\bchemrxiv\.org\b/i, server: 'ChemRxiv' },
-  { pattern: /\bearharxiv\.org\b/i, server: 'EarthArXiv' },
+  { pattern: /\beartharxiv\.org\b/i, server: 'EarthArXiv' },
   { pattern: /\bpreprints\.org\b/i, server: 'Preprints.org' },
 ];
 
 export function detectKnownPreprintFromDoi(doi: string | null | undefined): string | null {
-  if (!doi) return null;
+  const clean = cleanDoiInput(doi);
+  if (!clean) return null;
   for (const { prefix, server } of KNOWN_PREPRINT_DOI_PREFIXES) {
-    if (prefix.test(doi)) return server;
+    if (prefix.test(clean)) return server;
   }
   return null;
 }
@@ -81,7 +83,7 @@ export function detectKnownPreprintFromText(text: string | null | undefined): st
 async function checkPreprintStatus(doi: string): Promise<PreprintIssue | null> {
   try {
     // Use CrossRef API to check if this is a preprint
-    const response = await crossrefGet(`https://api.crossref.org/works/${doi}`, {
+    const response = await crossrefGet(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, {
       timeout: 5000,
     });
 
@@ -151,7 +153,7 @@ async function checkPreprintStatus(doi: string): Promise<PreprintIssue | null> {
 export async function checkReferenceForPreprint(reference: ReferenceInput): Promise<PreprintIssue[]> {
   const issues: PreprintIssue[] = [];
 
-  const doi = reference.doi || reference.suggested_doi || null;
+  const doi = cleanDoiInput(reference.doi || reference.suggested_doi) || null;
   const rawText = (reference as any).raw_text as string | undefined;
   const url = (reference as any).url as string | undefined;
 

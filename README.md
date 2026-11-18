@@ -7,7 +7,7 @@ manuscript, referencecheck asks public scholarly databases what is known about e
 |---|---|---|
 | DOI validation | Does this DOI exist? Which DOI does this reference text belong to? | Crossref, doi.org |
 | Retraction | Has the work been retracted, partially retracted, removed or withdrawn? | Crossref `updated-by` (which relays Retraction Watch data); OpenRetractions opt-in |
-| Expression of concern | Has a journal published an expression of concern or correction about it? | Crossref, Europe PMC |
+| Expression of concern | Has a journal published an expression of concern about it? | Crossref, Europe PMC |
 | Replies and errata | Is there an erratum, an author reply, a comment, or is this itself a response? | Crossref relations |
 | Preprint status | Is this a preprint rather than the published version, or does it have one? | DOI prefixes, URLs, Crossref |
 | Open access | Is there a free, legal copy? | Unpaywall |
@@ -67,14 +67,14 @@ tag:
 ```jsonc
 // package.json
 "dependencies": {
-  "referencecheck": "github:giladfeldman/referencecheck#v0.2.0"
+  "referencecheck": "github:giladfeldman/referencecheck#v0.3.0"
 }
 ```
 
 or from the command line:
 
 ```bash
-npm install github:giladfeldman/referencecheck#v0.2.0
+npm install github:giladfeldman/referencecheck#v0.3.0
 ```
 
 npm clones the repository and runs the `prepare` script, which compiles `dist/` and copies the
@@ -205,7 +205,7 @@ checks.
   "we did not find out".
 - **Issues:** the per-reference checks return issue objects with `type`, `severity`, `code`,
   `description`, `location`, `suggestion` and `metadata`. The codes are `IS_PREPRINT`,
-  `HAS_PREPRINT_VERSION`, `OA_AVAILABLE`, `EOC_DETECTED`, `CORRECTION_NOTICE`, `EOC_PUBMED`,
+  `HAS_PREPRINT_VERSION`, `OA_AVAILABLE`, `EOC_DETECTED`, `EOC_PUBMED`,
   `HAS_ERRATA`, `HAS_AUTHOR_REPLY`, `HAS_COMMENTS` and `IS_RESPONSE`
   ([what each means](./docs/API.md#issue-codes)).
 - **Predatory verdict:** `determineVerdict` returns `status` (`legitimate`, `predatory`,
@@ -302,7 +302,7 @@ If you use referencecheck in research, please cite the software (see
 [CITATION.cff](./CITATION.cff)):
 
 > Feldman, G. (2026). *referencecheck: Reference-integrity checks for academic papers*
-> (Version 0.2.0) [Computer software]. https://github.com/giladfeldman/referencecheck
+> (Version 0.3.0) [Computer software]. https://github.com/giladfeldman/referencecheck
 
 Please also cite the data sources your results depend on (see [Method](#method)).
 
@@ -324,6 +324,6 @@ Versions released before 2026-11-06 were licensed under MIT and remain available
 
 **How to cite.** If you use this software in research, please cite it. GitHub's *Cite this repository* button (from [CITATION.cff](CITATION.cff)) gives APA and BibTeX. In APA style:
 
-> Feldman, G. (2026). *referencecheck: Reference-integrity checks for academic papers* (Version 0.2.0) [Computer software]. https://github.com/giladfeldman/referencecheck#readme
+> Feldman, G. (2026). *referencecheck: Reference-integrity checks for academic papers* (Version 0.3.0) [Computer software]. https://github.com/giladfeldman/referencecheck#readme
 
 <!-- license-citation:end -->

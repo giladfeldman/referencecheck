@@ -5,6 +5,7 @@
 
 import type { ReferenceInput } from '../types.js';
 import axios from 'axios';
+import { cleanDoiInput } from '../util/normalize.js';
 
 export interface OpenAccessIssue {
   type: 'open-access';
@@ -29,7 +30,7 @@ export interface OpenAccessIssue {
 async function checkOpenAccessStatus(doi: string): Promise<OpenAccessIssue | null> {
   try {
     // Try Unpaywall API (free, no key needed)
-    const response = await axios.get(`https://api.unpaywall.org/v2/${doi}?email=admin@scimeto.dev`, {
+    const response = await axios.get(`https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=admin@scimeto.dev`, {
       timeout: 5000,
     });
 
@@ -90,7 +91,7 @@ export async function checkReferenceForOpenAccess(reference: ReferenceInput): Pr
   const issues: OpenAccessIssue[] = [];
 
   // Only check if we have a DOI
-  const doi = reference.doi || reference.suggested_doi;
+  const doi = cleanDoiInput(reference.doi || reference.suggested_doi);
   if (!doi) {
     return issues;
   }

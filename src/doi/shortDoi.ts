@@ -36,6 +36,7 @@ import { formatError } from '../util/formatError.js';
 import type { MetadataCredentials } from '../http/credentials.js';
 import { DEFAULT_POLITE_EMAIL } from '../http/credentials.js';
 import { isShortFormDoi } from './doiShape.js';
+import { cleanDoiInput } from '../util/normalize.js';
 
 /** The resolver, and the only host an expansion is accepted from. */
 const DOI_RESOLVER = 'https://doi.org/';
@@ -179,7 +180,7 @@ export async function expandShortDoi(
     return { expanded: false, reason: 'not-short-form' };
   }
 
-  const alias = doi.trim();
+  const alias = cleanDoiInput(doi);
   const cacheKey = alias.toLowerCase();
 
   if (!options.noCache) {

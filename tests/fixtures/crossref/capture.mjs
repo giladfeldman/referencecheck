@@ -64,6 +64,13 @@ const CASES = [
     'Twelve update entries listing `partial_retraction` BEFORE `retraction`. Selection by array position reports the weaker verdict.'],
   ['multi-retraction-dates.json', '10.1007/s11277-021-09072-0',
     'Two `retraction` entries: a publisher notice dated 2021-09-11 and a Retraction Watch record dated 2022-12-06. The retraction happened on the earlier date.'],
+
+  // Added 2026-11-18 (class sweep): expressions of concern. Crossref serves them only
+  // in `updated-by` (type `expression_of_concern`); it has no EOC relation type.
+  ['eoc-publisher.json', '10.1016/j.lungcan.2003.10.006',
+    'Expression of concern recorded by the publisher, paper not retracted. Reported CLEAN before 0.3.0.'],
+  ['eoc-two-sources.json', '10.1371/journal.pone.0061107',
+    'Expression of concern recorded twice (publisher and Retraction Watch), paper not retracted.'],
 ];
 
 for (const [file, doi, why] of CASES) {

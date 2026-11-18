@@ -2,6 +2,12 @@ import axios from 'axios';
 import type { OpenAlexSource, OpenAlexResult } from './types.js';
 import type { MetadataCredentials } from '../http/credentials.js';
 import { DEFAULT_POLITE_EMAIL } from '../http/credentials.js';
+import { cleanDoiInput, foldForMatch } from '../util/normalize.js';
+
+/** Comparison key for a journal name: folded, with the connector words "and"/"the" dropped. */
+export function journalKey(name: string): string {
+  return foldForMatch(name).replace(/\b(?:and|the)\b/g, ' ').replace(/\s+/g, ' ').trim();
+}
 
 /**
  * The contact email sent to OpenAlex (its polite pool):
@@ -47,7 +53,9 @@ export async function searchOpenAlexByJournalName(journalName: string, creds?: M
       const results = response.data.results as OpenAlexSource[];
 
       // Find best match by comparing journal names
-      const normalizedSearch = journalName.toLowerCase().trim();
+      // One journal-name key for both sides (2026-11-18): lower-case + trim alone missed
+      // "Revista de Psicología" vs "Revista de Psicologia" and "&" vs "and".
+      const normalizedSearch = journalKey(journalName);
       let bestMatch: OpenAlexSource | null = null;
       let bestScore = 0;
 
@@ -55,7 +63,7 @@ export async function searchOpenAlexByJournalName(journalName: string, creds?: M
         // OpenAlex sources can be journals, repositories, etc. - prefer journals
         if (source.type && source.type !== 'journal') continue;
 
-        const normalizedName = source.display_name.toLowerCase().trim();
+        const normalizedName = journalKey(source.display_name);
 
         // Exact match gets highest score
         if (normalizedName === normalizedSearch) {
@@ -108,7 +116,7 @@ export async function resolveOpenAlexByDOI(doi: string, creds?: MetadataCredenti
 
   try {
     // Clean DOI (remove https://doi.org/ prefix if present)
-    const cleanDOI = doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').trim();
+    const cleanDOI = cleanDoiInput(doi);
     const email = getOpenAlexEmail(creds);
 
     // OpenAlex works endpoint - format: https://api.openalex.org/works/DOI:10.1234/example

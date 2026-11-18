@@ -1,20 +1,19 @@
 import { distance } from 'fastest-levenshtein';
 import type { ReferenceInput } from '../types.js';
 import type { DeduplicationConfig } from './types.js';
+import { foldForMatch, parseYear, splitAuthorList } from '../util/normalize.js';
 
 /**
  * Normalize author name for comparison
  * "Smith, J." -> "smith j"
- * "Smith, John" -> "smith john"
+ * "Müller, K." -> "muller k"   (accents folded, 2026-11-18)
+ * "Иванов, И." -> "иванов и"   (non-Latin letters kept, 2026-11-18)
+ *
+ * The earlier rule deleted every character outside a-z, so "Müller" became "m ller" and a
+ * Cyrillic or Chinese name became the empty string — read as "no author" (score 0.0).
  */
 export function normalizeAuthorName(name: string): string {
-  if (!name) return '';
-
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ') // Remove punctuation
-    .replace(/\s+/g, ' ')          // Normalize spaces
-    .trim();
+  return foldForMatch(name);
 }
 
 /**
@@ -46,20 +45,19 @@ function authorListDirectionalSimilarity(from: string[], to: string[]): number {
  * average both directions, which penalizes an unmatched extra author regardless
  * of which argument it sits in.
  */
-export function compareAuthors(authors1: string, authors2: string): number {
-  if (!authors1 || !authors2) {
-    // If both are missing, consider it a neutral match (0.5)
-    if (!authors1 && !authors2) return 0.5;
-    // If only one is missing, low similarity
-    return 0.0;
-  }
-
-  // Split into individual author names
-  const authors1List = authors1.split(/[,;]/).map(normalizeAuthorName).filter(a => a.length > 0);
-  const authors2List = authors2.split(/[,;]/).map(normalizeAuthorName).filter(a => a.length > 0);
+export function compareAuthors(
+  authors1: string | readonly string[],
+  authors2: string | readonly string[]
+): number {
+  // Split into individual author names. An array is already one entry per author; a
+  // string goes through splitAuthorList, which keeps "Smith, J." as ONE author (the old
+  // split on every comma made it two, so a list's score depended on how it was written).
+  const authors1List = splitAuthorList(authors1).map(normalizeAuthorName).filter(a => a.length > 0);
+  const authors2List = splitAuthorList(authors2).map(normalizeAuthorName).filter(a => a.length > 0);
 
   if (authors1List.length === 0 || authors2List.length === 0) {
-    return 0.0;
+    // If both are missing, consider it a neutral match (0.5); if only one is, low.
+    return authors1List.length === 0 && authors2List.length === 0 ? 0.5 : 0.0;
   }
 
   // Average both directions so the score is order-independent (commutative).
@@ -82,11 +80,13 @@ export function compareTitle(title1: string, title2: string): number {
   }
 
   // Normalize titles
-  const norm1 = title1.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-  const norm2 = title2.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  // Unicode-aware fold (2026-11-18): the ASCII-only rule emptied every non-Latin title,
+  // so two identical Russian titles scored 0.0.
+  const norm1 = foldForMatch(title1);
+  const norm2 = foldForMatch(title2);
 
   if (norm1.length === 0 || norm2.length === 0) {
-    return 0.0;
+    return norm1.length === 0 && norm2.length === 0 ? 0.5 : 0.0;
   }
 
   // Calculate Levenshtein distance
@@ -100,20 +100,19 @@ export function compareTitle(title1: string, title2: string): number {
 /**
  * Compare years and return similarity score (0-1)
  */
-export function compareYear(year1: string | null | undefined, year2: string | null | undefined): number {
-  if (!year1 || !year2) {
-    // If both are missing, neutral match
-    if (!year1 && !year2) return 0.5;
-    // If only one is missing, low similarity
-    return 0.0;
-  }
+export function compareYear(
+  year1: string | number | null | undefined,
+  year2: string | number | null | undefined
+): number {
+  // One shared year reader (2026-11-18). parseInt read "(2019)" as no year and "c. 1984"
+  // as no year, while the DOI matcher found both. A value with no year in it ("in press",
+  // "n.d.") is treated as missing, not as a mismatch.
+  const y1 = parseYear(year1);
+  const y2 = parseYear(year2);
 
-  // Extract year numbers
-  const y1 = parseInt(year1.toString(), 10);
-  const y2 = parseInt(year2.toString(), 10);
-
-  if (isNaN(y1) || isNaN(y2)) {
-    return 0.0;
+  if (y1 === null || y2 === null) {
+    // If both are missing, neutral match; if only one is, low similarity.
+    return y1 === null && y2 === null ? 0.5 : 0.0;
   }
 
   // Exact match = 1.0, off by 1 = 0.5, off by 2+ = 0.0
@@ -179,8 +178,9 @@ export function calculateSimilarity(
   config: DeduplicationConfig
 ): number {
   // Get normalized data
-  const authors1 = ref1.normalized_authors?.join(', ') || '';
-  const authors2 = ref2.normalized_authors?.join(', ') || '';
+  // Passed as arrays: joining with ", " and splitting again read "Smith, J." as two people.
+  const authors1 = ref1.normalized_authors ?? [];
+  const authors2 = ref2.normalized_authors ?? [];
   const title1 = ref1.normalized_title || '';
   const title2 = ref2.normalized_title || '';
   const year1 = ref1.normalized_year;

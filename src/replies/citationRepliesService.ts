@@ -6,6 +6,7 @@
 import type { ReferenceInput } from '../types.js';
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
+import { cleanDoiInput } from '../util/normalize.js';
 
 export interface CitationRepliesIssue {
   type: 'citation-replies';
@@ -31,7 +32,7 @@ async function checkForReplies(doi: string): Promise<CitationRepliesIssue[]> {
   const issues: CitationRepliesIssue[] = [];
 
   try {
-    const response = await crossrefGet(`https://api.crossref.org/works/${doi}`, {
+    const response = await crossrefGet(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, {
       timeout: 5000,
     });
 
@@ -135,7 +136,7 @@ async function checkForReplies(doi: string): Promise<CitationRepliesIssue[]> {
  */
 export async function checkReferenceForReplies(reference: ReferenceInput): Promise<CitationRepliesIssue[]> {
   // Only check if we have a DOI
-  const doi = reference.doi || reference.suggested_doi;
+  const doi = cleanDoiInput(reference.doi || reference.suggested_doi);
   if (!doi) {
     return [];
   }

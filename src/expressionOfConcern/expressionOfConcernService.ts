@@ -25,6 +25,7 @@
 import type { ReferenceInput } from '../types.js';
 import axios, { AxiosError } from 'axios';
 import { crossrefGet } from '../http/crossref.js';
+import { cleanDoiInput, formatDateParts } from '../util/normalize.js';
 
 export interface ExpressionOfConcernIssue {
   type: 'expression-of-concern';
@@ -44,7 +45,7 @@ export interface ExpressionOfConcernIssue {
 }
 
 /** Why a source could not answer. Every value here means "we do not know". */
-export type EocUnavailableReason = 'rate_limited' | 'timeout' | 'server_error' | 'network';
+export type EocUnavailableReason = 'rate_limited' | 'timeout' | 'server_error' | 'network' | 'malformed_response';
 
 /**
  * One source's verdict for one DOI.
@@ -106,69 +107,63 @@ function classifyEocError(error: unknown): EocSourceOutcome {
   return { status: 'unavailable', reason: 'network', detail: message };
 }
 
+const malformed = (detail: string): EocSourceOutcome => ({ status: 'unavailable', reason: 'malformed_response', detail });
+
 /**
- * Check if a DOI has an expression of concern via CrossRef API
+ * Check Crossref for an expression of concern on a DOI.
+ *
+ * Crossref records one as an `updated-by` entry of type `expression_of_concern`
+ * (measured 2026-11-18: 4,475 notices carry it; recorded in
+ * tests/fixtures/crossref/eoc-*.json). Before 0.3.0 this read
+ * `relation['has-expression-of-concern' | 'is-expression-of-concern-for']` and a
+ * `relationship` field: Crossref has no such relation type (its API rejects the
+ * filter as `relation-type-not-valid`) and no such field, so the check never fired.
+ * A 200 whose body has no work record is `malformed_response`, never `clean`.
  */
 async function checkCrossrefForEOC(doi: string): Promise<EocSourceOutcome> {
   try {
-    const response = await crossrefGet(`https://api.crossref.org/works/${doi}`, {
+    const response = await crossrefGet(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, {
       timeout: 5000,
     });
 
-    const data = response.data?.message || {};
+    const data = response.data?.message;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return malformed('Crossref 200 without a work record');
+    }
 
-    // Check for relations that indicate expression of concern
-    const relations = data.relation || {};
+    const updates: any[] = Array.isArray(data['updated-by']) ? data['updated-by'] : [];
+    const eocs = updates.filter((u) => u && u.type === 'expression_of_concern');
+    if (eocs.length === 0) return { status: 'clean' };
 
-    // Check for 'is-expression-of-concern-for' or 'has-expression-of-concern'
-    if (
-      relations['is-expression-of-concern-for'] ||
-      relations['has-expression-of-concern']
-    ) {
-      return {
-        status: 'issue',
-        issue: {
-          type: 'expression-of-concern',
-          severity: 'warning',
-          code: 'EOC_DETECTED',
-          description: 'This paper has an expression of concern from the journal',
-          location: doi,
-          suggestion: 'Review the expression of concern and contact the authors if needed',
-          metadata: {
-            doi,
-            journalName: data['container-title']?.[0],
-            dateIssued: data['issued']?.['date-parts']?.[0]?.join('-'),
-            source: 'CrossRef',
-          },
+    // Earliest notice date: a concern recorded by both the publisher and Retraction
+    // Watch is one concern, raised on the first date.
+    const dates = eocs
+      .map((u) => formatDateParts(u.updated?.['date-parts']?.[0]))
+      .filter((d): d is string => !!d)
+      .sort();
+    const notices = [...new Set(eocs.map((u) => (typeof u.DOI === 'string' ? u.DOI : '')).filter((d) => d && d.toLowerCase() !== doi.toLowerCase()))];
+    const recordedBy = [...new Set(eocs.map((u) => u.source).filter((x) => typeof x === 'string'))];
+    return {
+      status: 'issue',
+      issue: {
+        type: 'expression-of-concern',
+        severity: 'warning',
+        code: 'EOC_DETECTED',
+        description: 'This paper has an expression of concern from the journal',
+        location: doi,
+        suggestion: 'Review the expression of concern and contact the authors if needed',
+        metadata: {
+          doi,
+          journalName: Array.isArray(data['container-title']) ? data['container-title'][0] : undefined,
+          dateIssued: dates[0],
+          details: [
+            notices.length ? `notice: ${notices.join(', ')}` : '',
+            recordedBy.length ? `recorded by: ${recordedBy.join(', ')}` : '',
+          ].filter(Boolean).join('; ') || undefined,
+          source: 'CrossRef',
         },
-      };
-    }
-
-    // Check for withdrawal or correction notices
-    if (data.type === 'journal-article' && data.relationship) {
-      const hasWarningRelation = data.relationship.some((rel: any) =>
-        ['is-corrected-by', 'is-expression-of-concern-for'].includes(rel.type)
-      );
-
-      if (hasWarningRelation) {
-        return {
-          status: 'issue',
-          issue: {
-            type: 'expression-of-concern',
-            severity: 'warning',
-            code: 'CORRECTION_NOTICE',
-            description: 'This paper has a correction or concern notice',
-            location: doi,
-            metadata: {
-              doi,
-              source: 'CrossRef',
-            },
-          },
-        };
-      }
-    }
-
-    return { status: 'clean' };
+      },
+    };
   } catch (error: any) {
     const outcome = classifyEocError(error);
     if (outcome.status === 'unavailable' && outcome.reason === 'server_error') {
@@ -179,54 +174,60 @@ async function checkCrossrefForEOC(doi: string): Promise<EocSourceOutcome> {
 }
 
 /**
- * Check PubMed for expression of concern notices
+ * Check Europe PMC (which carries PubMed's comment/correction links) for an
+ * expression of concern on a DOI.
+ *
+ * The search is scoped to the DOI field (`DOI:"..."`) and asks for `resultType=core`,
+ * the only result type that includes `commentCorrectionList`. A paper with a concern
+ * carries an entry of type "Expression of concern in" (the notice itself carries
+ * "Expression of concern for", which is not a concern about the notice). Before
+ * 0.3.0 the query was unscoped, the result type was `lite`, and the field read was
+ * `commentsCorrectionsList`, so the check never fired. An empty result list is a
+ * definitive "no record"; a 200 without a result list is `malformed_response`.
  */
 async function checkPubmedForEOC(doi: string): Promise<EocSourceOutcome> {
   try {
-    // Extract PMID from DOI via Europe PubMed Central API
     const response = await axios.get('https://www.ebi.ac.uk/europepmc/webservices/rest/search', {
       params: {
-        query: doi,
+        query: `DOI:"${doi}"`,
         format: 'json',
         pageSize: 1,
+        resultType: 'core',
       },
-      timeout: 5000,
+      // `core` is slow on a record's first request: measured 2026-11-18 on six DOIs
+      // not requested before, 10.8 s and 3.2 s for two of them (the `lite` search,
+      // which lacks the field, took under 1.5 s). 5 s made this source time out.
+      timeout: 15000,
     });
 
-    const results = response.data?.resultList?.result || [];
+    const results = response.data?.resultList?.result;
+    if (!Array.isArray(results)) return malformed('Europe PMC 200 without a result list');
 
     // Not indexed here is a definitive "this source has no EOC for that DOI".
-    if (results.length === 0) {
-      return { status: 'clean' };
-    }
+    const article = results.find((r: any) => typeof r?.doi === 'string' && r.doi.toLowerCase() === doi.toLowerCase());
+    if (!article) return { status: 'clean' };
 
-    const article = results[0];
+    const raw = article.commentCorrectionList?.commentCorrection;
+    const links: any[] = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    const eoc = links.filter((c) => typeof c?.type === 'string' && /^expression of concern in$/i.test(c.type.trim()));
+    if (eoc.length === 0) return { status: 'clean' };
 
-    // Check for EOC indicator in comments
-    if (
-      article.commentsCorrectionsList?.some(
-        (item: any) => item.type === 'ExpressionOfConcern'
-      )
-    ) {
-      return {
-        status: 'issue',
-        issue: {
-          type: 'expression-of-concern',
-          severity: 'warning',
-          code: 'EOC_PUBMED',
-          description: 'PubMed records an expression of concern for this paper',
-          location: article.pmid || doi,
-          metadata: {
-            doi,
-            journalName: article.journalTitle,
-            dateIssued: article.pubYear,
-            source: 'PubMed',
-          },
+    return {
+      status: 'issue',
+      issue: {
+        type: 'expression-of-concern',
+        severity: 'warning',
+        code: 'EOC_PUBMED',
+        description: 'PubMed records an expression of concern for this paper',
+        location: article.pmid || doi,
+        metadata: {
+          doi,
+          journalName: article.journalInfo?.journal?.title ?? article.journalTitle,
+          details: eoc.map((c) => (c.id ? `notice: ${c.source ?? 'MED'} ${c.id}` : '')).filter(Boolean).join('; ') || undefined,
+          source: 'PubMed',
         },
-      };
-    }
-
-    return { status: 'clean' };
+      },
+    };
   } catch (error) {
     const outcome = classifyEocError(error);
     if (outcome.status === 'unavailable' && outcome.reason === 'server_error') {
@@ -265,7 +266,7 @@ const SOURCES: Array<{ name: string; check: (doi: string) => Promise<EocSourceOu
 export async function checkReferenceForEOCDetailed(
   reference: ReferenceInput
 ): Promise<EocReferenceResult> {
-  const doi = reference.doi || reference.suggested_doi;
+  const doi = cleanDoiInput(reference.doi || reference.suggested_doi);
 
   // No DOI is not a failure to check — there is nothing to look up. `complete`
   // stays true so a bibliography of DOI-less references is not reported as

@@ -5,6 +5,7 @@
  */
 
 import axios from 'axios';
+import { cleanDoiInput } from '../util/normalize.js';
 
 const OPENCITATIONS_API = 'https://api.opencitations.net/index/v1';
 
@@ -31,7 +32,7 @@ export interface CitingWork {
  */
 export async function getCitationCount(doi: string): Promise<number | null> {
   try {
-    const cleanDOI = doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').trim();
+    const cleanDOI = cleanDoiInput(doi);
     const url = `${OPENCITATIONS_API}/citation-count/${encodeURIComponent(cleanDOI)}`;
 
     const response = await axios.get(url, {
@@ -131,7 +132,7 @@ export async function getCitationCount(doi: string): Promise<number | null> {
  */
 export async function getCitingWorks(doi: string): Promise<CitingWork[]> {
   try {
-    const cleanDOI = doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').trim();
+    const cleanDOI = cleanDoiInput(doi);
 
     const response = await axios.get(`${OPENCITATIONS_API}/citations/${encodeURIComponent(cleanDOI)}`, {
       headers: {

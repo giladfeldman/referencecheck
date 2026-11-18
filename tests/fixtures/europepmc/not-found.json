@@ -1,0 +1,21 @@
+{
+  "version": "6.9",
+  "hitCount": 0,
+  "request": {
+    "queryString": "DOI:\"10.9999/does-not-exist-2026\"",
+    "resultType": "core",
+    "cursorMark": "*",
+    "pageSize": 1,
+    "sort": "",
+    "synonym": false
+  },
+  "resultList": {
+    "result": []
+  },
+  "__fixture": {
+    "doi": "10.9999/does-not-exist-2026",
+    "why": "A DOI Europe PMC holds no record for: an empty result list, a definitive \"no record here\".",
+    "capturedAt": "2026-11-18",
+    "note": "Verbatim Europe PMC search body; abstractText and commentCorrection.reference removed."
+  }
+}
