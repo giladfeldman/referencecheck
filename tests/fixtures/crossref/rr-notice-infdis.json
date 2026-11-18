@@ -1,0 +1,220 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2025,
+          12,
+          31
+        ]
+      ],
+      "date-time": "2025-12-31T05:58:06Z",
+      "timestamp": 1767160686179,
+      "version": "build-2238731810"
+    },
+    "update-to": [
+      {
+        "DOI": "10.1093/infdis/jiae178",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "retraction-watch",
+        "updated": {
+          "date-parts": [
+            [
+              2024,
+              8,
+              6
+            ]
+          ],
+          "date-time": "2024-08-06T00:00:00Z",
+          "timestamp": 1722902400000
+        },
+        "record-id": "55567"
+      }
+    ],
+    "publisher": "Oxford University Press (OUP)",
+    "issue": "3",
+    "license": [
+      {
+        "start": {
+          "date-parts": [
+            [
+              2024,
+              8,
+              6
+            ]
+          ],
+          "date-time": "2024-08-06T00:00:00Z",
+          "timestamp": 1722902400000
+        },
+        "content-version": "vor",
+        "delay-in-days": 0,
+        "URL": "https://academic.oup.com/pages/standard-publication-reuse-rights"
+      }
+    ],
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [],
+    "published-print": {
+      "date-parts": [
+        [
+          2025,
+          3,
+          17
+        ]
+      ]
+    },
+    "DOI": "10.1093/infdis/jiae358",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [
+        [
+          2024,
+          8,
+          6
+        ]
+      ],
+      "date-time": "2024-08-06T02:45:41Z",
+      "timestamp": 1722912341000
+    },
+    "page": "e590-e590",
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "Retraction and replacement of: Commentary: Mendelian Randomization for Causal Inference"
+    ],
+    "prefix": "10.1093",
+    "volume": "231",
+    "member": "286",
+    "published-online": {
+      "date-parts": [
+        [
+          2024,
+          8,
+          6
+        ]
+      ]
+    },
+    "container-title": [
+      "The Journal of Infectious Diseases"
+    ],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https://academic.oup.com/jid/advance-article-pdf/doi/10.1093/infdis/jiae358/58739386/jiae358.pdf",
+        "content-type": "application/pdf",
+        "content-version": "am",
+        "intended-application": "syndication"
+      },
+      {
+        "URL": "https://academic.oup.com/jid/article-pdf/231/3/e590/58739386/jiae358.pdf",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "syndication"
+      },
+      {
+        "URL": "https://academic.oup.com/jid/article-pdf/231/3/e590/58739386/jiae358.pdf",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [
+        [
+          2025,
+          3,
+          17
+        ]
+      ],
+      "date-time": "2025-03-17T13:02:26Z",
+      "timestamp": 1742216546000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://academic.oup.com/jid/article/231/3/e590/7727685"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2024,
+          8,
+          6
+        ]
+      ]
+    },
+    "references-count": 0,
+    "journal-issue": {
+      "issue": "3",
+      "published-online": {
+        "date-parts": [
+          [
+            2024,
+            8,
+            6
+          ]
+        ]
+      },
+      "published-print": {
+        "date-parts": [
+          [
+            2025,
+            3,
+            17
+          ]
+        ]
+      }
+    },
+    "URL": "https://doi.org/10.1093/infdis/jiae358",
+    "relation": {},
+    "ISSN": [
+      "0022-1899",
+      "1537-6613"
+    ],
+    "issn-type": [
+      {
+        "value": "0022-1899",
+        "type": "print"
+      },
+      {
+        "value": "1537-6613",
+        "type": "electronic"
+      }
+    ],
+    "subject": [],
+    "published-other": {
+      "date-parts": [
+        [
+          2025,
+          3,
+          15
+        ]
+      ]
+    },
+    "published": {
+      "date-parts": [
+        [
+          2024,
+          8,
+          6
+        ]
+      ]
+    }
+  },
+  "__fixture": {
+    "doi": "10.1093/infdis/jiae358",
+    "why": "Its notice, titled \"Retraction and replacement of: ...\".",
+    "capturedAt": "2026-11-18",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}

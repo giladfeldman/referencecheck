@@ -83,14 +83,56 @@ const CASES = [
     'A bioRxiv posted-content record: `institution` is an ARRAY ([{name}]), read as an object before 0.3.0.'],
   ['cshl-journal-article.json', '10.1101/pdb.prot099176',
     'A Cold Spring Harbor Protocols journal article under the bioRxiv prefix 10.1101, flagged as a preprint by the prefix heuristic before 0.3.0.'],
+  // Added 2026-11-18 for retraction timing and retracted-and-replaced (v0.3.0).
+  ['retracted-rw-jama.json', '10.1001/jama.2018.17933',
+    'JAMA 2018, retracted 2019-10-08. Crossref carries a plain Retraction Watch `retraction` (no reason, no replacement link); a later JAMA article with a near-identical title exists (10.1001/jama.2019.11982), but neither Crossref nor Retraction Watch labels it a replacement.'],
+  ['retracted-f1000-versions.json', '10.12688/f1000research.8114.1',
+    'F1000Research v1, retracted, with `new_version` entries naming v2 and v3 — which were retracted too. Proof that `new_version` is not evidence of a corrected replacement.'],
+  ['rr-title-carcin.json', '10.1093/carcin/bgs140',
+    'OUP retract-and-replace whose OWN title reads "RETRACTED AND REPLACED:". Its `updated-by` is a plain Retraction Watch `retraction`.'],
+  ['rr-notice-carcin.json', '10.1093/carcin/bgaf065',
+    'Its notice, titled "Retraction and replacement of: ...".'],
+  ['rr-plain-infdis.json', '10.1093/infdis/jiae178',
+    'OUP retract-and-replace with a PLAIN title; only the notice title and the Retraction Watch reason say "replace".'],
+  ['rr-notice-infdis.json', '10.1093/infdis/jiae358',
+    'Its notice, titled "Retraction and replacement of: ...".'],
+  ['rr-replacement-infdis.json', '10.1093/infdis/jiae357',
+    'The replacement article the Retraction Watch notes link to (".../doi/10.1093/infdis/jiae357/7727684").'],
+  ['jama-notice.json', '10.1001/jama.2019.11954',
+    'The JAMA notice: "Notice of Retraction. ..." — no replacement wording.'],
 ];
 
-// `node capture.mjs corrected.json has-reply.json` re-captures only the named files.
-const ONLY = new Set(process.argv.slice(2));
+/**
+ * Crossref LABS bodies (api.labs.crossref.org), which add the Retraction Watch
+ * block `cr-labs-updates` (reasons, notes). Crossref labels its keys unstable;
+ * these fixtures pin the shape measured on the capture date.
+ */
+const LABS_CASES = [
+  ['labs-rr-infdis.json', '10.1093/infdis/jiae178',
+    'Reasons include "etract and Replace" (Labs cuts the first character of every reason); notes link the replacement.'],
+  ['labs-empty-carcin.json', '10.1093/carcin/bgs140',
+    'A retract-and-replace for which Labs serves an EMPTY block `{}` — proof that "no Labs record" is not "not replaced".'],
+  ['labs-jama.json', '10.1001/jama.2018.17933',
+    'A Retraction Watch record whose reasons do NOT include Retract and Replace.'],
+];
 
-for (const [file, doi, why] of CASES) {
-  if (ONLY.size && !ONLY.has(file)) continue;
-  const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, { headers: UA });
+// `node capture.mjs a.json b.json` (or ONLY=a.json,b.json) re-captures only those.
+const ONLY_LIST = [...process.argv.slice(2), ...(process.env.ONLY ? process.env.ONLY.split(',') : [])];
+const ONLY = ONLY_LIST.length ? new Set(ONLY_LIST) : null;
+const ALL = [
+  ...CASES.map(([f, d, w]) => [f, d, w, `https://api.crossref.org/works/${encodeURIComponent(d)}`]),
+  ...LABS_CASES.map(([f, d, w]) => [f, d, w,
+    `https://api.labs.crossref.org/works/${encodeURIComponent(d)}?mailto=${encodeURIComponent(MAILTO)}`]),
+];
+for (const [file, doi, why, url] of ALL) {
+  if (ONLY && !ONLY.has(file)) continue;
+  let res;
+  // Crossref Labs answers 503 often (measured 2026-11-18): a few slow retries.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    res = await fetch(url, { headers: UA });
+    if (res.status !== 503 && res.status !== 504) break;
+    await new Promise((r) => setTimeout(r, 5000));
+  }
   if (res.status !== 200) throw new Error(`${doi} -> HTTP ${res.status}`);
   const body = await res.json();
   // `reference` is large and no code path under test reads it. `abstract` is

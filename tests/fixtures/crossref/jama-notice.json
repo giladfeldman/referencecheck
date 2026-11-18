@@ -1,0 +1,224 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2026,
+          9,
+          24
+        ]
+      ],
+      "date-time": "2026-09-24T14:20:01Z",
+      "timestamp": 1790259601665,
+      "version": "4.1.0"
+    },
+    "update-to": [
+      {
+        "DOI": "10.1001/jama.2018.17508",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "retraction-watch",
+        "updated": {
+          "date-parts": [
+            [
+              2019,
+              10,
+              8
+            ]
+          ],
+          "date-time": "2019-10-08T00:00:00Z",
+          "timestamp": 1570492800000
+        },
+        "record-id": "21452"
+      },
+      {
+        "DOI": "10.1001/jama.2018.17933",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "retraction-watch",
+        "updated": {
+          "date-parts": [
+            [
+              2019,
+              10,
+              8
+            ]
+          ],
+          "date-time": "2019-10-08T00:00:00Z",
+          "timestamp": 1570492800000
+        },
+        "record-id": "21358"
+      }
+    ],
+    "publisher": "American Medical Association (AMA)",
+    "issue": "14",
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [
+      "JAMA"
+    ],
+    "published-print": {
+      "date-parts": [
+        [
+          2019,
+          10,
+          8
+        ]
+      ]
+    },
+    "DOI": "10.1001/jama.2019.11954",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [
+        [
+          2019,
+          10,
+          8
+        ]
+      ],
+      "date-time": "2019-10-08T15:33:40Z",
+      "timestamp": 1570548820000
+    },
+    "page": "1417",
+    "source": "Crossref",
+    "is-referenced-by-count": 11,
+    "title": [
+      "Notice of Retraction. Aboumatar et al. Effect of a Program Combining Transitional Care and Long-term Self-management Support on Outcomes of Hospitalized Patients With Chronic Obstructive Pulmonary Disease: A Randomized Clinical Trial. <i>JAMA</i>. 2018;320(22):2335-2343."
+    ],
+    "prefix": "10.1001",
+    "volume": "322",
+    "author": [
+      {
+        "given": "Hanan",
+        "family": "Aboumatar",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "Armstrong Institute for Patient Safety and Quality, Johns Hopkins School of Medicine, Baltimore, Maryland"
+          },
+          {
+            "name": "Division of General Internal Medicine, Department of Medicine, Johns Hopkins School of Medicine, Baltimore, Maryland"
+          },
+          {
+            "name": "Department of Health, Behavior, and Society, Johns Hopkins Bloomberg School of Public Health, Baltimore, Maryland"
+          },
+          {
+            "name": "Welch Center for Prevention, Epidemiology, and Clinical Research, Johns Hopkins University, Baltimore, Maryland"
+          },
+          {
+            "name": "Department of Health Policy and Management, Johns Hopkins Bloomberg School of Public Health, Baltimore, Maryland"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Robert A.",
+        "family": "Wise",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Pulmonary and Critical Care Medicine, Johns Hopkins School of Medicine, Baltimore, Maryland"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "10",
+    "container-title": [
+      "JAMA"
+    ],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https://jamanetwork.com/journals/jama/articlepdf/2752474/jama_aboumatar_2019_rx_190001.pdf",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [
+        [
+          2019,
+          10,
+          9
+        ]
+      ],
+      "date-time": "2019-10-09T15:31:17Z",
+      "timestamp": 1570635077000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://jamanetwork.com/journals/jama/fullarticle/2752474"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2019,
+          10,
+          8
+        ]
+      ]
+    },
+    "references-count": 2,
+    "journal-issue": {
+      "issue": "14",
+      "published-print": {
+        "date-parts": [
+          [
+            2019,
+            10,
+            8
+          ]
+        ]
+      }
+    },
+    "URL": "https://doi.org/10.1001/jama.2019.11954",
+    "relation": {},
+    "ISSN": [
+      "0098-7484"
+    ],
+    "issn-type": [
+      {
+        "value": "0098-7484",
+        "type": "print"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [
+        [
+          2019,
+          10,
+          8
+        ]
+      ]
+    }
+  },
+  "__fixture": {
+    "doi": "10.1001/jama.2019.11954",
+    "why": "The JAMA notice: \"Notice of Retraction. ...\" — no replacement wording.",
+    "capturedAt": "2026-11-18",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}

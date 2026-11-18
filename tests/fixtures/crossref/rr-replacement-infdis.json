@@ -1,0 +1,276 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2026,
+          10,
+          23
+        ]
+      ],
+      "date-time": "2026-10-23T22:27:56Z",
+      "timestamp": 1792794476940,
+      "version": "4.5.0"
+    },
+    "publisher": "Oxford University Press (OUP)",
+    "issue": "3",
+    "license": [
+      {
+        "start": {
+          "date-parts": [
+            [
+              2024,
+              8,
+              6
+            ]
+          ],
+          "date-time": "2024-08-06T00:00:00Z",
+          "timestamp": 1722902400000
+        },
+        "content-version": "vor",
+        "delay-in-days": 0,
+        "URL": "https://academic.oup.com/pages/standard-publication-reuse-rights"
+      }
+    ],
+    "funder": [
+      {
+        "DOI": "10.13039/501100000038",
+        "name": "Natural Sciences and Engineering Research Council of Canada",
+        "doi-asserted-by": "publisher",
+        "id": [
+          {
+            "id": "10.13039/501100000038",
+            "id-type": "DOI",
+            "asserted-by": "publisher"
+          }
+        ]
+      },
+      {
+        "name": "a Chercheur de mérite career award from the Fonds de recherche du Québec",
+        "id": [
+          {
+            "id": "https://ror.org/00w3qhf76",
+            "id-type": "ROR",
+            "asserted-by": "crossref"
+          }
+        ]
+      },
+      {
+        "DOI": "10.13039/501100000024",
+        "name": "Canadian Institutes of Health Research",
+        "doi-asserted-by": "publisher",
+        "id": [
+          {
+            "id": "10.13039/501100000024",
+            "id-type": "DOI",
+            "asserted-by": "publisher"
+          }
+        ]
+      }
+    ],
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [],
+    "published-print": {
+      "date-parts": [
+        [
+          2025,
+          3,
+          17
+        ]
+      ]
+    },
+    "DOI": "10.1093/infdis/jiae357",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [
+        [
+          2024,
+          8,
+          6
+        ]
+      ],
+      "date-time": "2024-08-06T02:45:39Z",
+      "timestamp": 1722912339000
+    },
+    "page": "556-558",
+    "source": "Crossref",
+    "is-referenced-by-count": 8,
+    "title": [
+      "Instrumental Variables Analysis and Mendelian Randomization for Causal Inference"
+    ],
+    "prefix": "10.1093",
+    "volume": "231",
+    "author": [
+      {
+        "given": "Erica E M",
+        "family": "Moodie",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "Department of Epidemiology and Biostatistics, McGill University , Montreal ,",
+            "place": [
+              "Canada"
+            ]
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Saskia",
+        "family": "le Cessie",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Department of Clinical Epidemiology and Department of Biomedical Data Sciences, Leiden University ,",
+            "place": [
+              "The Netherlands"
+            ]
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "286",
+    "published-online": {
+      "date-parts": [
+        [
+          2024,
+          8,
+          6
+        ]
+      ]
+    },
+    "container-title": [
+      "The Journal of Infectious Diseases"
+    ],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https://academic.oup.com/jid/advance-article-pdf/doi/10.1093/infdis/jiae357/58739381/jiae357.pdf",
+        "content-type": "application/pdf",
+        "content-version": "am",
+        "intended-application": "syndication"
+      },
+      {
+        "URL": "https://academic.oup.com/jid/article-pdf/231/3/556/58739381/jiae357.pdf",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "syndication"
+      },
+      {
+        "URL": "https://academic.oup.com/jid/article-pdf/231/3/556/58739381/jiae357.pdf",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [
+        [
+          2025,
+          3,
+          17
+        ]
+      ],
+      "date-time": "2025-03-17T05:16:28Z",
+      "timestamp": 1742188588000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://academic.oup.com/jid/article/231/3/556/7727684"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2024,
+          8,
+          6
+        ]
+      ]
+    },
+    "references-count": 7,
+    "journal-issue": {
+      "issue": "3",
+      "published-online": {
+        "date-parts": [
+          [
+            2024,
+            8,
+            6
+          ]
+        ]
+      },
+      "published-print": {
+        "date-parts": [
+          [
+            2025,
+            3,
+            17
+          ]
+        ]
+      }
+    },
+    "URL": "https://doi.org/10.1093/infdis/jiae357",
+    "relation": {},
+    "ISSN": [
+      "0022-1899",
+      "1537-6613"
+    ],
+    "issn-type": [
+      {
+        "value": "0022-1899",
+        "type": "print"
+      },
+      {
+        "value": "1537-6613",
+        "type": "electronic"
+      }
+    ],
+    "subject": [],
+    "published-other": {
+      "date-parts": [
+        [
+          2025,
+          3,
+          15
+        ]
+      ]
+    },
+    "published": {
+      "date-parts": [
+        [
+          2024,
+          8,
+          6
+        ]
+      ]
+    }
+  },
+  "__fixture": {
+    "doi": "10.1093/infdis/jiae357",
+    "why": "The replacement article the Retraction Watch notes link to (\".../doi/10.1093/infdis/jiae357/7727684\").",
+    "capturedAt": "2026-11-18",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}

@@ -116,6 +116,26 @@ tells a paper author that a perfectly good reference is retracted. Meta-science
 bibliographies are full of papers about retraction — 8 of 8 in a Crossref search — and
 v0.1.3 flagged all of them.
 
+### Consumer action outstanding from v0.4.0
+
+1. **`verdict`** (`clean` | `flagged` | `could_not_check`) on every retraction result. Two
+   inputs that used to come back as a checked clean are now `could_not_check`: a Crossref 200
+   whose body is not one work's record (`malformed_response`), and a DOI that is not
+   DOI-shaped (`invalid_doi`, previously sent to Crossref as `/works/`, whose list body read as
+   clean). Count them as unchecked.
+2. **`timing`** on every flagged result, from `options.citing` — pass the manuscript's
+   publication date or DOI. `before_citing` (cited after it was retracted: the authors' error)
+   and `after_citing` (retracted after it was cited: not their fault) must render differently;
+   `describeRetractionTiming` gives the sentence. An unpublished manuscript has no
+   publication date; every retraction found has already happened when it is being cited, so the
+   honest input is the date of the check (or of submission), passed as `publishedDate` and
+   labelled as such in the report — not left out, which shows `unknown`.
+3. **`replacement`** on every flagged result: `replaced` (with `evidence` and, when known,
+   `replacementDOI`), `not_recorded` or `unknown`. `not_recorded` is common because the sources
+   often omit the link; render it as "no replacement recorded", never as "not replaced", and
+   `unknown` as "could not check for a replacement". The lookups add a few requests per FLAGGED
+   reference only (one of them to `api.labs.crossref.org`).
+
 ### Consumer action outstanding from v0.1.4
 
 Two things this release added that the consumer must actually read, or the

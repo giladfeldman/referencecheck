@@ -1,0 +1,364 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2026,
+          8,
+          28
+        ]
+      ],
+      "date-time": "2026-08-28T08:26:38Z",
+      "timestamp": 1787905598950,
+      "version": "build-2784847793"
+    },
+    "update-to": [
+      {
+        "DOI": "10.12688/f1000research.8114.1",
+        "type": "expression_of_concern",
+        "label": "Expression of concern",
+        "source": "retraction-watch",
+        "updated": {
+          "date-parts": [
+            [
+              2017,
+              3,
+              31
+            ]
+          ],
+          "date-time": "2017-03-31T00:00:00Z",
+          "timestamp": 1490918400000
+        },
+        "record-id": "6067"
+      },
+      {
+        "DOI": "10.12688/f1000research.8114.1",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2017,
+              5,
+              25
+            ]
+          ],
+          "date-time": "2017-05-25T00:00:00Z",
+          "timestamp": 1495670400000
+        }
+      }
+    ],
+    "publisher": "F1000 Research Ltd",
+    "license": [
+      {
+        "start": {
+          "date-parts": [
+            [
+              2016,
+              2,
+              26
+            ]
+          ],
+          "date-time": "2016-02-26T00:00:00Z",
+          "timestamp": 1456444800000
+        },
+        "content-version": "unspecified",
+        "delay-in-days": 0,
+        "URL": "http://creativecommons.org/licenses/by/4.0/"
+      }
+    ],
+    "content-domain": {
+      "domain": [
+        "f1000research.com"
+      ],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [
+      "F1000Res"
+    ],
+    "DOI": "10.12688/f1000research.8114.1",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [
+        [
+          2016,
+          2,
+          26
+        ]
+      ],
+      "date-time": "2016-02-26T06:30:05Z",
+      "timestamp": 1456468205000
+    },
+    "page": "222",
+    "update-policy": "https://doi.org/10.12688/f1000research.crossmark-policy",
+    "source": "Crossref",
+    "is-referenced-by-count": 34,
+    "title": [
+      "How blockchain-timestamped protocols could improve the trustworthiness of medical science"
+    ],
+    "prefix": "10.12688",
+    "volume": "5",
+    "author": [
+      {
+        "given": "Greg",
+        "family": "Irving",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "John",
+        "family": "Holden",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "2560",
+    "published-online": {
+      "date-parts": [
+        [
+          2016,
+          2,
+          26
+        ]
+      ]
+    },
+    "updated-by": [
+      {
+        "DOI": "10.12688/f1000research.8114.1",
+        "type": "expression_of_concern",
+        "label": "Expression of concern",
+        "source": "retraction-watch",
+        "updated": {
+          "date-parts": [
+            [
+              2017,
+              3,
+              31
+            ]
+          ],
+          "date-time": "2017-03-31T00:00:00Z",
+          "timestamp": 1490918400000
+        },
+        "record-id": "6067"
+      },
+      {
+        "DOI": "10.12688/f1000research.8114.3",
+        "type": "new_version",
+        "label": "New version",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2017,
+              3,
+              30
+            ]
+          ],
+          "date-time": "2017-03-30T00:00:00Z",
+          "timestamp": 1490832000000
+        }
+      },
+      {
+        "DOI": "10.12688/f1000research.8114.1",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2017,
+              5,
+              25
+            ]
+          ],
+          "date-time": "2017-05-25T00:00:00Z",
+          "timestamp": 1495670400000
+        }
+      },
+      {
+        "DOI": "10.12688/f1000research.8114.2",
+        "type": "new_version",
+        "label": "New version",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2016,
+              5,
+              25
+            ]
+          ],
+          "date-time": "2016-05-25T00:00:00Z",
+          "timestamp": 1464134400000
+        }
+      }
+    ],
+    "container-title": [
+      "F1000Research"
+    ],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https://f1000research.com/articles/5-222/v1/xml",
+        "content-type": "application/xml",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://f1000research.com/articles/5-222/v1/pdf",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://f1000research.com/articles/5-222/v1/iparadigms",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [
+        [
+          2018,
+          12,
+          5
+        ]
+      ],
+      "date-time": "2018-12-05T13:50:46Z",
+      "timestamp": 1544017846000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://f1000research.com/articles/5-222/v1"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2016,
+          2,
+          26
+        ]
+      ]
+    },
+    "references-count": 12,
+    "URL": "https://doi.org/10.12688/f1000research.8114.1",
+    "relation": {
+      "has-review": [
+        {
+          "id-type": "doi",
+          "id": "10.5256/f1000research.8730.r12891",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.5256/f1000research.8730.r13757",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.5256/f1000research.8730.r13757",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.5256/f1000research.8730.r12891",
+          "asserted-by": "object"
+        }
+      ]
+    },
+    "ISSN": [
+      "2046-1402"
+    ],
+    "issn-type": [
+      {
+        "value": "2046-1402",
+        "type": "electronic"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [
+        [
+          2016,
+          2,
+          26
+        ]
+      ]
+    },
+    "assertion": [
+      {
+        "value": "Indexed",
+        "URL": "https://f1000research.com/articles/5-222/v1#article-reports",
+        "order": 0,
+        "name": "referee-status",
+        "label": "Referee status",
+        "group": {
+          "name": "current-referee-status",
+          "label": "Current Referee Status"
+        }
+      },
+      {
+        "value": "10.5256/f1000research.8730.r12891, Amy I Price, Department for Continuing Education, University of Oxford , Oxford, UK, 29 Mar 2016, version 1, retracted",
+        "URL": "https://f1000research.com/articles/5-222/v1#referee-response-12891",
+        "order": 0,
+        "name": "referee-response-12891",
+        "label": "Referee Report",
+        "group": {
+          "name": "article-reports",
+          "label": "Article Reports"
+        }
+      },
+      {
+        "value": "10.5256/f1000research.8730.r13757, Luís Pinho-Costa, Fânzeres Family Health Unit, Gondomar, Portugal, 11 May 2016, version 1, retracted",
+        "URL": "https://f1000research.com/articles/5-222/v1#referee-response-13757",
+        "order": 1,
+        "name": "referee-response-13757",
+        "label": "Referee Report",
+        "group": {
+          "name": "article-reports",
+          "label": "Article Reports"
+        }
+      },
+      {
+        "value": "The author(s) declared that no grants were involved in supporting this work",
+        "order": 2,
+        "name": "grant-information",
+        "label": "Grant Information"
+      },
+      {
+        "value": "This is an open access article distributed under the terms of the Creative Commons Attribution Licence, which permits unrestricted use, distribution, and reproduction in any medium, provided the original work is properly cited.Data associated with the article are available under the terms of the Creative Commons Zero \"No rights reserved\" data waiver (CC0 1.0 Public domain dedication).",
+        "order": 0,
+        "name": "copyright-info",
+        "label": "Copyright"
+      }
+    ]
+  },
+  "__fixture": {
+    "doi": "10.12688/f1000research.8114.1",
+    "why": "F1000Research v1, retracted, with `new_version` entries naming v2 and v3 — which were retracted too. Proof that `new_version` is not evidence of a corrected replacement.",
+    "capturedAt": "2026-11-18",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}

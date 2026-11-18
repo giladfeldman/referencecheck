@@ -67,14 +67,14 @@ tag:
 ```jsonc
 // package.json
 "dependencies": {
-  "referencecheck": "github:giladfeldman/referencecheck#v0.3.0"
+  "referencecheck": "github:giladfeldman/referencecheck#v0.4.0"
 }
 ```
 
 or from the command line:
 
 ```bash
-npm install github:giladfeldman/referencecheck#v0.3.0
+npm install github:giladfeldman/referencecheck#v0.4.0
 ```
 
 npm clones the repository and runs the `prepare` script, which compiles `dist/` and copies the
@@ -134,14 +134,18 @@ contact address so the requests are attributed to you:
 
 ```js
 // requires network
-import { checkRetractionDetailed, validateDOI, expandShortDoi, getCitationCount } from 'referencecheck';
+import { checkRetractionDetailed, describeRetractionTiming, validateDOI, expandShortDoi, getCitationCount } from 'referencecheck';
 
 const creds = { crossrefEmail: process.env.CROSSREF_EMAIL };
 const doi = '10.1016/S0140-6736(97)11096-0';
 
-const { retraction, complete, sourcesUnavailable } = await checkRetractionDetailed(doi, { creds });
+// The citing paper's date (or `citing: { doi }`) gives each flagged result a `timing`.
+const { retraction, complete, sourcesUnavailable } =
+  await checkRetractionDetailed(doi, { creds, citing: { publishedDate: '2012-05' } });
 if (!complete) console.log('could not check:', sourcesUnavailable);
-console.log(retraction.isRetracted, retraction.retractionType, retraction.retractionDate, retraction.sourcesChecked);
+console.log(retraction.verdict, retraction.retractionType, retraction.retractionDate, retraction.sourcesChecked);
+console.log(retraction.timing.timing, retraction.replacement.status);
+console.log(describeRetractionTiming(retraction.timing, retraction.retractionType));
 
 const v = await validateDOI(doi, creds);
 console.log(v.valid, v.source, v.data?.journal);
@@ -149,10 +153,12 @@ console.log(await expandShortDoi('10/gt3vmw', { creds }));
 console.log(await getCitationCount(doi));
 ```
 
-Output when run on 2026-09-27 (live data; the citation count changes over time):
+Output when run on 2026-11-18 (live data; the citation count changes over time):
 
 ```text
-true retraction 2010-2-6 [ 'crossref' ]
+flagged retraction 2010-2-6 [ 'crossref' ]
+before_citing not_recorded
+This work was retracted on 2010-02-06, before the citing paper was published (2012-05): it was already retracted when it was cited.
 true crossref The Lancet
 {
   expanded: true,
@@ -175,7 +181,7 @@ are in **[docs/API.md](./docs/API.md)**.
 |---|---|
 | DOI validation and lookup | `validateDOI(doi, creds?)`, `validateMultipleDOIs(dois, creds?)`, `findDOIFromReference(referenceText, creds?)` |
 | DOI shape and shortDOIs | `isMalformedDoi(doi)`, `isShortFormDoi(doi)`, `expandShortDoi(doi, options?)`, `readExpansionTarget(location)`, `clearShortDoiCache()` |
-| Retraction | `checkRetractionDetailed(doi, options?)` (preferred), `checkRetraction(doi, options?)`, `checkMultipleRetractions(dois, options?)`, `DEFAULT_RETRACTION_SOURCES` |
+| Retraction | `checkRetractionDetailed(doi, options?)` (preferred), `checkRetraction(doi, options?)`, `checkMultipleRetractions(dois, options?)`, `DEFAULT_RETRACTION_SOURCES`, `resolveCitingPublicationDate(citingDOI, creds?)`, `compareRetractionTiming(retractionDate, citing)`, `describeRetractionTiming(timing, retractionType?)` |
 | Expression of concern | `checkReferenceForEOCDetailed(reference)` (preferred), `checkReferenceForEOC(reference)`, `getEocSeverityCounts(issues)` |
 | Replies and errata | `checkReferenceForRepliesDetailed(reference)` (preferred), `checkReferenceForReplies(reference)`, `getRepliesSummary(issues)` |
 | Preprints | `checkReferenceForPreprint(reference)`, `detectKnownPreprintFromDoi(doi)`, `detectKnownPreprintFromText(text)`, `getPreprintSummary(issues)` |
@@ -198,10 +204,22 @@ checks.
   ordinary reference" and covers `retraction`, `partial_retraction`, `removal` and
   `withdrawal`. **Read `retractionType` before using the word "retracted"** in anything a
   person reads: a withdrawn preprint is not a retracted paper. `isRetracted: false` is only a
-  clean answer when `checked` is `true`.
+  clean answer when `checked` is `true`; `verdict` (`clean`, `flagged`, `could_not_check`)
+  says which in one field.
+- **Retraction timing:** pass `{ citing: { publishedDate } }` or `{ citing: { doi } }` and every
+  flagged result carries `timing.timing`: `before_citing` (the work was already retracted when
+  the citing paper was published, an error by the citing authors), `after_citing` (retracted
+  later, cited in good faith) or `unknown` with `unknownReason`. `describeRetractionTiming`
+  turns it into one sentence that keeps the two apart.
+- **Retracted and replaced:** every flagged result carries `replacement.status`: `replaced`
+  (with the `evidence` and, when a source names it, `replacementDOI`), `not_recorded`, or
+  `unknown` when a lookup failed. `not_recorded` does not mean "not replaced": the sources often
+  omit it (see [docs/API.md](./docs/API.md#retraction)). The lookups (the notice's Crossref
+  record and the Retraction Watch record via Crossref Labs) run for flagged references only;
+  `checkReplacement: false` turns them off.
 - **Coverage:** `checkRetractionDetailed` and `checkReferenceForEOCDetailed` return
   `complete` and `sourcesUnavailable` (`reason`: `rate_limited`, `timeout`, `server_error`,
-  `network`, and for retractions `not_indexed`). An empty result with `complete: false` means
+  `network`, and for retractions `not_indexed`, `malformed_response` and `invalid_doi`). An empty result with `complete: false` means
   "we did not find out".
 - **Issues:** the per-reference checks return issue objects with `type`, `severity`, `code`,
   `description`, `location`, `suggestion` and `metadata`. The codes are `IS_PREPRINT`,
@@ -306,7 +324,7 @@ If you use referencecheck in research, please cite the software (see
 [CITATION.cff](./CITATION.cff)):
 
 > Feldman, G. (2026). *referencecheck: Reference-integrity checks for academic papers*
-> (Version 0.3.0) [Computer software]. https://github.com/giladfeldman/referencecheck
+> (Version 0.4.0) [Computer software]. https://github.com/giladfeldman/referencecheck
 
 Please also cite the data sources your results depend on (see [Method](#method)).
 
@@ -328,6 +346,6 @@ Versions released before 2026-11-06 were licensed under MIT and remain available
 
 **How to cite.** If you use this software in research, please cite it. GitHub's *Cite this repository* button (from [CITATION.cff](CITATION.cff)) gives APA and BibTeX. In APA style:
 
-> Feldman, G. (2026). *referencecheck: Reference-integrity checks for academic papers* (Version 0.3.0) [Computer software]. https://github.com/giladfeldman/referencecheck#readme
+> Feldman, G. (2026). *referencecheck: Reference-integrity checks for academic papers* (Version 0.4.0) [Computer software]. https://github.com/giladfeldman/referencecheck#readme
 
 <!-- license-citation:end -->

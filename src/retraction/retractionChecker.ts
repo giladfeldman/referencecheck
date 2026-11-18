@@ -114,6 +114,7 @@ import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
 import type { MetadataCredentials } from '../http/credentials.js';
 import { cleanDoiInput } from '../util/normalize.js';
+import { DEFAULT_POLITE_EMAIL } from '../http/credentials.js';
 
 export type RetractionUnavailableReason =
   | 'rate_limited'
@@ -121,7 +122,147 @@ export type RetractionUnavailableReason =
   | 'server_error'
   | 'network'
   /** The source has no record of this DOI at all, so it could not answer. */
-  | 'not_indexed';
+  | 'not_indexed'
+  /**
+   * The source answered 200 with a body that is not a record for one work (an
+   * empty body, an HTML page, a list, a record with no DOI, an OpenRetractions
+   * body with no boolean `retracted`). Before v0.4.0 such a body read as a clean.
+   */
+  | 'malformed_response'
+  /**
+   * The DOI given is not DOI-shaped (empty, or not `10.<digits>/<suffix>` /
+   * `10/<token>`). Nothing was asked: an empty DOI used to reach Crossref as
+   * `/works/`, which answers 200 with a LIST of works, and read as a clean.
+   */
+  | 'invalid_doi';
+
+/**
+ * The three answers a retraction check can give, as one field.
+ *
+ * - `flagged` — a source reports the work retracted, withdrawn or removed.
+ * - `clean` — every source asked actually answered, and none flags it.
+ * - `could_not_check` — no flag, and at least one source did not answer (or none
+ *   was asked, or the DOI was not DOI-shaped). This is NOT a clean.
+ *
+ * Derived from `isRetracted` and `checked`, never computed separately, so the
+ * three can never disagree with the fields they summarise.
+ */
+export type RetractionVerdict = 'clean' | 'flagged' | 'could_not_check';
+
+/**
+ * When the retraction happened relative to the CITING paper's publication.
+ *
+ * - `before_citing` — the work was already retracted when the citing paper was
+ *   published. Citing it as an ordinary reference is an error by the citing authors.
+ * - `after_citing` — the citing paper was published first. The citation was made
+ *   in good faith; the citing authors could not have known.
+ * - `unknown` — one of the two dates is missing, unparseable, or the two fall in
+ *   the same period at the precision available (see `unknownReason`).
+ */
+export type RetractionTiming = 'before_citing' | 'after_citing' | 'unknown';
+
+export type RetractionTimingUnknownReason =
+  /** The caller supplied neither `citing.publishedDate` nor `citing.doi`. */
+  | 'no_citing_date'
+  /** The citing DOI was looked up on Crossref and gave no usable date. */
+  | 'citing_date_unavailable'
+  /** The retraction has no date (e.g. found only by a title marker). */
+  | 'no_retraction_date'
+  /** The source gave a retraction date this library cannot read. */
+  | 'unparseable_retraction_date'
+  /**
+   * Both dates fall in the same year (or month, or day) at the precision the
+   * sources give, so the order cannot be told: `2019` vs `2019-10-08`, or the
+   * same day.
+   */
+  | 'same_period';
+
+/** Where the citing paper's publication date came from. Never a guess. */
+export type CitingDateSource = 'caller' | 'crossref';
+
+export interface RetractionTimingInfo {
+  timing: RetractionTiming;
+  /** The retraction date compared (the same value as `RetractionInfo.retractionDate`). */
+  retractionDate?: string;
+  /** The citing paper's publication date compared, as given or as Crossref holds it. */
+  citingPublishedDate?: string;
+  /** `caller` = `citing.publishedDate`; `crossref` = looked up from `citing.doi`. */
+  citingDateSource?: CitingDateSource;
+  /**
+   * Which Crossref field the citing date came from: `published` (Crossref's
+   * earliest of print and online), else `issued`.
+   */
+  citingDateField?: 'published' | 'issued';
+  /** Set exactly when `timing` is `unknown`. */
+  unknownReason?: RetractionTimingUnknownReason;
+  /** For `citing_date_unavailable`: why the citing lookup gave no date. */
+  detail?: string;
+}
+
+/**
+ * Whether a retracted work was replaced by a corrected version ("retract and
+ * replace", "retracted and republished").
+ *
+ * - `replaced` — a source says so (see `evidence`).
+ * - `not_recorded` — every replacement lookup answered and none says so.
+ *   **This is not "not replaced".** Measured 2026-11-18: Crossref Labs returned
+ *   an EMPTY Retraction Watch block for 10.1093/carcin/bgs140, whose own title
+ *   reads "RETRACTED AND REPLACED"; and the Crossref `updated-by` entry of every
+ *   retract-and-replace case probed is a plain `retraction` with no reason.
+ * - `unknown` — no source says so and a lookup failed, returned a body it could
+ *   not read, or was turned off (`unknownReason`).
+ */
+export type RetractionReplacementStatus = 'replaced' | 'not_recorded' | 'unknown';
+
+/** Which recorded field established a replacement. */
+export type RetractionReplacementEvidence =
+  /** Crossref `relation['is-replaced-by']` naming another DOI. */
+  | 'crossref_is_replaced_by'
+  /** The work's own Crossref title starts "RETRACTED AND REPLACED" (seen on Oxford University Press records). */
+  | 'title_marker'
+  /** The retraction notice's Crossref title starts "Retraction and replacement of". */
+  | 'notice_title'
+  /**
+   * The Retraction Watch record served by Crossref Labs
+   * (`api.labs.crossref.org`, block `cr-labs-updates`) gives the reason
+   * "Retract and Replace". Crossref labels that block's keys unstable.
+   */
+  | 'retraction_watch_reason';
+
+export type RetractionReplacementUnknownReason =
+  /** `options.checkReplacement` was `false`; no lookup was made. */
+  | 'not_requested'
+  /** A lookup failed (`detail` names which and why). */
+  | 'lookup_failed'
+  /** A lookup answered with a body this library cannot read (`detail`). */
+  | 'malformed_response';
+
+export interface RetractionReplacementInfo {
+  status: RetractionReplacementStatus;
+  /**
+   * The replacement version's DOI, when a source names one: `is-replaced-by`,
+   * or a DOI in the Retraction Watch notes that Crossref confirms is a work.
+   */
+  replacementDOI?: string;
+  /** Every signal that said "replaced" (empty unless `status` is `replaced`). */
+  evidence: RetractionReplacementEvidence[];
+  /** Set exactly when `status` is `unknown`. */
+  unknownReason?: RetractionReplacementUnknownReason;
+  detail?: string;
+}
+
+/** The citing paper, for the before/after comparison. Both fields are optional. */
+export interface CitingPaperInput {
+  /**
+   * The citing paper's publication date: `YYYY`, `YYYY-MM` or `YYYY-MM-DD`
+   * (an ISO date-time is read by its date part). Takes precedence over `doi`.
+   * An unreadable value throws a `RangeError` — a caller's typo is not
+   * silently turned into "unknown".
+   */
+  publishedDate?: string;
+  /** The citing paper's DOI. Its Crossref record supplies the date. */
+  doi?: string;
+}
 
 /** The sources this module knows how to consult. */
 export type RetractionSourceName = 'openretractions' | 'crossref';
@@ -180,6 +321,21 @@ export interface RetractionCheckOptions {
   creds?: MetadataCredentials;
   /** Which sources to consult. Defaults to {@link DEFAULT_RETRACTION_SOURCES}. */
   sources?: readonly RetractionSourceName[];
+  /**
+   * The citing paper. When given, every flagged result carries `timing`
+   * (`before_citing` / `after_citing` / `unknown`). The citing DOI is looked up
+   * only when a reference is actually flagged, and once per batch in
+   * {@link checkMultipleRetractions}.
+   */
+  citing?: CitingPaperInput;
+  /**
+   * Look up whether a flagged work was retracted AND REPLACED (default true).
+   * Costs extra requests for FLAGGED references only: the retraction notice's
+   * Crossref record, the Crossref Labs Retraction Watch record and, when its
+   * notes name a DOI, that DOI. `false` leaves `replacement.status` as
+   * `unknown` / `not_requested`.
+   */
+  checkReplacement?: boolean;
 }
 
 export interface RetractionInfo {
@@ -206,11 +362,24 @@ export interface RetractionInfo {
   sourcesChecked: RetractionSourceName[];
   /** Every source that could not be reached, and why. Empty when all answered. */
   sourcesUnavailable: RetractionSourceUnavailable[];
+  /**
+   * `clean`, `flagged` or `could_not_check` — the one field a renderer should
+   * switch on. See {@link RetractionVerdict}.
+   */
+  verdict: RetractionVerdict;
   retractionDate?: string;
   retractionReason?: string;
   retractionNoticeUrl?: string;
   originalPaperDOI?: string;
   source?: RetractionSourceName;
+  /**
+   * Before or after the citing paper. Present on every flagged result (as
+   * `unknown` / `no_citing_date` when no citing paper was given); absent when
+   * not flagged.
+   */
+  timing?: RetractionTimingInfo;
+  /** Retracted and replaced by a new version? Present on every flagged result. */
+  replacement?: RetractionReplacementInfo;
 }
 
 /**
@@ -286,10 +455,13 @@ function entryUpdateType(entry: any): RetractionUpdateType | null {
   const type = typeof entry?.type === 'string' ? entry.type.toLowerCase() : '';
   const match = UPDATE_TYPES_BY_SEVERITY.find((t) => t === type);
   if (match) return match;
-  // Some deposits carry an unrecognised type with a telling label. A label
-  // containing "retract" is a retraction unless its type already said otherwise.
+  // Some deposits carry an unrecognised type with a telling label. A label (or
+  // type) containing "retrac" is a retraction unless its type already said
+  // otherwise. "retrac", not "retract": a full scan of the 81,667 Crossref
+  // retraction notices (2026-11-18) found a publisher deposit typed and
+  // labelled "retracion" (10.4048/jbc.2018.21.1.102).
   const label = typeof entry?.label === 'string' ? entry.label.toLowerCase() : '';
-  if (label.includes('retract')) {
+  if (label.includes('retrac') || type.includes('retrac')) {
     return label.includes('partial') ? 'partial_retraction' : 'retraction';
   }
   return null;
@@ -354,23 +526,527 @@ function findTitleMarker(message: any): RetractionUpdateType | null {
   return null;
 }
 
+// ---------------------------------------------------------------- three verdicts
+
+/** The verdict, derived from the two fields it summarises and nothing else. */
+function verdictOf(isRetracted: boolean, checked: boolean): RetractionVerdict {
+  if (isRetracted) return 'flagged';
+  return checked ? 'clean' : 'could_not_check';
+}
+
+/**
+ * Is this a Crossref single-work body we can read an answer from?
+ *
+ * `crossrefResponse.data?.message ?? {}` used to turn an empty 200, an HTML
+ * error page, or a LIST response (what `/works/` answers for an empty DOI) into
+ * an empty record — no `updated-by`, no title marker — and so into a checked
+ * clean. A work record always carries its `DOI` as a string.
+ */
+function isWorkRecord(message: unknown): message is Record<string, any> {
+  return (
+    !!message &&
+    typeof message === 'object' &&
+    !Array.isArray(message) &&
+    typeof (message as any).DOI === 'string'
+  );
+}
+
+/** DOI-shaped: `10.<digits>/<suffix>` or the short form `10/<token>`. */
+function isDoiShaped(doi: string): boolean {
+  return /^10\.\d+\/\S+$/.test(doi) || /^10\/[A-Za-z0-9._-]+$/.test(doi);
+}
+
+// ---------------------------------------------------------------- timing
+
+interface PartialDate {
+  y: number;
+  m?: number;
+  d?: number;
+}
+
+const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+function validPartialDate(y: number, m?: number, d?: number): PartialDate | null {
+  if (!Number.isInteger(y) || y < 1000 || y > 9999) return null;
+  if (m === undefined) return { y };
+  if (!Number.isInteger(m) || m < 1 || m > 12) return null;
+  if (d === undefined) return { y, m };
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const max = m === 2 && !leap ? 28 : DAYS_IN_MONTH[m - 1];
+  if (!Number.isInteger(d) || d < 1 || d > max) return null;
+  return { y, m, d };
+}
+
+/**
+ * Read `YYYY`, `YYYY-MM`, `YYYY-MM-DD` (unpadded parts allowed, as
+ * `date-parts.join('-')` produces `2019-10-8`), or an ISO date-time by its date
+ * part. Anything else is null — never a best guess.
+ */
+function parsePartialDate(value: unknown): PartialDate | null {
+  if (typeof value !== 'string') return null;
+  const m = /^\s*(\d{4})(?:-(\d{1,2})(?:-(\d{1,2}))?)?(?:T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?\s*$/.exec(
+    value
+  );
+  if (!m) return null;
+  return validPartialDate(
+    Number(m[1]),
+    m[2] === undefined ? undefined : Number(m[2]),
+    m[3] === undefined ? undefined : Number(m[3])
+  );
+}
+
+/** Crossref `date-parts` → `YYYY[-MM[-DD]]`, or null when it is not a real date. */
+function datePartsToString(field: any): string | null {
+  const parts = field?.['date-parts']?.[0];
+  if (!Array.isArray(parts) || parts.length === 0) return null;
+  const [y, m, d] = parts;
+  const valid = validPartialDate(y, m ?? undefined, m == null ? undefined : d ?? undefined);
+  if (!valid) return null;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return [String(valid.y), valid.m && pad(valid.m), valid.d && pad(valid.d)]
+    .filter(Boolean)
+    .join('-');
+}
+
+/**
+ * Order two partial dates at the precision BOTH carry. `2019` vs `2019-10-08`
+ * cannot be ordered, and neither can the same day: a retraction notice and a
+ * citing paper out on the same date say nothing about which came first.
+ */
+function comparePartialDates(a: PartialDate, b: PartialDate): -1 | 1 | 'same_period' {
+  if (a.y !== b.y) return a.y < b.y ? -1 : 1;
+  if (a.m === undefined || b.m === undefined) return 'same_period';
+  if (a.m !== b.m) return a.m < b.m ? -1 : 1;
+  if (a.d === undefined || b.d === undefined) return 'same_period';
+  if (a.d !== b.d) return a.d < b.d ? -1 : 1;
+  return 'same_period';
+}
+
+/** The citing paper's date as resolved once, from the caller or from Crossref. */
+export interface CitingPublicationDate {
+  /** `YYYY[-MM[-DD]]`, or absent when none could be had. */
+  date?: string;
+  source?: CitingDateSource;
+  field?: 'published' | 'issued';
+  /** Why there is no date, when there is none. */
+  unavailable?: { reason: RetractionUnavailableReason | 'no_date'; detail?: string };
+}
+
+/**
+ * The citing paper's publication date from its Crossref record: `published`
+ * (Crossref's earliest of print and online), else `issued`. Never inferred from
+ * anything else — no date in either field is reported as no date.
+ */
+export async function resolveCitingPublicationDate(
+  citingDOI: string,
+  creds?: MetadataCredentials
+): Promise<CitingPublicationDate> {
+  const clean = String(citingDOI ?? '')
+    .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')
+    .trim();
+  if (!isDoiShaped(clean)) {
+    return { unavailable: { reason: 'invalid_doi', detail: clean.slice(0, 80) } };
+  }
+  try {
+    const res = await crossrefGet(
+      `https://api.crossref.org/works/${encodeURIComponent(clean)}`,
+      { timeout: 5000 },
+      creds
+    );
+    const message = res?.data?.message;
+    if (res?.status !== 200 || !isWorkRecord(message)) {
+      return { unavailable: { reason: 'malformed_response', detail: String(res?.status) } };
+    }
+    for (const field of ['published', 'issued'] as const) {
+      const date = datePartsToString(message[field]);
+      if (date) return { date, source: 'crossref', field };
+    }
+    return { unavailable: { reason: 'no_date' } };
+  } catch (error: any) {
+    const u = classifyRequestFailure('crossref', error);
+    return { unavailable: { reason: u?.reason ?? 'network', detail: u?.detail } };
+  }
+}
+
+/** Validate a caller-supplied citing date, throwing on a value this cannot read. */
+function callerCitingDate(publishedDate: string): CitingPublicationDate {
+  const parsed = parsePartialDate(publishedDate);
+  if (!parsed) {
+    throw new RangeError(
+      `citing.publishedDate must be YYYY, YYYY-MM or YYYY-MM-DD; got ${JSON.stringify(publishedDate)}`
+    );
+  }
+  return { date: publishedDate.trim().slice(0, 10), source: 'caller' };
+}
+
+type CitingResolver = () => Promise<CitingPublicationDate | null>;
+
+/**
+ * A once-only resolver for the citing date. Validates a caller date eagerly (so
+ * a typo throws before any lookup), and looks a citing DOI up only when first
+ * asked — i.e. only once something is actually flagged.
+ */
+function makeCitingResolver(
+  citing: CitingPaperInput | undefined,
+  creds?: MetadataCredentials
+): CitingResolver {
+  if (!citing || (citing.publishedDate == null && citing.doi == null)) {
+    return async () => null;
+  }
+  if (citing.publishedDate != null) {
+    const fixed = callerCitingDate(citing.publishedDate);
+    return async () => fixed;
+  }
+  let pending: Promise<CitingPublicationDate> | undefined;
+  const doi = citing.doi as string;
+  return () => (pending ??= resolveCitingPublicationDate(doi, creds));
+}
+
+/**
+ * Compare a retraction date with the citing paper's date. Exported so a
+ * consumer holding a stored result can recompute timing without a lookup.
+ */
+export function compareRetractionTiming(
+  retractionDate: string | undefined,
+  citing: CitingPublicationDate | null
+): RetractionTimingInfo {
+  const base: RetractionTimingInfo = {
+    timing: 'unknown',
+    retractionDate,
+    citingPublishedDate: citing?.date,
+    citingDateSource: citing?.source,
+    citingDateField: citing?.field,
+  };
+  if (!citing) return { ...base, unknownReason: 'no_citing_date' };
+  if (!citing.date) {
+    const u = citing.unavailable;
+    return {
+      ...base,
+      unknownReason: 'citing_date_unavailable',
+      detail: u ? [u.reason, u.detail].filter(Boolean).join(': ') : undefined,
+    };
+  }
+  if (!retractionDate) return { ...base, unknownReason: 'no_retraction_date' };
+  const r = parsePartialDate(retractionDate);
+  if (!r) return { ...base, unknownReason: 'unparseable_retraction_date' };
+  const c = parsePartialDate(citing.date);
+  if (!c) return { ...base, unknownReason: 'citing_date_unavailable', detail: 'unparseable' };
+  const order = comparePartialDates(r, c);
+  if (order === 'same_period') return { ...base, unknownReason: 'same_period' };
+  return { ...base, timing: order < 0 ? 'before_citing' : 'after_citing' };
+}
+
+/**
+ * A date for a sentence a person reads: zero-padded ("2010-02-06"), never the
+ * unpadded Crossref date-parts form ("2010-2-6") that `retractionDate` keeps
+ * for compatibility. A value it cannot read is shown as given.
+ */
+function displayDate(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const d = parsePartialDate(value);
+  if (!d) return value;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return [String(d.y), d.m && pad(d.m), d.d && pad(d.d)].filter(Boolean).join('-');
+}
+
+const TYPE_PARTICIPLE: Record<RetractionUpdateType, string> = {
+  retraction: 'retracted',
+  partial_retraction: 'partially retracted',
+  removal: 'removed',
+  withdrawal: 'withdrawn',
+};
+
+/**
+ * One plain sentence a renderer can show, which never blurs the difference
+ * between citing an already-retracted paper (the citing authors' error) and
+ * citing one retracted later (not their fault).
+ */
+export function describeRetractionTiming(
+  timing: RetractionTimingInfo,
+  retractionType: RetractionUpdateType = 'retraction'
+): string {
+  const was = TYPE_PARTICIPLE[retractionType] ?? 'retracted';
+  const retracted = displayDate(timing.retractionDate);
+  const cited = displayDate(timing.citingPublishedDate);
+  const on = retracted ? ` on ${retracted}` : '';
+  const citing = cited
+    ? `the citing paper was published (${cited})`
+    : 'the citing paper was published';
+  switch (timing.timing) {
+    case 'before_citing':
+      return `This work was ${was}${on}, before ${citing}: it was already ${was} when it was cited.`;
+    case 'after_citing':
+      return `This work was ${was}${on}, after ${citing}: when it was cited it had not yet been ${was}, so the citation was made in good faith.`;
+    default: {
+      const why: Record<RetractionTimingUnknownReason, string> = {
+        no_citing_date: 'no publication date for the citing paper was given',
+        citing_date_unavailable: "the citing paper's publication date could not be found",
+        no_retraction_date: `no ${was === 'retracted' ? 'retraction' : 'notice'} date is recorded`,
+        unparseable_retraction_date: 'the recorded date could not be read',
+        same_period: 'the two dates fall in the same period at the precision recorded',
+      };
+      const reason = timing.unknownReason ? why[timing.unknownReason] : 'a date is missing';
+      return `This work was ${was}${on}; whether that was before or after ${citing} is unknown: ${reason}.`;
+    }
+  }
+}
+
+// ---------------------------------------------------------------- replacement
+
+const CROSSREF_LABS_API = 'https://api.labs.crossref.org/works';
+
+/** "RETRACTED AND REPLACED: …" on the work itself (measured on OUP records). */
+const REPLACED_TITLE = /^\s*\[?\s*retracted\s+and\s+replaced\b/i;
+/** "Retraction and replacement of: …" on the notice (measured on OUP notices). */
+const REPLACEMENT_NOTICE_TITLE = /^\s*retraction\s+and\s+replacement\b/i;
+
+const doiKey = (x: string) => x.trim().toLowerCase().replace(/\/{2,}/g, '/');
+const sameDoiLoose = (a: string, b: string) => doiKey(a) === doiKey(b);
+
+function titlesOf(message: any): string[] {
+  return Array.isArray(message?.title)
+    ? message.title.filter((t: unknown): t is string => typeof t === 'string')
+    : [];
+}
+
+/**
+ * Does a Retraction Watch reason say "Retract and Replace"? Matched on the
+ * suffix: Crossref Labs serves every reason with its first character cut off
+ * ("etract and Replace", "rror in Analyses", measured 2026-11-18), and the
+ * Retraction Watch CSV prefixes them with "+".
+ */
+function isRetractAndReplaceReason(reason: unknown): boolean {
+  return typeof reason === 'string' && /etract\s+and\s+replace\s*$/i.test(reason.trim());
+}
+
+/** DOI candidates in a Retraction Watch note, the full match first. */
+function doiCandidatesFromNotes(notes: unknown): string[] {
+  if (typeof notes !== 'string') return [];
+  const out: string[] = [];
+  for (const m of notes.matchAll(/\b10\.\d{4,9}\/[^\s"<>,;]+/g)) {
+    const full = m[0].replace(/[.)\]]+$/, '');
+    out.push(full);
+    // Publisher URLs append an article id: .../doi/10.1093/jeb/voae082/7733482
+    const trimmed = full.replace(/\/\d+$/, '');
+    if (trimmed !== full) out.push(trimmed);
+  }
+  return out;
+}
+
+type LookupFailure = { ok: false; reason: 'lookup_failed' | 'malformed_response'; detail: string };
+type Lookup<T> = { ok: true; value: T } | LookupFailure;
+
+async function getWork(doi: string, creds?: MetadataCredentials): Promise<Lookup<any>> {
+  try {
+    const res = await crossrefGet(
+      `https://api.crossref.org/works/${encodeURIComponent(doi)}`,
+      { timeout: 5000 },
+      creds
+    );
+    const message = res?.data?.message;
+    if (res?.status !== 200 || !isWorkRecord(message)) {
+      return { ok: false, reason: 'malformed_response', detail: `crossref ${doi}` };
+    }
+    return { ok: true, value: message };
+  } catch (error: any) {
+    const u = classifyRequestFailure('crossref', error);
+    return { ok: false, reason: 'lookup_failed', detail: `crossref ${doi}: ${u?.reason ?? 'network'}` };
+  }
+}
+
+/**
+ * The Retraction Watch records Crossref Labs holds for a DOI. An absent or
+ * empty `cr-labs-updates` (Labs serves `{}`) is an answer: no record. Any
+ * other shape is `malformed_response`, never "no record".
+ */
+async function getLabsUpdates(doi: string, creds?: MetadataCredentials): Promise<Lookup<any[]>> {
+  const mailto = encodeURIComponent(creds?.crossrefEmail || DEFAULT_POLITE_EMAIL);
+  try {
+    const res = await crossrefGet(
+      `${CROSSREF_LABS_API}/${encodeURIComponent(doi)}?mailto=${mailto}`,
+      { timeout: 10000 },
+      creds
+    );
+    const message = res?.data?.message;
+    if (res?.status !== 200 || !isWorkRecord(message)) {
+      return { ok: false, reason: 'malformed_response', detail: 'crossref-labs' };
+    }
+    const block = message['cr-labs-updates'];
+    if (block === undefined || block === null) return { ok: true, value: [] };
+    if (Array.isArray(block)) {
+      const readable = block.every(
+        (u) => u && typeof u === 'object' && !Array.isArray(u) && Array.isArray(u.reasons)
+      );
+      if (readable) return { ok: true, value: block };
+      return { ok: false, reason: 'malformed_response', detail: 'crossref-labs: unreadable record' };
+    }
+    if (typeof block === 'object' && Object.keys(block).length === 0) return { ok: true, value: [] };
+    return { ok: false, reason: 'malformed_response', detail: 'crossref-labs: unreadable block' };
+  } catch (error: any) {
+    const u = classifyRequestFailure('crossref', error);
+    return { ok: false, reason: 'lookup_failed', detail: `crossref-labs: ${u?.reason ?? 'network'}` };
+  }
+}
+
+/**
+ * Retracted-and-replaced, from what the sources actually assert.
+ *
+ * Signals, cheapest first: `relation['is-replaced-by']` and the work's own
+ * title (already fetched), the notice's title, the Crossref Labs Retraction
+ * Watch reason. Deliberately NOT read: `updated-by` type `new_version` —
+ * F1000Research 10.12688/f1000research.8114 v1 lists v2 and v3 as new
+ * versions, and both were retracted too.
+ */
+async function findReplacement(
+  message: any,
+  noticeDOI: string | undefined,
+  options: RetractionCheckOptions
+): Promise<RetractionReplacementInfo> {
+  if (options.checkReplacement === false) {
+    return { status: 'unknown', evidence: [], unknownReason: 'not_requested' };
+  }
+  const ownDOI = typeof message?.DOI === 'string' ? message.DOI : '';
+  const evidence: RetractionReplacementEvidence[] = [];
+  let replacementDOI: string | undefined;
+  const failures: LookupFailure[] = [];
+
+  const rel = message?.relation?.['is-replaced-by'];
+  if (Array.isArray(rel)) {
+    for (const r of rel) {
+      const id = typeof r?.id === 'string' ? r.id.trim() : '';
+      if (String(r?.['id-type']).toLowerCase() === 'doi' && id && !sameDoiLoose(id, ownDOI)) {
+        evidence.push('crossref_is_replaced_by');
+        replacementDOI = id;
+        break;
+      }
+    }
+  }
+  if (titlesOf(message).some((t) => REPLACED_TITLE.test(t))) evidence.push('title_marker');
+
+  if (noticeDOI && !sameDoiLoose(noticeDOI, ownDOI)) {
+    const notice = await getWork(noticeDOI, options.creds);
+    if (notice.ok) {
+      if (titlesOf(notice.value).some((t) => REPLACEMENT_NOTICE_TITLE.test(t))) {
+        evidence.push('notice_title');
+      }
+    } else failures.push(notice);
+  }
+
+  const labs = await getLabsUpdates(ownDOI, options.creds);
+  if (labs.ok) {
+    const rr = labs.value.filter((u) => u.reasons.some(isRetractAndReplaceReason));
+    if (rr.length > 0) {
+      evidence.push('retraction_watch_reason');
+      if (!replacementDOI) {
+        const exclude = [ownDOI, noticeDOI ?? ''].filter(Boolean);
+        const candidates = rr
+          .flatMap((u) => doiCandidatesFromNotes(u.notes))
+          .filter((c) => !exclude.some((x) => sameDoiLoose(c, x)));
+        // A DOI in free-text notes is reported only once Crossref confirms it
+        // is a work: a publisher URL can carry trailing path segments.
+        for (const c of candidates) {
+          const w = await getWork(c, options.creds);
+          if (w.ok) {
+            replacementDOI = w.value.DOI;
+            break;
+          }
+        }
+      }
+    }
+  } else failures.push(labs);
+
+  if (evidence.length > 0) {
+    return { status: 'replaced', evidence, ...(replacementDOI ? { replacementDOI } : {}) };
+  }
+  if (failures.length > 0) {
+    return {
+      status: 'unknown',
+      evidence,
+      unknownReason: failures.some((f) => f.reason === 'lookup_failed')
+        ? 'lookup_failed'
+        : 'malformed_response',
+      detail: failures.map((f) => f.detail).join('; '),
+    };
+  }
+  return { status: 'not_recorded', evidence };
+}
+
 /**
  * Check whether a paper has been retracted, withdrawn or removed.
  *
+ * Every result carries `verdict` (`clean` | `flagged` | `could_not_check`).
+ * Every flagged result also carries `timing` (before/after the citing paper,
+ * when `options.citing` is given) and `replacement`.
+ *
  * @param doi     The DOI to check, with or without a doi.org prefix.
- * @param options Polite-pool credentials and the source list. Optional, so the
- *                published single-argument signature keeps working.
+ * @param options Polite-pool credentials, the source list and the citing paper.
+ *                Optional, so the published single-argument signature keeps working.
+ * @throws RangeError when `options.citing.publishedDate` is not a readable date.
  */
 export async function checkRetraction(
   doi: string,
   options: RetractionCheckOptions = {}
 ): Promise<RetractionInfo> {
+  return checkWithResolver(doi, options, makeCitingResolver(options.citing, options.creds));
+}
+
+async function checkWithResolver(
+  doi: string,
+  options: RetractionCheckOptions,
+  resolveCiting: CitingResolver
+): Promise<RetractionInfo> {
+  const { info, crossrefMessage } = await lookupRetraction(doi, options);
+  const verdict = verdictOf(info.isRetracted, info.checked);
+  if (verdict !== 'flagged') return { ...info, verdict };
+  return {
+    ...info,
+    verdict,
+    timing: compareRetractionTiming(info.retractionDate, await resolveCiting()),
+    replacement: crossrefMessage
+      ? await findReplacement(crossrefMessage, noticeDoiOf(info.retractionNoticeUrl), options)
+      : {
+          status: 'unknown',
+          evidence: [],
+          unknownReason: 'lookup_failed',
+          detail: 'no Crossref record was read (the answer came from OpenRetractions)',
+        },
+  };
+}
+
+function noticeDoiOf(url: string | undefined): string | undefined {
+  const m = url ? /^https:\/\/doi\.org\/(.+)$/.exec(url) : null;
+  return m ? m[1] : undefined;
+}
+
+type RawRetractionInfo = Omit<RetractionInfo, 'verdict' | 'timing' | 'replacement'>;
+
+async function lookupRetraction(
+  doi: string,
+  options: RetractionCheckOptions
+): Promise<{ info: RawRetractionInfo; crossrefMessage?: any }> {
   const { creds, sources = DEFAULT_RETRACTION_SOURCES } = options;
 
   // Clean DOI
   const cleanDOI = cleanDoiInput(doi);
   const sourcesChecked: RetractionSourceName[] = [];
   const sourcesUnavailable: RetractionSourceUnavailable[] = [];
+
+  // Nothing DOI-shaped to ask about. Every requested source is recorded as
+  // unavailable, so the result is `could_not_check`, never a clean.
+  if (!isDoiShaped(cleanDOI)) {
+    for (const source of sources) {
+      sourcesUnavailable.push({ source, reason: 'invalid_doi', detail: cleanDOI.slice(0, 80) });
+    }
+    return {
+      info: {
+        isRetracted: false,
+        checked: false,
+        sourcesChecked,
+        sourcesUnavailable,
+        originalPaperDOI: cleanDOI,
+      },
+    };
+  }
 
   /**
    * A result is `checked` only when something actually answered AND nothing
@@ -406,16 +1082,19 @@ export async function checkRetraction(
           // records that, so a caller can still see the verdict rests on one
           // source.
           return {
-            isRetracted: true,
-            retractionType: 'retraction',
-            checked: true,
-            sourcesChecked,
-            sourcesUnavailable,
-            retractionDate: data.retraction_date,
-            retractionReason: data.reason,
-            retractionNoticeUrl: data.retraction_notice_url,
-            originalPaperDOI: cleanDOI,
-            source: 'openretractions',
+            info: {
+              isRetracted: true,
+              retractionType: 'retraction',
+              checked: true,
+              sourcesChecked,
+              sourcesUnavailable,
+              retractionDate:
+                typeof data.retraction_date === 'string' ? data.retraction_date : undefined,
+              retractionReason: data.reason,
+              retractionNoticeUrl: data.retraction_notice_url,
+              originalPaperDOI: cleanDOI,
+              source: 'openretractions',
+            },
           };
         }
       } else {
@@ -455,10 +1134,10 @@ export async function checkRetraction(
       );
 
       const message = crossrefResponse.data?.message;
-      if (crossrefResponse.status === 200 && (!message || typeof message !== 'object' || Array.isArray(message))) {
+      if (crossrefResponse.status === 200 && !isWorkRecord(message)) {
         // A 200 whose body is no work record (a captive portal's HTML, an empty
-        // body) is not Crossref's answer (v0.3.0 review 12): before, `?? {}` read
-        // it as a work with no retraction, so it counted as checked-clean.
+        // body, a list, a record without a DOI) is not Crossref's answer: before,
+        // `?? {}` read it as a work with no retraction, so it counted as checked-clean.
         sourcesUnavailable.push({ source: 'crossref', reason: 'server_error', detail: '200 without a work record' });
       } else if (crossrefResponse.status === 200) {
         sourcesChecked.push('crossref');
@@ -470,6 +1149,8 @@ export async function checkRetraction(
         if (found) {
           const { relation, type } = found;
           return {
+            crossrefMessage: message,
+            info: {
             isRetracted: true,
             retractionType: type,
             checked: isChecked(),
@@ -482,6 +1163,7 @@ export async function checkRetraction(
               : undefined,
             originalPaperDOI: cleanDOI,
             source: 'crossref',
+            },
           };
         }
 
@@ -491,6 +1173,8 @@ export async function checkRetraction(
         const titleMarker = findTitleMarker(message);
         if (titleMarker) {
           return {
+            crossrefMessage: message,
+            info: {
             isRetracted: true,
             retractionType: titleMarker,
             checked: isChecked(),
@@ -503,6 +1187,7 @@ export async function checkRetraction(
             retractionReason: `${UPDATE_TYPE_WORDING[titleMarker]} (publisher marker on the title; no update relation deposited)`,
             originalPaperDOI: cleanDOI,
             source: 'crossref',
+            },
           };
         }
       } else {
@@ -535,12 +1220,14 @@ export async function checkRetraction(
   // silence depends entirely on whether everything we asked actually answered —
   // whichever source fell over, and whether we asked anything at all.
   return {
-    isRetracted: false,
-    checked: isChecked(),
-    sourcesChecked,
-    sourcesUnavailable,
-    originalPaperDOI: cleanDOI,
-    source: sourcesChecked.includes('crossref') ? 'crossref' : undefined,
+    info: {
+      isRetracted: false,
+      checked: isChecked(),
+      sourcesChecked,
+      sourcesUnavailable,
+      originalPaperDOI: cleanDOI,
+      source: sourcesChecked.includes('crossref') ? 'crossref' : undefined,
+    },
   };
 }
 
@@ -573,13 +1260,17 @@ export async function checkRetractionDetailed(
 }
 
 /**
- * Batch check multiple DOIs for retractions
+ * Batch check multiple DOIs for retractions.
+ *
+ * All DOIs share one citing paper (`options.citing`): its Crossref record is
+ * fetched at most once for the whole batch, and only if something is flagged.
  */
 export async function checkMultipleRetractions(
   dois: string[],
   options: RetractionCheckOptions = {}
 ): Promise<Map<string, RetractionInfo>> {
   const results = new Map<string, RetractionInfo>();
+  const resolveCiting = makeCitingResolver(options.citing, options.creds);
 
   // Process in batches to avoid rate limiting
   const batchSize = 5;
@@ -588,7 +1279,7 @@ export async function checkMultipleRetractions(
 
     const batchResults = await Promise.all(
       batch.map(async (doi) => {
-        const info = await checkRetraction(doi, options);
+        const info = await checkWithResolver(doi, options, resolveCiting);
         return { doi, info };
       })
     );

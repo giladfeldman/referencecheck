@@ -259,15 +259,25 @@ doi.org: a link, not an alias); `unexpanded-target` (redirect path is not a cano
 
 ### `checkMultipleRetractions(dois, options?)`
 
-`Promise<Map<doi, RetractionInfo>>`, 5 at a time with a 1 s pause. Read each `checked`.
+`Promise<Map<doi, RetractionInfo>>`, 5 at a time with a 1 s pause. Read each `verdict`. All
+DOIs share one `options.citing`; its Crossref record is fetched at most once per batch, and only
+if something is flagged.
 
 ```ts
 interface RetractionCheckOptions {
   creds?: MetadataCredentials;
   sources?: readonly RetractionSourceName[];   // default DEFAULT_RETRACTION_SOURCES = ['crossref']
+  citing?: CitingPaperInput;                   // the citing paper, for `timing`
+  checkReplacement?: boolean;                  // default true; see `replacement` below
+}
+
+interface CitingPaperInput {
+  publishedDate?: string;   // YYYY | YYYY-MM | YYYY-MM-DD; wins over `doi`; unreadable -> RangeError
+  doi?: string;             // its Crossref `published` (else `issued`) date is used
 }
 
 interface RetractionInfo {
+  verdict: RetractionVerdict;      // 'clean' | 'flagged' | 'could_not_check' -- switch on this
   isRetracted: boolean;            // pulled from the literature (any RetractionUpdateType)
   retractionType?: RetractionUpdateType;
   checked: boolean;                // every consulted source answered, and at least one did
@@ -278,6 +288,33 @@ interface RetractionInfo {
   retractionNoticeUrl?: string;    // doi.org link to the notice
   originalPaperDOI?: string;
   source?: RetractionSourceName;   // the source that produced the answer
+  timing?: RetractionTimingInfo;            // every flagged result; absent otherwise
+  replacement?: RetractionReplacementInfo;  // every flagged result; absent otherwise
+}
+
+interface RetractionTimingInfo {
+  timing: RetractionTiming;                 // 'before_citing' | 'after_citing' | 'unknown'
+  retractionDate?: string;
+  citingPublishedDate?: string;
+  citingDateSource?: CitingDateSource;      // 'caller' | 'crossref'
+  citingDateField?: 'published' | 'issued';
+  unknownReason?: RetractionTimingUnknownReason;
+  detail?: string;
+}
+
+interface RetractionReplacementInfo {
+  status: RetractionReplacementStatus;        // 'replaced' | 'not_recorded' | 'unknown'
+  replacementDOI?: string;
+  evidence: RetractionReplacementEvidence[];  // every signal that said "replaced"
+  unknownReason?: RetractionReplacementUnknownReason;
+  detail?: string;
+}
+
+interface CitingPublicationDate {           // from resolveCitingPublicationDate
+  date?: string;
+  source?: CitingDateSource;
+  field?: 'published' | 'issued';
+  unavailable?: { reason: RetractionUnavailableReason | 'no_date'; detail?: string };
 }
 
 interface RetractionSourceUnavailable {
@@ -296,7 +333,50 @@ interface RetractionSourceUnavailable {
   retraction). A reply that is not the source's answer is `server_error`: a Crossref 200
   without a work record (`200 without a work record`), an OpenRetractions 200 without a JSON
   boolean `retracted`, or an OpenRetractions 404 without a JSON body (`404 without a JSON
-  body`; only the API's own JSON 404 means "not in this index").
+  body`; only the API's own JSON 404 means "not in this index"). From 0.4.0 a Crossref 200
+  whose record has no `DOI` is also no answer.
+  `invalid_doi`: the input is not DOI-shaped, so nothing was asked (before 0.4.0 it read as a
+  clean).
+- `RetractionVerdict`: `flagged` (any source flags it), `clean` (every source asked answered and
+  none flags it), `could_not_check` (no flag, and a source did not answer, none was asked, or the
+  DOI is not DOI-shaped). Derived from `isRetracted` and `checked`, so it never disagrees with them.
+- `RetractionTiming`: `before_citing` (already retracted when the citing paper was published: the
+  citing authors' error), `after_citing` (retracted later: cited in good faith), `unknown`.
+  `RetractionTimingUnknownReason`: `no_citing_date` (no `citing` given), `citing_date_unavailable`
+  (the citing DOI's lookup failed or its record has no date; `detail` says which),
+  `no_retraction_date` (e.g. found only by a title marker), `unparseable_retraction_date`,
+  `same_period` (the dates cannot be ordered at the precision recorded: `2019` vs `2019-10-08`,
+  or the same day).
+- `RetractionReplacementStatus`: `replaced`, `not_recorded` (every lookup answered and none
+  says so) or `unknown` (none says so and a lookup failed or was turned off). **`not_recorded` is
+  not "not replaced"**: Crossref Labs serves an empty Retraction Watch block for
+  10.1093/carcin/bgs140, whose own title reads "RETRACTED AND REPLACED", and Crossref's
+  `updated-by` entry is a plain `retraction` on every retract-and-replace case probed.
+- `RetractionReplacementEvidence`, cheapest first: `crossref_is_replaced_by` (Crossref
+  `relation['is-replaced-by']` naming another DOI), `title_marker` (the work's own title starts
+  "RETRACTED AND REPLACED"), `notice_title` (the retraction notice's title starts "Retraction and
+  replacement of"), `retraction_watch_reason` (the Retraction Watch record served by Crossref Labs,
+  `api.labs.crossref.org`, gives the reason "Retract and Replace"; Crossref labels that block's
+  keys unstable, so any unreadable shape is `unknown`, never `not_recorded`). `replacementDOI`
+  comes from `is-replaced-by`, or from a DOI in the Retraction Watch notes that Crossref confirms
+  is a work. `updated-by` `new_version` is deliberately not read as a replacement:
+  F1000Research 10.12688/f1000research.8114 v1 lists v2 and v3 as new versions, and both were
+  retracted too.
+- `RetractionReplacementUnknownReason`: `not_requested` (`checkReplacement: false`),
+  `lookup_failed`, `malformed_response`; `detail` names the lookup.
+- Cost: the replacement lookups run for FLAGGED references only: the notice's Crossref record,
+  the Crossref Labs record and, when the notes name a DOI, that DOI (at most a few requests per
+  retracted reference; none for a clean one).
+
+### Timing helpers
+
+- `resolveCitingPublicationDate(citingDOI, creds?)` → `Promise<CitingPublicationDate>`: the citing
+  paper's date from Crossref, resolved once and reusable across calls.
+- `compareRetractionTiming(retractionDate, citing)` → `RetractionTimingInfo`: recompute timing
+  from a stored `retractionDate` without a lookup. `citing` is a `CitingPublicationDate` or `null`.
+- `describeRetractionTiming(timing, retractionType?)` → one plain sentence that keeps "already
+  retracted when it was cited" apart from "cited in good faith", using the type's own word
+  (withdrawn, removed, partially retracted).
 
 Detection reads Crossref `updated-by`; `update-to` (which a retraction *notice* carries,
 pointing at the paper it retracts) is deliberately not read as a retraction of the queried DOI.

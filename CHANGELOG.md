@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.4.0 — 2026-11-18
+
+### Added
+- **Three verdicts.** Every `RetractionInfo` carries `verdict`: `flagged`, `clean` or
+  `could_not_check`, derived from `isRetracted` and `checked` so it can never disagree with them.
+- **Retraction timing.** `options.citing` (`{ publishedDate }` or `{ doi }`) gives every flagged
+  result `timing.timing`: `before_citing` (already retracted when the citing paper was published:
+  the citing authors' error), `after_citing` (retracted later: cited in good faith) or `unknown`
+  with `unknownReason` (`no_citing_date`, `citing_date_unavailable`, `no_retraction_date`,
+  `unparseable_retraction_date`, `same_period`). The citing date comes only from the caller or
+  from the citing DOI's Crossref `published` (else `issued`) field, and dates are compared at the
+  precision both carry (`2019` against `2019-10-08` is `same_period`, never a guess). The citing
+  DOI is looked up only when something is flagged, and once per `checkMultipleRetractions` batch.
+  A caller date that cannot be read throws `RangeError`. New helpers:
+  `resolveCitingPublicationDate`, `compareRetractionTiming`, `describeRetractionTiming`.
+- **Retracted and replaced.** Every flagged result carries `replacement`: `replaced`,
+  `not_recorded` or `unknown`, with every signal that said so in `evidence`:
+  `crossref_is_replaced_by`, `title_marker` (the work's title starts "RETRACTED AND REPLACED"),
+  `notice_title` (the notice's title starts "Retraction and replacement of"), and
+  `retraction_watch_reason` (the Retraction Watch reason "Retract and Replace", read from Crossref
+  Labs). `replacementDOI` comes from `is-replaced-by` or from a DOI in the Retraction Watch notes
+  that Crossref confirms is a work (10.1093/infdis/jiae178 -> 10.1093/infdis/jiae357). Measured
+  2026-11-18: Crossref's own `updated-by` entry is a plain `retraction` on every
+  retract-and-replace case probed; Crossref Labs serves an EMPTY block for 10.1093/carcin/bgs140,
+  whose own title says "RETRACTED AND REPLACED"; Labs answered 503 on 2 of 8 probes. So
+  `not_recorded` never means "not replaced", and a failed or unreadable lookup is `unknown`.
+  `updated-by` `new_version` is deliberately not read as a replacement: F1000Research
+  10.12688/f1000research.8114 v1 lists v2 and v3 as new versions, and both were retracted too.
+  The lookups run for flagged references only; `checkReplacement: false` turns them off.
+
+### Fixed — results that read as clean without an answer
+- A Crossref 200 whose body is not one work's record (empty, HTML, a work list, a record with no
+  `DOI`) was read as an empty record and so a checked clean. It is now `could_not_check` with
+  reason `malformed_response`.
+- A DOI that is not DOI-shaped (an empty string reached Crossref as `/works/`, which answers 200
+  with a list) read as a clean. Nothing is asked now, and the result is `could_not_check` with
+  reason `invalid_doi`.
+- An `updated-by` entry typed and labelled `retracion` (a real publisher deposit, found by a full
+  scan of Crossref's retraction notices) was not recognised as a retraction.
+
+### Consumer action
+- Switch renderers on `verdict`, and show `could_not_check` as unchecked, never in the clean count.
+- Handle the new `RetractionUnavailableReason` values `malformed_response` and `invalid_doi`.
+- Pass the manuscript's publication date (or DOI) as `citing` and render `timing` with
+  `describeRetractionTiming`, so "cited after it was retracted" and "retracted after it was
+  cited" never read the same.
+- Render `replacement.status: not_recorded` as "no replacement recorded", never "not replaced",
+  and `unknown` as "could not check for a replacement".
+
 ## 0.3.0 — 2026-11-23
 
 A sweep for one defect class across the whole library: **the same input read differently in
