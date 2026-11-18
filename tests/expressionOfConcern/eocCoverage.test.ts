@@ -90,14 +90,19 @@ describe('a source that answered is not the same as a source that did not', () =
     expect(r.sourcesChecked).not.toContain('CrossRef');
   });
 
-  it('a 404 IS clean — the source was reached and holds no record', async () => {
+  // Changed in 0.3.0: a Crossref 404 means Crossref does not hold this DOI (a DataCite or
+  // Zenodo DOI, or a typo), which is no answer about the paper. A Europe PMC search with
+  // no hit IS an answer.
+  it('a Crossref 404 is not_indexed; an empty Europe PMC search is clean', async () => {
     crossrefGetMock.mockRejectedValue(httpError(404));
     axiosGetMock.mockResolvedValue({ data: { resultList: { result: [] } } });
 
     const r = await checkReferenceForEOCDetailed(REF);
 
-    expect(r.complete).toBe(true);
-    expect(r.sourcesChecked).toContain('CrossRef');
+    expect(r.complete).toBe(false);
+    expect(r.sourcesChecked).not.toContain('CrossRef');
+    expect(r.sourcesChecked).toContain('PubMed');
+    expect(r.sourcesUnavailable).toEqual([{ source: 'CrossRef', reason: 'not_indexed', detail: '404' }]);
   });
 
   it('classifies 5xx, timeout and bare network failure distinctly', async () => {

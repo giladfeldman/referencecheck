@@ -95,9 +95,11 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
       }
     }
 
-    // Also check container-title-short
-    if (!metadata.journal && crossrefData['container-title-short']) {
-      metadata.journal = crossrefData['container-title-short'];
+    // Crossref serves the abbreviation as `short-container-title`, an array (the old
+    // `container-title-short` is not a Crossref field, so this never fired).
+    const shortTitle = crossrefData['short-container-title'];
+    if (!metadata.journal && Array.isArray(shortTitle) && typeof shortTitle[0] === 'string' && shortTitle[0]) {
+      metadata.journal = shortTitle[0];
     }
 
     // Extract ISSN

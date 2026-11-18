@@ -3,7 +3,18 @@
  */
 
 import { describe, it, expect } from '@jest/globals';
-import { checkReferenceForPreprint, getSummaryData, PreprintIssue, detectKnownPreprintFromDoi, detectKnownPreprintFromText } from '../../src/preprint/preprintDetectionService.js';
+import { jest } from '@jest/globals';
+
+// No live network (2026-11-18): these tests called Crossref unmocked and timed out under
+// load. Crossref answers every DOI here with a recorded-shape 404 ("not registered"), so
+// the tests exercise the code paths, not the network. Field behaviour against recorded
+// Crossref records is in tests/parity/sourceFields.test.ts.
+const crossrefGetMock = jest.fn<any>().mockRejectedValue(
+  Object.assign(new Error('Request failed with status code 404'), { isAxiosError: true, response: { status: 404 } }),
+);
+jest.unstable_mockModule('../../src/http/crossref.js', () => ({ crossrefGet: crossrefGetMock }));
+import type { PreprintIssue } from '../../src/preprint/preprintDetectionService.js';
+const { checkReferenceForPreprint, getSummaryData, detectKnownPreprintFromDoi, detectKnownPreprintFromText } = await import('../../src/preprint/preprintDetectionService.js');
 import type { ReferenceInput } from '../../src/types.js';
 
 describe('Preprint Detection Service', () => {

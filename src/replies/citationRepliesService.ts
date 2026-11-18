@@ -45,7 +45,8 @@ async function checkForReplies(doi: string): Promise<CitationRepliesIssue[]> {
     // 2026-11-18), so HAS_ERRATA and IS_RESPONSE could never fire.
     const relations = data.relation || {};
 
-    const CORRECTION_TYPES = new Set(['correction', 'erratum', 'corrigendum', 'addendum']);
+    // Not `addendum` or `clarification`: they add material and correct nothing.
+    const CORRECTION_TYPES = new Set(['correction', 'erratum', 'corrigendum']);
     const correctedBy = (Array.isArray(data['updated-by']) ? data['updated-by'] : []).filter(
       (u: any) => typeof u?.type === 'string' && CORRECTION_TYPES.has(u.type.toLowerCase()),
     );

@@ -7,7 +7,7 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { formatError } from '../util/formatError.js';
 import type { MetadataCredentials } from './credentials.js';
 import { DEFAULT_POLITE_EMAIL } from './credentials.js';
-import { cleanDoiInput, foldForMatch, formatDateParts, parseYear } from '../util/normalize.js';
+import { cleanDoiInput, findReferenceYear, foldForMatch, formatDateParts } from '../util/normalize.js';
 
 export interface CrossrefResult {
   found: boolean;
@@ -223,14 +223,9 @@ function isUnpublishableWork(referenceText: string): boolean {
  * Extract year from reference text
  */
 function extractYearFromReference(referenceText: string): number | null {
-  // A year inside parentheses wins: (2019), (2019a), (2019, March 3). Otherwise the first
-  // stand-alone year. Both go through the shared parseYear (2026-11-18): the old first
-  // pattern missed "(2019, March 3)" and fell through to whatever year came first.
-  for (const group of referenceText.match(/\([^()]*\)/g) ?? []) {
-    const y = parseYear(group);
-    if (y !== null) return y;
-  }
-  return parseYear(referenceText);
+  // The shared reference-year reader: "(2019, March 3)" is 2019, and "arXiv:1706.03762",
+  // a page range or "(N = 1648)" is not a year (a wrong year rejects the right DOI).
+  return findReferenceYear(referenceText);
 }
 
 /**

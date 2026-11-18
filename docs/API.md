@@ -141,10 +141,11 @@ so one input is read the same way everywhere (bound by `tests/parity/`).
 | `cleanDoiInput(doi)` | the DOI with surrounding whitespace, a resolver URL (`http(s)://`, `dx.`/`www.`, or bare `doi.org/`) or a `doi:` label removed and percent-encoding decoded; case kept; `''` for a non-string |
 | `doiForUrl(doi)` | `encodeURIComponent(cleanDoiInput(doi))`, the only form a DOI takes inside a request URL |
 | `parseYear(value)` | the first stand-alone year 1500–2099 in a string or number (`"(2019, March 3)"` → 2019), or `null` (`"in press"`, `"n.d."`) |
-| `foldForMatch(text)` | lower-cased, accents removed (`Müller` → `muller`), letters and digits of every script kept, everything else one space |
-| `splitAuthorList(authors)` | one entry per author from an array or a string; `;`, `&` and "and" always separate; a comma separates unless what follows is only initials or a suffix (`Smith, J., Jones, K.` → 2 authors) |
+| `foldForMatch(text)` | lower-cased, accents removed (`Müller` → `muller`; also ø ł ß đ ı æ œ þ: `Østergaard` → `ostergaard`), letters and digits of every script kept, everything else one space |
+| `splitAuthorList(authors)` | one entry per author from an array or a string; `;`, `&` and "and" always separate; a comma separates unless what follows is only initials (each capital followed by a period, space, hyphen or the end) or a suffix (`Smith, J., Jones, K.` and `LI, X., WU, Y.` → 2 authors) |
 | `formatDateParts(parts)` | Crossref `date-parts` as ISO at the given precision: `[2019, 3, 5]` → `"2019-03-05"`, `[2019]` → `"2019"`, else `undefined` |
-| `normalizeIssn(issn)` | an ISSN as `NNNN-NNNC` with the check digit upper-cased, from any spacing, dash or `ISSN`/`eISSN` label; `null` unless it has eight ISSN characters |
+| `normalizeIssn(issn)` | an ISSN as `NNNN-NNNC` with the check digit upper-cased, from any spacing, dash or `ISSN`/`eISSN` label; `null` unless it has eight ISSN characters and a correct mod-11 check digit (`1648-1655` is a page range) |
+| `findReferenceYear(text)` | the year of a whole reference string: a parenthetical that is only a year (`(2019)`, `(2019a)`, `(2019, March 3)`), else the first 1900–2099 number not inside an identifier or a range (`arXiv:1706.03762`, `1648-1655`); `null` when none. Used by the DOI matcher |
 | `journalKey(name)` | `foldForMatch(name)` with the words "and" and "the" dropped: the key both sides of a journal-name comparison use (`Journal of Personality & Social Psychology` = `Journal of Personality and Social Psychology`) |
 
 ## DOI shape and shortDOIs
@@ -245,7 +246,7 @@ interface EocReferenceResult {
 }
 
 interface EocSourceReport { source: string; reason: EocUnavailableReason; detail?: string }
-type EocUnavailableReason = 'rate_limited' | 'timeout' | 'server_error' | 'network' | 'malformed_response';
+type EocUnavailableReason = 'rate_limited' | 'timeout' | 'server_error' | 'network' | 'malformed_response' | 'not_indexed';
 type EocSourceOutcome =
   | { status: 'clean' }
   | { status: 'issue'; issue: ExpressionOfConcernIssue }
@@ -256,7 +257,8 @@ Sources: Crossref `updated-by` entries of type `expression_of_concern`, and Euro
 `commentCorrectionList` (entries of type "Expression of concern in") for the record whose DOI
 matches, from a `DOI:"..."` search with `resultType=core` (reported as `PubMed`). A 200 that
 carries no work record (Crossref) or no result list (Europe PMC) is `malformed_response`, not
-`clean`. One concern found by both sources gives one issue per source. Before 0.3.0 neither
+`clean`. A Crossref 404 (the DOI is not registered at Crossref) is `not_indexed`; a Europe PMC
+search with no hit is `clean`. One concern found by both sources gives one issue per source. Before 0.3.0 neither
 source could fire (see the CHANGELOG). `KnownList` is **not implemented**: it always returns `clean`, so it
 appears in `sourcesChecked` without a lookup. A reference with no DOI returns
 `complete: true` with no sources.
@@ -294,7 +296,7 @@ record's first request.
 ### `checkReferenceForReplies(reference)`
 
 `Promise<CitationRepliesIssue[]>` from one Crossref record: `updated-by` entries of type
-`correction`, `erratum`, `corrigendum` or `addendum` (`HAS_ERRATA`; `replyDOI` is the first
+`correction`, `erratum` or `corrigendum` (`HAS_ERRATA`; not `addendum`; `replyDOI` is the first
 notice, `replyCount` the distinct notices, `replyDate` the earliest notice date as ISO
 `YYYY-MM-DD`), and the relations `has-reply` (`HAS_AUTHOR_REPLY`), `has-comment`
 (`HAS_COMMENTS`) and `is-reply-to` (`IS_RESPONSE`). Before 0.3.0 `HAS_ERRATA` and
@@ -425,7 +427,7 @@ if (isValidReference(reference)) {
 | `loadBeallsList()` | the bundled `BeallsList` (cached after the first read) |
 | `checkBeallsList(publisher)` | `true` when the publisher name matches a listed publisher (word-sequence match, not raw substring; a single generic word does not match) |
 | `isKnownLegitimate(publisher)` | `true` for a publisher on the bundled legitimate list |
-| `checkDOAJ(issn)` | `Promise<DOAJResult>` from the DOAJ journal search by the hyphenated ISSN (`normalizeIssn`; before 0.3.0 the hyphen was stripped and DOAJ found nothing). `{ found: false }` for no readable ISSN or no hit; `{ found: false, unavailable: true, reason }` when DOAJ failed or sent no result list, which means "could not check", not "not listed" |
+| `checkDOAJ(issn)` | `Promise<DOAJResult>` from the DOAJ journal search by the hyphenated ISSN (`normalizeIssn`; before 0.3.0 the hyphen was stripped and DOAJ found nothing). `{ found: false }` for an empty ISSN or no hit; `{ found: false, unavailable: true, reason: 'invalid_issn' }` for a non-ISSN (DOAJ not asked); `{ found: false, unavailable: true, reason }` when DOAJ failed or sent no result list, which means "could not check", not "not listed" |
 | `searchOpenAlexByJournalName(journalName, creds?)` | best OpenAlex journal source by name (names under 3 characters are not searched) |
 | `resolveOpenAlexByDOI(doi, creds?)` | the OpenAlex journal of the work with this DOI |
 | `checkHeuristics(journalName, config)` | name keyword indicators from the bundled list, in 5 categories |

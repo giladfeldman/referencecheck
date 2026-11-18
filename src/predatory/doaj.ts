@@ -9,9 +9,11 @@ export async function checkDOAJ(issn: string): Promise<DOAJResult> {
   // DOAJ matches the hyphenated form only: `issn:19326203` returns nothing for a journal
   // that `issn:1932-6203` finds (measured 2026-11-18). Before 0.3.0 the hyphen was
   // stripped, so every lookup said "not in DOAJ".
+  if (typeof issn !== 'string' || !issn.trim()) return { found: false };
   const cleanISSN = normalizeIssn(issn);
   if (!cleanISSN) {
-    return { found: false };
+    // Not an ISSN (bad check digit, wrong length): DOAJ was not asked.
+    return { found: false, unavailable: true, reason: 'invalid_issn' };
   }
 
   try {

@@ -44,12 +44,16 @@ export function doiForUrl(doi: string | null | undefined): string {
  * (Müller -> muller), every letter and digit of every script is kept (Иванов stays
  * иванов), all other characters become one space.
  */
+const FOLD_EXTRA: Record<string, string> = { 'ø': 'o', 'ł': 'l', 'ß': 'ss', 'đ': 'd', 'ı': 'i', 'æ': 'ae', 'œ': 'oe', 'þ': 'th' };
+
 export function foldForMatch(text: string | null | undefined): string {
   if (typeof text !== 'string') return '';
   return text
     .normalize('NFKD')
     .replace(/\p{M}+/gu, '')
     .toLowerCase()
+    // Letters NFKD does not decompose: Østergaard, Łukasz, Straße, Đorđević, ı.
+    .replace(/[øłßđıæœþ]/g, (c) => FOLD_EXTRA[c] ?? c)
     .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -89,8 +93,10 @@ export function splitAuthorList(authors: string | readonly string[] | null | und
   for (const group of text.split(/\s*(?:;|&|\band\b)\s*/i)) {
     const pieces = group.split(',').map((p) => p.trim()).filter((p) => p.length > 0);
     for (const piece of pieces) {
+      // Initials: every capital is followed by a period, a space, a hyphen or the end
+      // ("J.", "J. K.", "J.K.", "J.-P.", "J"). An all-caps surname ("LI", "SMITH") is not.
       const isInitialsOrSuffix =
-        /^(?:\p{Lu}\.?[\s.-]*)+$/u.test(piece) || /^(?:jr|sr|ii|iii|iv)\.?$/i.test(piece);
+        /^(?:\p{Lu}(?:\.|(?=[\s-]|$))[\s-]*)+$/u.test(piece) || /^(?:jr|sr|ii|iii|iv)\.?$/i.test(piece);
       if (isInitialsOrSuffix && out.length > 0 && out[out.length - 1] !== '') {
         out[out.length - 1] = `${out[out.length - 1]}, ${piece}`;
       } else {
@@ -123,6 +129,27 @@ export function formatDateParts(parts: unknown): string | undefined {
 export function normalizeIssn(issn: string | null | undefined): string | null {
   if (typeof issn !== 'string') return null;
   const s = issn.replace(/^\s*(?:e-?|p-?)?issn\s*:?\s*/i, '').replace(/[\s\u2010-\u2015-]/g, '').toUpperCase();
-  return /^\d{7}[\dX]$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4)}` : null;
+  if (!/^\d{7}[\dX]$/.test(s)) return null;
+  // The ISSN check digit (mod 11): without it a page range "1648-1655" or a year range
+  // "2019-2020" has the same shape as an ISSN.
+  let sum = 0;
+  for (let i = 0; i < 7; i++) sum += Number(s[i]) * (8 - i);
+  const check = (11 - (sum % 11)) % 11;
+  if (s[7] !== (check === 10 ? 'X' : String(check))) return null;
+  return `${s.slice(0, 4)}-${s.slice(4)}`;
+}
+
+/**
+ * The publication year of a whole reference string (not of a year field: that is
+ * `parseYear`). A parenthetical that is only a year wins: "(2019)", "(2019a)",
+ * "(2019, March 3)". Otherwise the first 1900-2099 number that is not part of an
+ * identifier, page range or volume(issue) run: "arXiv:1706.03762" and "1648-1655" are
+ * not years. Null when there is none.
+ */
+export function findReferenceYear(text: string | null | undefined): number | null {
+  if (typeof text !== 'string') return null;
+  for (const m of text.matchAll(/\(\s*((?:19|20)\d{2})[a-z]?\s*(?:,[^()]*)?\)/g)) return parseInt(m[1], 10);
+  const m = text.match(/(?<![\d.:/–-])((?:19|20)\d{2})[a-z]?(?![\d]|\s*[–-]\s*\d|\.\d|:\d)/);
+  return m ? parseInt(m[1], 10) : null;
 }
 

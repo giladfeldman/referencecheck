@@ -36,7 +36,10 @@ so it can never fire and reports clean**: the expression-of-concern check, below
 - **Years.** `compareYear` (deduplication) read `"(2019)"` and `"c. 1984"` as no year, and
   scored two `"in press"` references as a mismatch (0.0) while two missing years scored 0.5.
   The DOI matcher's year rule missed `"(2019, March 3)"` and fell through to the first number
-  in the text. Both now use `parseYear`; a value with no year counts as missing.
+  in the text. Deduplication now uses `parseYear` (a value with no year counts as missing);
+  the DOI matcher uses `findReferenceYear`, which reads a parenthetical only when it is a
+  year and skips numbers inside identifiers and page ranges (`arXiv:1706.03762`,
+  `1648-1655`, `(N = 1648)`), so a wrong "year" no longer rejects the right DOI.
 - **Author lists.** `calculateSimilarity` joined `normalized_authors` with ", " and
   `compareAuthors` split on every comma, so `["Smith, J.", "Jones, K."]` was compared as four
   people while `["J. Smith", "K. Jones"]` was two. Arrays are now passed through; strings go
@@ -53,19 +56,28 @@ so it can never fire and reports clean**: the expression-of-concern check, below
 - **Errata and responses were never detected.** `checkReferenceForReplies` read the relations
   `is-corrected-by` (HAS_ERRATA) and `is-response-to` (IS_RESPONSE); Crossref serves neither
   (both are rejected as relation types). Corrections are now read from `updated-by` (types
-  `correction`, `erratum`, `corrigendum`, `addendum`), with the notice DOI and its date in
+  `correction`, `erratum`, `corrigendum`; not `addendum`, which corrects nothing), with the notice DOI and its date in
   `replyDOI` and `replyDate`; responses from `is-reply-to`. Proven on recorded responses.
 - **Preprint server was always "Unknown".** Crossref serves `institution` as an array; it was
   read as an object. `preprintDate` is now ISO (`2020-03-22`, was `2020-3-22`).
 - **Cold Spring Harbor journal articles were flagged as bioRxiv preprints.** The 10.1101
   prefix also carries Cold Spring Harbor Laboratory Press journals (`10.1101/pdb.prot099176`
-  is a journal article); the prefix rule now matches only the bioRxiv/medRxiv suffix forms.
+  is a journal article); the prefix rule now matches only the bioRxiv/medRxiv suffix forms
+  (with `v2`, `.v1`, `.full` or a trailing period), and the new openRxiv prefix `10.64898`
+  (all 453,106 of its Crossref works are posted content) is recognised.
 - **DOAJ never found a journal.** The ISSN was sent without its hyphen, and DOAJ finds
   nothing for `issn:19326203` while `issn:1932-6203` finds PLOS ONE (both recorded), so every
   journal was reported "not in DOAJ". The ISSN is now read once (`normalizeIssn`) and sent
-  hyphenated. A DOAJ failure or a 200 without a result list is now
+  hyphenated, and only when its check digit is right (a page range such as `1648-1655` has
+  the ISSN shape); a non-ISSN gives `reason: 'invalid_issn'` without asking DOAJ. A DOAJ failure or a 200 without a result list is now
   `{ found: false, unavailable: true, reason }`, and `determineVerdict` says DOAJ could not be
   checked instead of "not found in DOAJ".
+- **Expression of concern: a Crossref 404 was "clean".** A DOI Crossref does not hold (a
+  DataCite or Zenodo DOI, or a typo) is now `unavailable` with the new reason `not_indexed`.
+- **Journal metadata** read `container-title-short`, which Crossref does not serve; it now
+  reads `short-container-title[0]`.
+- **Names:** `foldForMatch` also folds ø, ł, ß, đ, ı, æ, œ, þ (`Østergaard` = `Ostergaard`),
+  which Unicode decomposition leaves alone.
 - **Expression of concern, Europe PMC:** the hit is matched with the shared DOI comparer, so a
   record writing `10.1371//journal…` is this paper.
 
@@ -75,13 +87,13 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   with its reason, and the count dropped under the relevance threshold. `findDOIFromReference`
   returned `null` for all four, and rejected candidates were only logged.
 - Shared readers, exported: `cleanDoiInput`, `doiForUrl`, `parseYear`, `foldForMatch`,
-  `splitAuthorList`, `formatDateParts`, `journalKey`, `normalizeIssn`.
+  `splitAuthorList`, `formatDateParts`, `journalKey`, `normalizeIssn`, `findReferenceYear`.
 - `compareAuthors` accepts a string array as well as a string.
 
 ### Changed
 - `CORRECTION_NOTICE` is gone: it read a field Crossref does not serve and never fired, and a
   correction is not an expression of concern (corrections are `HAS_ERRATA`).
-- `EocUnavailableReason` gains `malformed_response`.
+- `EocUnavailableReason` gains `malformed_response` and `not_indexed`.
 - `CrossrefResult.publishedDate` is ISO at Crossref's precision: `"2019-03-05"`, `"1998-02"`
   (was `"2019-3-5"`, `"1998-2"`). `validateDOI` and the DOI search now share one record mapper.
 

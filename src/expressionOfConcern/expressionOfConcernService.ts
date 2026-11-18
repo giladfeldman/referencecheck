@@ -46,7 +46,10 @@ export interface ExpressionOfConcernIssue {
 }
 
 /** Why a source could not answer. Every value here means "we do not know". */
-export type EocUnavailableReason = 'rate_limited' | 'timeout' | 'server_error' | 'network' | 'malformed_response';
+export type EocUnavailableReason =
+  | 'rate_limited' | 'timeout' | 'server_error' | 'network' | 'malformed_response'
+  /** Crossref has no record of this DOI (a DataCite or Zenodo DOI, or a typo): no answer about the paper. */
+  | 'not_indexed';
 
 /**
  * One source's verdict for one DOI.
@@ -89,11 +92,15 @@ export interface EocReferenceResult {
  * reached and holds no record of an expression of concern for this DOI — while a
  * 429, a 5xx or a timeout means the source never answered at all.
  */
-function classifyEocError(error: unknown): EocSourceOutcome {
+function classifyEocError(error: unknown, notFound: 'clean' | 'not_indexed' = 'clean'): EocSourceOutcome {
   if (axios.isAxiosError(error)) {
     const err = error as AxiosError;
     const status = err.response?.status;
-    if (status === 404) return { status: 'clean' };
+    // A Crossref 404 is about Crossref (the DOI is not registered there), not about the
+    // paper, so it is not_indexed; for a search source a 404 is an empty answer.
+    if (status === 404) {
+      return notFound === 'clean' ? { status: 'clean' } : { status: 'unavailable', reason: 'not_indexed', detail: '404' };
+    }
     if (status === 429) return { status: 'unavailable', reason: 'rate_limited', detail: '429' };
     if (status !== undefined && status >= 500) {
       return { status: 'unavailable', reason: 'server_error', detail: String(status) };
@@ -166,7 +173,7 @@ async function checkCrossrefForEOC(doi: string): Promise<EocSourceOutcome> {
       },
     };
   } catch (error: any) {
-    const outcome = classifyEocError(error);
+    const outcome = classifyEocError(error, 'not_indexed');
     if (outcome.status === 'unavailable' && outcome.reason === 'server_error') {
       console.warn(`Error checking CrossRef for EOC on ${doi}:`, error?.message ?? error);
     }

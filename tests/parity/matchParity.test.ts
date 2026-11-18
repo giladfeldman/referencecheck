@@ -82,7 +82,8 @@ describe('author-list parity: one list, every way it is written', () => {
 describe('name and title parity across scripts and accents', () => {
   it('accented and unaccented spellings of one name normalise identically', () => {
     expect(lib.normalizeAuthorName('Müller, K.')).toBe(lib.normalizeAuthorName('Muller, K.'));
-    expect(lib.normalizeAuthorName('Ødegård')).toBe('ødegard'.normalize('NFKD').replace(/\p{M}/gu, ''));
+    // ø does not decompose under NFKD; foldForMatch maps it (0.3.0 review round 2).
+    expect(lib.normalizeAuthorName('Ødegård')).toBe('odegard');
   });
   it('a non-Latin name or title is never read as absent', () => {
     for (const s of ['Иванов, И.', '王伟', 'Παπαδόπουλος']) {

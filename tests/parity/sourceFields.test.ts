@@ -125,7 +125,7 @@ describe('DOAJ: the hyphenated ISSN, and could-not-check is not "not listed"', (
   });
 
   it('normalizeIssn: one form, check digit upper-cased; non-ISSNs are null (controls)', () => {
-    expect(normalizeIssn('1234-567x')).toBe('1234-567X');
+    expect(normalizeIssn('2434-561x')).toBe('2434-561X');
     for (const bad of ['', '1234-567', '2019', '12345-6789', 'abcd-efgh', null, undefined]) expect(normalizeIssn(bad as any)).toBeNull();
   });
 
