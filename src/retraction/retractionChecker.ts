@@ -113,7 +113,7 @@
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
 import type { MetadataCredentials } from '../http/credentials.js';
-import { cleanDoiInput } from '../util/normalize.js';
+import { cleanDoiInput, formatDateParts } from '../util/normalize.js';
 import { DEFAULT_POLITE_EMAIL } from '../http/credentials.js';
 
 export type RetractionUnavailableReason =
@@ -468,10 +468,18 @@ function entryUpdateType(entry: any): RetractionUpdateType | null {
 }
 
 /** Crossref dates the relation with `updated`; older/derived records use `date`. */
+/**
+ * A relation's date as `YYYY[-MM[-DD]]`, zero-padded like every other date the
+ * library returns (before 0.4.0 it was `parts.join('-')`, "2019-10-8"). A date
+ * that is not a real calendar date (month 13) is still returned, padded, so the
+ * caller sees what was deposited and the timing says it could not be read;
+ * date-parts with no year ([[null]]) give undefined.
+ */
 function relationDate(relation: any): string | undefined {
   const parts =
     relation?.updated?.['date-parts']?.[0] ?? relation?.date?.['date-parts']?.[0];
-  return Array.isArray(parts) ? parts.join('-') : undefined;
+  if (!Array.isArray(parts)) return undefined;
+  return datePartsToString({ 'date-parts': [parts] }) ?? formatDateParts(parts);
 }
 
 /** Sortable form of a relation's date, for picking the earliest notice. */
@@ -738,8 +746,8 @@ export function compareRetractionTiming(
 
 /**
  * A date for a sentence a person reads: zero-padded ("2010-02-06"), never the
- * unpadded Crossref date-parts form ("2010-2-6") that `retractionDate` keeps
- * for compatibility. A value it cannot read is shown as given.
+ * unpadded form ("2010-2-6") a caller-built `RetractionTimingInfo` or an
+ * OpenRetractions date may carry. A value it cannot read is shown as given.
  */
 function displayDate(value: string | undefined): string | undefined {
   if (!value) return undefined;

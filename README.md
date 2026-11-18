@@ -156,7 +156,7 @@ console.log(await getCitationCount(doi));
 Output when run on 2026-11-18 (live data; the citation count changes over time):
 
 ```text
-flagged retraction 2010-2-6 [ 'crossref' ]
+flagged retraction 2010-02-06 [ 'crossref' ]
 before_citing not_recorded
 This work was retracted on 2010-02-06, before the citing paper was published (2012-05): it was already retracted when it was cited.
 true crossref The Lancet

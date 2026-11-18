@@ -236,7 +236,7 @@ describe('retraction timing relative to the citing paper', () => {
     const r = await checkRetraction(JAMA, { citing: { publishedDate: '2013-07-31' } });
     expect(r.timing).toEqual({
       timing: 'after_citing',
-      retractionDate: '2019-10-8',
+      retractionDate: '2019-10-08',
       citingPublishedDate: '2013-07-31',
       citingDateSource: 'caller',
       citingDateField: undefined,
@@ -293,7 +293,22 @@ describe('retraction timing relative to the citing paper', () => {
   it('unknown / no_citing_date when no citing paper is given', async () => {
     serve({ [JAMA]: fixture('retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA);
-    expect(r.timing).toMatchObject({ timing: 'unknown', unknownReason: 'no_citing_date', retractionDate: '2019-10-8' });
+    expect(r.timing).toMatchObject({ timing: 'unknown', unknownReason: 'no_citing_date', retractionDate: '2019-10-08' });
+  });
+
+  it.each([
+    ['a full date', [[2019, 10, 8]], '2019-10-08', 'after_citing'],
+    ['a month date', [[2019, 3]], '2019-03', 'after_citing'],
+    ['a year', [[2019]], '2019', 'after_citing'],
+    ['month 13 (not a calendar date)', [[2019, 13, 1]], '2019-13-01', 'unknown'],
+    ['no year', [[null]], undefined, 'unknown'],
+  ])('retractionDate from %s is zero-padded and compared', async (_l, dateParts, expected, timing) => {
+    const body = clone(fixture('retracted-rw-jama.json'));
+    body.data.message['updated-by'][0].updated = { 'date-parts': dateParts };
+    serve({ [JAMA]: body });
+    const r = await checkRetraction(JAMA, { citing: { publishedDate: '2013-07-31' }, checkReplacement: false });
+    expect(r.retractionDate).toBe(expected);
+    expect(r.timing.timing).toBe(timing);
   });
 
   it('unknown / no_retraction_date on the title-marker path (no notice to date)', async () => {
@@ -305,7 +320,7 @@ describe('retraction timing relative to the citing paper', () => {
   it('a publisher-sourced relation date is compared too (earliest notice, 2021-09-11)', async () => {
     serve({ '10.1007/s11277-021-09072-0': fixture('multi-retraction-dates.json') });
     const r = await checkRetraction('10.1007/s11277-021-09072-0', { citing: { publishedDate: '2022-01' } });
-    expect(r.timing).toMatchObject({ timing: 'before_citing', retractionDate: '2021-9-11' });
+    expect(r.timing).toMatchObject({ timing: 'before_citing', retractionDate: '2021-09-11' });
   });
 
   it('OpenRetractions retraction_date is compared; an unreadable one is unknown', async () => {

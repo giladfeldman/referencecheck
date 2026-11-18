@@ -121,7 +121,7 @@ describe('the verdict is the most severe notice, not the first one deposited', (
 
     const r = await checkRetraction(DOI);
 
-    expect(r.retractionDate).toBe('2021-9-11');
+    expect(r.retractionDate).toBe('2021-09-11');
   });
 });
 

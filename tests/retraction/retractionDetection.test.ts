@@ -80,7 +80,7 @@ describe('Crossref retraction detection reads the field Crossref actually serves
     expect(r.isRetracted).toBe(true);
     expect(r.source).toBe('crossref');
     expect(r.retractionNoticeUrl).toBe('https://doi.org/10.1126/science.aac6638');
-    expect(r.retractionDate).toBe('2015-6-5');
+    expect(r.retractionDate).toBe('2015-06-05');
   });
 
   it('CALIBRATION, second paper: the corpus does not rest on one retraction', async () => {
@@ -103,7 +103,7 @@ describe('Crossref retraction detection reads the field Crossref actually serves
 
     expect(r.isRetracted).toBe(true);
     expect(r.retractionNoticeUrl).toBe('https://doi.org/10.1016/s0140-6736(10)60175-4');
-    expect(r.retractionDate).toBe('2010-2-6');
+    expect(r.retractionDate).toBe('2010-02-06');
   });
 
   it('a healthy paper is not retracted', async () => {

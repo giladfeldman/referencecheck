@@ -135,6 +135,9 @@ v0.1.3 flagged all of them.
    often omit the link; render it as "no replacement recorded", never as "not replaced", and
    `unknown` as "could not check for a replacement". The lookups add a few requests per FLAGGED
    reference only (one of them to `api.labs.crossref.org`).
+4. **`retractionDate` is zero-padded** (`2019-10-08`, was `2019-10-8`). Values stored by an
+   earlier version stay unpadded, so parse before comparing or sorting; taking the year with
+   `slice(0, 4)` is unaffected.
 
 ### Consumer action outstanding from v0.1.4
 

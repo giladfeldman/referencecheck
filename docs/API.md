@@ -283,7 +283,7 @@ interface RetractionInfo {
   checked: boolean;                // every consulted source answered, and at least one did
   sourcesChecked: RetractionSourceName[];
   sourcesUnavailable: RetractionSourceUnavailable[];
-  retractionDate?: string;
+  retractionDate?: string;         // YYYY[-MM[-DD]], zero-padded (before 0.4.0: "2019-10-8")
   retractionReason?: string;       // the notice label, or the type in words
   retractionNoticeUrl?: string;    // doi.org link to the notice
   originalPaperDOI?: string;

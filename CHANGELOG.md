@@ -40,7 +40,15 @@
 - An `updated-by` entry typed and labelled `retracion` (a real publisher deposit, found by a full
   scan of Crossref's retraction notices) was not recognised as a retraction.
 
+### Changed
+- **`retractionDate` is zero-padded** (`2019-10-08`, was `2019-10-8`), like
+  `CrossrefResult.publishedDate` (padded since 0.3.0) and the citing date in `timing`. A deposited date that is not
+  a calendar date (month 13) is still returned, padded, and its `timing` is
+  `unknown` / `unparseable_retraction_date`; date-parts with no year give no date.
+
 ### Consumer action
+- `retractionDate` is now zero-padded; a stored value from an earlier version may be unpadded,
+  so compare dates after parsing, never as strings.
 - Switch renderers on `verdict`, and show `could_not_check` as unchecked, never in the clean count.
 - Handle the new `RetractionUnavailableReason` values `malformed_response` and `invalid_doi`.
 - Pass the manuscript's publication date (or DOI) as `citing` and render `timing` with
