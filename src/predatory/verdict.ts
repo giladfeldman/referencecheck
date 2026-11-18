@@ -86,7 +86,9 @@ export function determineVerdict(
 
   // If still unknown, keep it unknown
   if (status === 'unknown' && sources.length === 0) {
-    reasoning = 'Insufficient data to determine journal status. Not found in Beall\'s List or DOAJ.';
+    reasoning = doajResult.unavailable
+      ? `Insufficient data to determine journal status. Not found in Beall's List; DOAJ could not be checked (${doajResult.reason ?? 'unavailable'}).`
+      : 'Insufficient data to determine journal status. Not found in Beall\'s List or DOAJ.';
   }
 
   return {

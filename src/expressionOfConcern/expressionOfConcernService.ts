@@ -26,6 +26,7 @@ import type { ReferenceInput } from '../types.js';
 import axios, { AxiosError } from 'axios';
 import { crossrefGet } from '../http/crossref.js';
 import { cleanDoiInput, formatDateParts } from '../util/normalize.js';
+import { sameDoi } from '../abstract/index.js';
 
 export interface ExpressionOfConcernIssue {
   type: 'expression-of-concern';
@@ -141,7 +142,7 @@ async function checkCrossrefForEOC(doi: string): Promise<EocSourceOutcome> {
       .map((u) => formatDateParts(u.updated?.['date-parts']?.[0]))
       .filter((d): d is string => !!d)
       .sort();
-    const notices = [...new Set(eocs.map((u) => (typeof u.DOI === 'string' ? u.DOI : '')).filter((d) => d && d.toLowerCase() !== doi.toLowerCase()))];
+    const notices = [...new Set(eocs.map((u) => (typeof u.DOI === 'string' ? u.DOI : '')).filter((d) => d && !sameDoi(d, doi)))];
     const recordedBy = [...new Set(eocs.map((u) => u.source).filter((x) => typeof x === 'string'))];
     return {
       status: 'issue',
@@ -204,7 +205,7 @@ async function checkPubmedForEOC(doi: string): Promise<EocSourceOutcome> {
     if (!Array.isArray(results)) return malformed('Europe PMC 200 without a result list');
 
     // Not indexed here is a definitive "this source has no EOC for that DOI".
-    const article = results.find((r: any) => typeof r?.doi === 'string' && r.doi.toLowerCase() === doi.toLowerCase());
+    const article = results.find((r: any) => typeof r?.doi === 'string' && sameDoi(r.doi, doi));
     if (!article) return { status: 'clean' };
 
     const raw = article.commentCorrectionList?.commentCorrection;

@@ -6,7 +6,7 @@
 import type { ReferenceInput } from '../types.js';
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
-import { cleanDoiInput } from '../util/normalize.js';
+import { cleanDoiInput, formatDateParts } from '../util/normalize.js';
 
 export interface PreprintIssue {
   type: 'preprint-status';
@@ -39,7 +39,10 @@ const KNOWN_PREPRINT_DOI_PREFIXES: Array<{ prefix: RegExp; server: string }> = [
   { prefix: /^10\.2139\/ssrn\./i, server: 'SSRN' },
   { prefix: /^10\.31234\//i, server: 'PsyArXiv' },
   { prefix: /^10\.31219\/osf\.io\//i, server: 'OSF Preprints' },
-  { prefix: /^10\.1101\//i, server: 'bioRxiv/medRxiv' },
+  // Only the bioRxiv/medRxiv suffix forms (dated "2020.03.22.002386", or the older six-plus
+  // digit "002386"). The 10.1101 prefix also carries Cold Spring Harbor journal articles
+  // (10.1101/pdb.prot099176, 10.1101/gr.*), which Crossref types journal-article.
+  { prefix: /^10\.1101\/(?:\d{4}\.\d{2}\.\d{2}\.\d+|\d{6,})(?:v\d+)?$/i, server: 'bioRxiv/medRxiv' },
   { prefix: /^10\.48550\/arxiv\./i, server: 'arXiv' },
   { prefix: /^10\.20944\/preprints/i, server: 'Preprints.org' },
   { prefix: /^10\.32942\/osf\.io\//i, server: 'EarthArXiv' },
@@ -103,8 +106,11 @@ async function checkPreprintStatus(doi: string): Promise<PreprintIssue | null> {
           : 'Check if a peer-reviewed version has been published since this preprint',
         metadata: {
           doi,
-          preprintServer: data.institution?.name || 'Unknown',
-          preprintDate: data.posted?.['date-parts']?.[0]?.join('-'),
+          // Crossref serves `institution` as an array ([{ name: 'bioRxiv' }]); reading it
+          // as an object gave 'Unknown' for every preprint before 0.3.0.
+          preprintServer:
+            (Array.isArray(data.institution) ? data.institution[0]?.name : data.institution?.name) || 'Unknown',
+          preprintDate: formatDateParts(data.posted?.['date-parts']?.[0]),
           publishedDOI: publishedVersion || undefined,
           source: 'CrossRef',
         },

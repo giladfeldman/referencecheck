@@ -71,9 +71,25 @@ const CASES = [
     'Expression of concern recorded by the publisher, paper not retracted. Reported CLEAN before 0.3.0.'],
   ['eoc-two-sources.json', '10.1371/journal.pone.0061107',
     'Expression of concern recorded twice (publisher and Retraction Watch), paper not retracted.'],
+
+  // Added 2026-11-18 (class sweep, second round): fields other checks read.
+  ['corrected.json', '10.1088/1361-6595/aaebdb',
+    'A corrected paper. Crossref serves the correction in `updated-by` (type `correction`); it has no `is-corrected-by` relation, which is what HAS_ERRATA read before 0.3.0.'],
+  ['has-reply.json', '10.1162/99608f92.66fb00a2',
+    'A paper with `has-reply` relations (and `is-comment-on`).'],
+  ['is-reply-to.json', '10.5194/hess-2018-380-ac1',
+    'An author comment carrying `is-reply-to`, which IS_RESPONSE read as `is-response-to` before 0.3.0.'],
+  ['preprint-biorxiv.json', '10.1101/2020.03.22.002386',
+    'A bioRxiv posted-content record: `institution` is an ARRAY ([{name}]), read as an object before 0.3.0.'],
+  ['cshl-journal-article.json', '10.1101/pdb.prot099176',
+    'A Cold Spring Harbor Protocols journal article under the bioRxiv prefix 10.1101, flagged as a preprint by the prefix heuristic before 0.3.0.'],
 ];
 
+// `node capture.mjs corrected.json has-reply.json` re-captures only the named files.
+const ONLY = new Set(process.argv.slice(2));
+
 for (const [file, doi, why] of CASES) {
+  if (ONLY.size && !ONLY.has(file)) continue;
   const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, { headers: UA });
   if (res.status !== 200) throw new Error(`${doi} -> HTTP ${res.status}`);
   const body = await res.json();

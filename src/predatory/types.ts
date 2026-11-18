@@ -15,6 +15,10 @@ export interface BeallsList {
 
 export interface DOAJResult {
   found: boolean;
+  /** True when DOAJ could not be asked or gave no readable answer; `found: false` then means "unknown", not "not listed". */
+  unavailable?: boolean;
+  /** Why DOAJ was unavailable: `malformed_response`, `http_<status>`, or a network code. */
+  reason?: string;
   journalTitle?: string;
   publisher?: string;
   issn?: string;

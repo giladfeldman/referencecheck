@@ -1,0 +1,15 @@
+{
+  "total": 0,
+  "page": 1,
+  "pageSize": 10,
+  "timestamp": "2026-11-18T11:54:24.478137Z",
+  "query": "issn:19326203",
+  "results": [],
+  "last": "https://doaj.org/api/v4/search/journals/issn:19326203?page=1&pageSize=10",
+  "__fixture": {
+    "issn": "19326203",
+    "why": "The same ISSN without the hyphen, as sent before 0.3.0: total 0.",
+    "capturedAt": "2026-11-18",
+    "note": "Verbatim DOAJ v2 body."
+  }
+}

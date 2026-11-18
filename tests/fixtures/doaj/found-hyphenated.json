@@ -1,0 +1,135 @@
+{
+  "total": 1,
+  "page": 1,
+  "pageSize": 10,
+  "timestamp": "2026-11-18T11:54:24.375333Z",
+  "query": "issn:1932-6203",
+  "results": [
+    {
+      "last_updated": "2026-09-17T10:51:00Z",
+      "bibjson": {
+        "editorial": {
+          "review_process": [
+            "Single anonymous peer review"
+          ],
+          "review_url": "https://journals.plos.org/plosone/s/editorial-and-peer-review-process",
+          "board_url": "https://journals.plos.org/plosone/static/editorial-board"
+        },
+        "pid_scheme": {
+          "scheme": [
+            "DOI"
+          ],
+          "has_pid_scheme": true
+        },
+        "copyright": {
+          "author_retains": true,
+          "url": "https://journals.plos.org/plosone/s/licenses-and-copyright"
+        },
+        "keywords": [
+          "science",
+          "medicine",
+          "engineering",
+          "social sciences",
+          "multidisciplinary sciences",
+          "humanities"
+        ],
+        "plagiarism": {
+          "detection": true,
+          "url": "https://journals.plos.org/plosone/s/ethical-publishing-practice#loc-plagiarism"
+        },
+        "subject": [
+          {
+            "code": "R",
+            "scheme": "LCC",
+            "term": "Medicine"
+          },
+          {
+            "code": "Q",
+            "scheme": "LCC",
+            "term": "Science"
+          }
+        ],
+        "eissn": "1932-6203",
+        "language": [
+          "EN"
+        ],
+        "title": "PLoS ONE",
+        "article": {
+          "license_display_example_url": "https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0146294",
+          "license_display": [
+            "Embed"
+          ]
+        },
+        "preservation": {
+          "has_preservation": true,
+          "service": [
+            "CLOCKSS",
+            "PMC"
+          ],
+          "url": "https://portal.issn.org/resource/ISSN/1932-6203"
+        },
+        "license": [
+          {
+            "NC": false,
+            "ND": false,
+            "BY": true,
+            "type": "CC BY",
+            "SA": false,
+            "url": "https://creativecommons.org/licenses/by/4.0/"
+          }
+        ],
+        "ref": {
+          "aims_scope": "https://journals.plos.org/plosone/s/journal-information",
+          "journal": "https://journals.plos.org/plosone/",
+          "oa_statement": "https://journals.plos.org/plosone/s/journal-information#loc-open-access",
+          "author_instructions": "https://journals.plos.org/plosone/s/submission-guidelines",
+          "license_terms": "https://journals.plos.org/plosone/s/licenses-and-copyright"
+        },
+        "oa_start": 2006,
+        "alternative_title": "PLOS ONE",
+        "apc": {
+          "has_apc": true,
+          "max": [
+            {
+              "price": 2477,
+              "currency": "USD"
+            }
+          ],
+          "url": "https://plos.org/publish/fees/"
+        },
+        "other_charges": {
+          "has_other_charges": false
+        },
+        "publication_time_weeks": 29,
+        "deposit_policy": {
+          "service": [
+            "Open Policy Finder"
+          ],
+          "url": "https://openpolicyfinder.jisc.ac.uk/id/publication/17599",
+          "has_policy": true
+        },
+        "publisher": {
+          "country": "US",
+          "name": "Public Library of Science (PLoS)"
+        },
+        "boai": true,
+        "waiver": {
+          "has_waiver": true,
+          "url": "https://www.plos.org/fee-assistance"
+        }
+      },
+      "admin": {
+        "ticked": true
+      },
+      "id": "2fdf1470373343b7bd4f825179c685f5",
+      "created_date": "2007-03-30T10:53:19Z"
+    }
+  ],
+  "last": "https://doaj.org/api/v4/search/journals/issn:1932-6203?page=1&pageSize=10",
+  "__fixture": {
+    "issn": "1932-6203",
+    "why": "PLOS ONE by its hyphenated ISSN: found.",
+    "capturedAt": "2026-11-18",
+    "note": "Verbatim DOAJ v2 body."
+  }
+}

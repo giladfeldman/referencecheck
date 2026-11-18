@@ -29,16 +29,8 @@ describe('Preprint Detection Service', () => {
       expect(Array.isArray(issues)).toBe(true);
     });
 
-    it('should use suggested_doi if doi is not available', async () => {
-      const reference: Partial<ReferenceInput> = {
-        id: 'ref-3',
-        raw_text: 'Smith, J. (2020). Article with suggested DOI.',
-        suggested_doi: '10.1234/preprint.doi',
-      };
-
-      const issues = await checkReferenceForPreprint(reference as ReferenceInput);
-      expect(Array.isArray(issues)).toBe(true);
-    });
+    // 'should use suggested_doi' moved to tests/parity/sourceFields.test.ts: it called live
+    // Crossref unmocked, asserted only Array.isArray, and timed out under load.
   });
 
   describe('Preprint Status Detection', () => {

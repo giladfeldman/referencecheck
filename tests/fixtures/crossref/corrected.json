@@ -1,0 +1,469 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [
+        [
+          2026,
+          9,
+          23
+        ]
+      ],
+      "date-time": "2026-09-23T17:43:20Z",
+      "timestamp": 1790185400865,
+      "version": "4.1.0"
+    },
+    "publisher": "IOP Publishing",
+    "issue": "11",
+    "license": [
+      {
+        "start": {
+          "date-parts": [
+            [
+              2018,
+              11,
+              19
+            ]
+          ],
+          "date-time": "2018-11-19T00:00:00Z",
+          "timestamp": 1542585600000
+        },
+        "content-version": "vor",
+        "delay-in-days": 18,
+        "URL": "https://publishingsupport.iopscience.iop.org/iop-standard/v1"
+      },
+      {
+        "start": {
+          "date-parts": [
+            [
+              2018,
+              11,
+              19
+            ]
+          ],
+          "date-time": "2018-11-19T00:00:00Z",
+          "timestamp": 1542585600000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 18,
+        "URL": "https://iopscience.iop.org/info/page/text-and-data-mining"
+      }
+    ],
+    "funder": [
+      {
+        "DOI": "10.13039/501100006769",
+        "name": "Russian Science Foundation",
+        "doi-asserted-by": "crossref",
+        "award": [
+          "14-22-00273"
+        ],
+        "award-info": [
+          {
+            "award-number": [
+              "14-22-00273"
+            ]
+          }
+        ],
+        "id": [
+          {
+            "id": "10.13039/501100006769",
+            "id-type": "DOI",
+            "asserted-by": "crossref"
+          }
+        ]
+      }
+    ],
+    "content-domain": {
+      "domain": [
+        "iopscience.iop.org"
+      ],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [
+      "Plasma Sources Sci. Technol."
+    ],
+    "published-print": {
+      "date-parts": [
+        [
+          2018,
+          11,
+          1
+        ]
+      ]
+    },
+    "DOI": "10.1088/1361-6595/aaebdb",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [
+        [
+          2018,
+          10,
+          26
+        ]
+      ],
+      "date-time": "2018-10-26T18:45:16Z",
+      "timestamp": 1540579516000
+    },
+    "page": "11LT01",
+    "update-policy": "https://doi.org/10.1088/crossmark-policy",
+    "source": "Crossref",
+    "is-referenced-by-count": 43,
+    "title": [
+      "Mechanisms responsible for the initiation of a fast breakdown in an atmospheric discharge"
+    ],
+    "prefix": "10.1088",
+    "volume": "27",
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0003-2565-4118",
+        "authenticated-orcid": false,
+        "given": "E V",
+        "family": "Parkevich",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "G V",
+        "family": "Ivanenkov",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "M A",
+        "family": "Medvedev",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "A I",
+        "family": "Khirianova",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "A S",
+        "family": "Selyukov",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "A V",
+        "family": "Agafonov",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "A R",
+        "family": "Mingaleev",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "T A",
+        "family": "Shelkovenko",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "S A",
+        "family": "Pikuz",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "266",
+    "published-online": {
+      "date-parts": [
+        [
+          2018,
+          11,
+          19
+        ]
+      ]
+    },
+    "updated-by": [
+      {
+        "DOI": "10.1088/1361-6595/ab245f",
+        "type": "correction",
+        "label": "Correction",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [
+            [
+              2019,
+              7,
+              11
+            ]
+          ],
+          "date-time": "2019-07-11T00:00:00Z",
+          "timestamp": 1562803200000
+        }
+      }
+    ],
+    "container-title": [
+      "Plasma Sources Science and Technology"
+    ],
+    "original-title": [],
+    "link": [
+      {
+        "URL": "http://stacks.iop.org/0963-0252/27/i=11/a=11LT01?key=crossref.5f634157369c9a73184a39400ac03b94",
+        "content-type": "text/html",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "http://iopscience.iop.org/article/10.1088/1361-6595/aaebdb/pdf",
+        "content-type": "application/pdf",
+        "content-version": "am",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "http://stacks.iop.org/0963-0252/27/i=11/a=11LT01/pdf",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "http://iopscience.iop.org/article/10.1088/1361-6595/aaebdb",
+        "content-type": "text/html",
+        "content-version": "am",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://iopscience.iop.org/article/10.1088/1361-6595/aaebdb",
+        "content-type": "text/html",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://iopscience.iop.org/article/10.1088/1361-6595/aaebdb/pdf",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "http://iopscience.iop.org/article/10.1088/1361-6595/aaebdb/pdf",
+        "content-type": "application/pdf",
+        "content-version": "am",
+        "intended-application": "syndication"
+      },
+      {
+        "URL": "https://iopscience.iop.org/article/10.1088/1361-6595/aaebdb/pdf",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "syndication"
+      },
+      {
+        "URL": "http://iopscience.iop.org/article/10.1088/1361-6595/aaebdb/pdf",
+        "content-type": "application/pdf",
+        "content-version": "am",
+        "intended-application": "similarity-checking"
+      },
+      {
+        "URL": "http://stacks.iop.org/0963-0252/27/i=11/a=11LT01/pdf",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      },
+      {
+        "URL": "http://stacks.iop.org/0963-0252/27/i=11/a=11LT01?key=crossref.5f634157369c9a73184a39400ac03b94",
+        "content-type": "text/html",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      },
+      {
+        "URL": "https://iopscience.iop.org/article/10.1088/1361-6595/aaebdb/pdf",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [
+        [
+          2026,
+          5,
+          9
+        ]
+      ],
+      "date-time": "2026-05-09T12:53:55Z",
+      "timestamp": 1778331235000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://iopscience.iop.org/article/10.1088/1361-6595/aaebdb"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [
+        [
+          2018,
+          11,
+          1
+        ]
+      ]
+    },
+    "references-count": 28,
+    "journal-issue": {
+      "issue": "11",
+      "published-online": {
+        "date-parts": [
+          [
+            2018,
+            11,
+            19
+          ]
+        ]
+      },
+      "published-print": {
+        "date-parts": [
+          [
+            2018,
+            11,
+            1
+          ]
+        ]
+      }
+    },
+    "URL": "https://doi.org/10.1088/1361-6595/aaebdb",
+    "relation": {},
+    "ISSN": [
+      "0963-0252",
+      "1361-6595"
+    ],
+    "issn-type": [
+      {
+        "value": "0963-0252",
+        "type": "print"
+      },
+      {
+        "value": "1361-6595",
+        "type": "electronic"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [
+        [
+          2018,
+          11,
+          1
+        ]
+      ]
+    },
+    "assertion": [
+      {
+        "value": "Mechanisms responsible for the initiation of a fast breakdown in an atmospheric discharge",
+        "name": "article_title",
+        "label": "Article Title"
+      },
+      {
+        "value": "Plasma Sources Science and Technology",
+        "name": "journal_title",
+        "label": "Journal Title"
+      },
+      {
+        "value": "paper",
+        "name": "article_type",
+        "label": "Article Type"
+      },
+      {
+        "value": "© 2018 IOP Publishing Ltd. All rights, including for text and data mining, AI training, and similar technologies, are reserved.",
+        "name": "copyright_information",
+        "label": "Copyright Information"
+      },
+      {
+        "value": "2018-08-10",
+        "name": "date_received",
+        "label": "Date Received",
+        "group": {
+          "name": "publication_dates",
+          "label": "Publication dates"
+        }
+      },
+      {
+        "value": "2018-10-26",
+        "name": "date_accepted",
+        "label": "Date Accepted",
+        "group": {
+          "name": "publication_dates",
+          "label": "Publication dates"
+        }
+      },
+      {
+        "value": "2018-11-19",
+        "name": "date_epub",
+        "label": "Online publication date",
+        "group": {
+          "name": "publication_dates",
+          "label": "Publication dates"
+        }
+      }
+    ]
+  },
+  "__fixture": {
+    "doi": "10.1088/1361-6595/aaebdb",
+    "why": "A corrected paper. Crossref serves the correction in `updated-by` (type `correction`); it has no `is-corrected-by` relation, which is what HAS_ERRATA read before 0.3.0.",
+    "capturedAt": "2026-11-18",
+    "note": "Verbatim Crossref body; `reference` array stripped."
+  }
+}

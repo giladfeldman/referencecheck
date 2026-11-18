@@ -1,18 +1,20 @@
 import axios from 'axios';
 import type { DOAJResult } from './types.js';
+import { normalizeIssn } from '../util/normalize.js';
 
 /**
  * Check DOAJ (Directory of Open Access Journals) via API
  */
 export async function checkDOAJ(issn: string): Promise<DOAJResult> {
-  if (!issn) {
+  // DOAJ matches the hyphenated form only: `issn:19326203` returns nothing for a journal
+  // that `issn:1932-6203` finds (measured 2026-11-18). Before 0.3.0 the hyphen was
+  // stripped, so every lookup said "not in DOAJ".
+  const cleanISSN = normalizeIssn(issn);
+  if (!cleanISSN) {
     return { found: false };
   }
 
   try {
-    // Clean ISSN (remove hyphens for API call)
-    const cleanISSN = issn.replace(/-/g, '');
-
     const response = await axios.get(
       `https://doaj.org/api/v2/search/journals/issn:${cleanISSN}`,
       {
@@ -23,8 +25,13 @@ export async function checkDOAJ(issn: string): Promise<DOAJResult> {
       }
     );
 
-    if (response.status === 200 && response.data?.results?.length > 0) {
-      const journal = response.data.results[0];
+    const results = response.data?.results;
+    if (!Array.isArray(results)) {
+      // A 200 without a result list is not an answer.
+      return { found: false, unavailable: true, reason: 'malformed_response' };
+    }
+    if (results.length > 0) {
+      const journal = results[0];
       const bibjson = journal.bibjson || {};
 
       return {
@@ -39,7 +46,8 @@ export async function checkDOAJ(issn: string): Promise<DOAJResult> {
 
     return { found: false };
   } catch (error: any) {
+    // A timeout, 429 or 5xx is "could not check", never "not listed".
     console.warn(`DOAJ check failed for ISSN ${issn}:`, error.message);
-    return { found: false };
+    return { found: false, unavailable: true, reason: error?.response?.status ? `http_${error.response.status}` : (error?.code || 'network') };
   }
 }

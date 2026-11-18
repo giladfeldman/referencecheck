@@ -6,7 +6,7 @@
 import type { ReferenceInput } from '../types.js';
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
-import { cleanDoiInput } from '../util/normalize.js';
+import { cleanDoiInput, formatDateParts } from '../util/normalize.js';
 
 export interface CitationRepliesIssue {
   type: 'citation-replies';
@@ -38,24 +38,38 @@ async function checkForReplies(doi: string): Promise<CitationRepliesIssue[]> {
 
     const data = response.data?.message || {};
 
-    // Check for relation types that indicate replies/corrections
+    // Replies and comments are Crossref relations (`has-reply`, `has-comment`,
+    // `is-reply-to`). Corrections are NOT a relation: Crossref serves them in
+    // `updated-by`, like retractions. Before 0.3.0 this read `is-corrected-by` and
+    // `is-response-to`, which Crossref rejects as relation types (measured
+    // 2026-11-18), so HAS_ERRATA and IS_RESPONSE could never fire.
     const relations = data.relation || {};
 
+    const CORRECTION_TYPES = new Set(['correction', 'erratum', 'corrigendum', 'addendum']);
+    const correctedBy = (Array.isArray(data['updated-by']) ? data['updated-by'] : []).filter(
+      (u: any) => typeof u?.type === 'string' && CORRECTION_TYPES.has(u.type.toLowerCase()),
+    );
+    const correctionDois = [...new Set(correctedBy.map((u: any) => u?.DOI).filter(Boolean))];
+
     // Check for errata
-    if (relations['is-corrected-by']) {
-      const correctedBy = relations['is-corrected-by'];
+    if (correctedBy.length > 0) {
+      const earliest = correctedBy
+        .map((u: any) => formatDateParts(u?.updated?.['date-parts']?.[0]))
+        .filter(Boolean)
+        .sort()[0];
       issues.push({
         type: 'citation-replies',
         severity: 'warning',
         code: 'HAS_ERRATA',
-        description: `This paper has ${correctedBy.length} errata or correction(s)`,
+        description: `This paper has ${correctionDois.length || correctedBy.length} errata or correction(s)`,
         location: doi,
         suggestion: 'Review the errata to understand what was corrected',
         metadata: {
           doi,
           replyType: 'errata',
-          replyCount: correctedBy.length,
-          replyDOI: correctedBy[0]?.id,
+          replyCount: correctionDois.length || correctedBy.length,
+          replyDOI: correctionDois[0] as string | undefined,
+          replyDate: earliest,
           source: 'CrossRef',
         },
       });
@@ -102,8 +116,8 @@ async function checkForReplies(doi: string): Promise<CitationRepliesIssue[]> {
     }
 
     // Check for responses to comments
-    if (relations['is-response-to']) {
-      const responseTo = relations['is-response-to'];
+    if (relations['is-reply-to']) {
+      const responseTo = relations['is-reply-to'];
       issues.push({
         type: 'citation-replies',
         severity: 'info',

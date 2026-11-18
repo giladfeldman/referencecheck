@@ -144,6 +144,7 @@ so one input is read the same way everywhere (bound by `tests/parity/`).
 | `foldForMatch(text)` | lower-cased, accents removed (`Müller` → `muller`), letters and digits of every script kept, everything else one space |
 | `splitAuthorList(authors)` | one entry per author from an array or a string; `;`, `&` and "and" always separate; a comma separates unless what follows is only initials or a suffix (`Smith, J., Jones, K.` → 2 authors) |
 | `formatDateParts(parts)` | Crossref `date-parts` as ISO at the given precision: `[2019, 3, 5]` → `"2019-03-05"`, `[2019]` → `"2019"`, else `undefined` |
+| `normalizeIssn(issn)` | an ISSN as `NNNN-NNNC` with the check digit upper-cased, from any spacing, dash or `ISSN`/`eISSN` label; `null` unless it has eight ISSN characters |
 | `journalKey(name)` | `foldForMatch(name)` with the words "and" and "the" dropped: the key both sides of a journal-name comparison use (`Journal of Personality & Social Psychology` = `Journal of Personality and Social Psychology`) |
 
 ## DOI shape and shortDOIs
@@ -292,9 +293,13 @@ record's first request.
 
 ### `checkReferenceForReplies(reference)`
 
-`Promise<CitationRepliesIssue[]>` from the Crossref relations `is-corrected-by`
-(`HAS_ERRATA`), `has-reply` (`HAS_AUTHOR_REPLY`), `has-comment` (`HAS_COMMENTS`) and
-`is-response-to` (`IS_RESPONSE`). `[]` for no DOI and on a network failure.
+`Promise<CitationRepliesIssue[]>` from one Crossref record: `updated-by` entries of type
+`correction`, `erratum`, `corrigendum` or `addendum` (`HAS_ERRATA`; `replyDOI` is the first
+notice, `replyCount` the distinct notices, `replyDate` the earliest notice date as ISO
+`YYYY-MM-DD`), and the relations `has-reply` (`HAS_AUTHOR_REPLY`), `has-comment`
+(`HAS_COMMENTS`) and `is-reply-to` (`IS_RESPONSE`). Before 0.3.0 `HAS_ERRATA` and
+`IS_RESPONSE` read relation types Crossref does not serve and never fired. `[]` for no DOI
+and on a network failure: an empty list does not distinguish "none" from "could not check".
 
 ### `getRepliesSummary(issues)`
 
@@ -420,7 +425,7 @@ if (isValidReference(reference)) {
 | `loadBeallsList()` | the bundled `BeallsList` (cached after the first read) |
 | `checkBeallsList(publisher)` | `true` when the publisher name matches a listed publisher (word-sequence match, not raw substring; a single generic word does not match) |
 | `isKnownLegitimate(publisher)` | `true` for a publisher on the bundled legitimate list |
-| `checkDOAJ(issn)` | `Promise<DOAJResult>` from the DOAJ journal search; `{ found: false }` for no ISSN, no hit, or a failure |
+| `checkDOAJ(issn)` | `Promise<DOAJResult>` from the DOAJ journal search by the hyphenated ISSN (`normalizeIssn`; before 0.3.0 the hyphen was stripped and DOAJ found nothing). `{ found: false }` for no readable ISSN or no hit; `{ found: false, unavailable: true, reason }` when DOAJ failed or sent no result list, which means "could not check", not "not listed" |
 | `searchOpenAlexByJournalName(journalName, creds?)` | best OpenAlex journal source by name (names under 3 characters are not searched) |
 | `resolveOpenAlexByDOI(doi, creds?)` | the OpenAlex journal of the work with this DOI |
 | `checkHeuristics(journalName, config)` | name keyword indicators from the bundled list, in 5 categories |
@@ -454,7 +459,7 @@ interface BeallsList {
 
 interface JournalMetadata { journal?: string; issn?: string; publisher?: string }
 
-interface DOAJResult { found: boolean; journalTitle?; publisher?; issn?; eissn?; url? }
+interface DOAJResult { found: boolean; unavailable?: boolean; reason?: string; journalTitle?; publisher?; issn?; eissn?; url? }
 
 interface OpenAlexResult { found: boolean; journalTitle?; publisher?; issn?; eissn?; url?; openalexId? }
 

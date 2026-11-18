@@ -2,6 +2,7 @@ import type { ReferenceInput } from '../types.js';
 import type { JournalMetadata } from './types.js';
 import type { MetadataCredentials } from '../http/credentials.js';
 import { searchOpenAlexByJournalName, resolveOpenAlexByDOI, journalKey } from './openAlex.js';
+import { normalizeIssn } from '../util/normalize.js';
 
 /**
  * Validate if a reference looks like an actual reference entry
@@ -101,9 +102,9 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
 
     // Extract ISSN
     if (crossrefData.ISSN && Array.isArray(crossrefData.ISSN) && crossrefData.ISSN.length > 0) {
-      metadata.issn = crossrefData.ISSN[0];
+      metadata.issn = normalizeIssn(crossrefData.ISSN[0]) ?? undefined;
     } else if (crossrefData.ISSN && typeof crossrefData.ISSN === 'string') {
-      metadata.issn = crossrefData.ISSN;
+      metadata.issn = normalizeIssn(crossrefData.ISSN) ?? undefined;
     }
 
     // Extract publisher
@@ -119,9 +120,10 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
 
   // Priority 3: Extract ISSN from raw text (format: XXXX-XXXX or XXXX-XXXX-X)
   if (!metadata.issn) {
-    const issnMatch = reference.raw_text.match(/\b(\d{4}-\d{3}[\dxX])\b/);
+    // Hyphen required (any dash): without it "2019 2020" or a page range would read as an ISSN.
+    const issnMatch = reference.raw_text.match(/\b(\d{4}[-\u2010-\u2015]\d{3}[\dxX])\b/);
     if (issnMatch) {
-      metadata.issn = issnMatch[1];
+      metadata.issn = normalizeIssn(issnMatch[1]) ?? undefined;
     }
   }
 
@@ -335,7 +337,7 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
             metadata.journal = openAlexResult.journalTitle;
           }
           if (!metadata.issn && openAlexResult.issn) {
-            metadata.issn = openAlexResult.issn;
+            metadata.issn = normalizeIssn(openAlexResult.issn) ?? undefined;
           }
           if (!metadata.publisher && openAlexResult.publisher) {
             metadata.publisher = openAlexResult.publisher;
@@ -355,7 +357,7 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
         if (openAlexResult.found) {
           // Fill in missing fields from OpenAlex
           if (!metadata.issn && openAlexResult.issn) {
-            metadata.issn = openAlexResult.issn;
+            metadata.issn = normalizeIssn(openAlexResult.issn) ?? undefined;
           }
           if (!metadata.publisher && openAlexResult.publisher) {
             metadata.publisher = openAlexResult.publisher;

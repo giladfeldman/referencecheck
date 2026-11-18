@@ -50,6 +50,24 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   Psicologia" did not match "Revista de Psicología", nor "&" match "and"; the APA journal
   extractor's year anchor missed "(2019, March 3)". Both fixed (`journalKey`).
 - **Preprints.** The EarthArXiv URL pattern was misspelled (`earharxiv.org`) and never matched.
+- **Errata and responses were never detected.** `checkReferenceForReplies` read the relations
+  `is-corrected-by` (HAS_ERRATA) and `is-response-to` (IS_RESPONSE); Crossref serves neither
+  (both are rejected as relation types). Corrections are now read from `updated-by` (types
+  `correction`, `erratum`, `corrigendum`, `addendum`), with the notice DOI and its date in
+  `replyDOI` and `replyDate`; responses from `is-reply-to`. Proven on recorded responses.
+- **Preprint server was always "Unknown".** Crossref serves `institution` as an array; it was
+  read as an object. `preprintDate` is now ISO (`2020-03-22`, was `2020-3-22`).
+- **Cold Spring Harbor journal articles were flagged as bioRxiv preprints.** The 10.1101
+  prefix also carries Cold Spring Harbor Laboratory Press journals (`10.1101/pdb.prot099176`
+  is a journal article); the prefix rule now matches only the bioRxiv/medRxiv suffix forms.
+- **DOAJ never found a journal.** The ISSN was sent without its hyphen, and DOAJ finds
+  nothing for `issn:19326203` while `issn:1932-6203` finds PLOS ONE (both recorded), so every
+  journal was reported "not in DOAJ". The ISSN is now read once (`normalizeIssn`) and sent
+  hyphenated. A DOAJ failure or a 200 without a result list is now
+  `{ found: false, unavailable: true, reason }`, and `determineVerdict` says DOAJ could not be
+  checked instead of "not found in DOAJ".
+- **Expression of concern, Europe PMC:** the hit is matched with the shared DOI comparer, so a
+  record writing `10.1371//journal…` is this paper.
 
 ### Added
 - `findDOIFromReferenceDetailed(referenceText, creds?)`: the DOI search with `status`
@@ -57,7 +75,7 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   with its reason, and the count dropped under the relevance threshold. `findDOIFromReference`
   returned `null` for all four, and rejected candidates were only logged.
 - Shared readers, exported: `cleanDoiInput`, `doiForUrl`, `parseYear`, `foldForMatch`,
-  `splitAuthorList`, `formatDateParts`, `journalKey`.
+  `splitAuthorList`, `formatDateParts`, `journalKey`, `normalizeIssn`.
 - `compareAuthors` accepts a string array as well as a string.
 
 ### Changed

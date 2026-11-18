@@ -113,3 +113,16 @@ export function formatDateParts(parts: unknown): string | undefined {
   if (typeof m === 'number' && typeof d === 'number') s += `-${String(d).padStart(2, '0')}`;
   return s;
 }
+
+/**
+ * An ISSN in the one form the indexes answer to: "1932-6203", check digit X upper-cased.
+ * Accepts it with or without the hyphen, with spaces, or with an `ISSN` label. Null for
+ * anything that is not eight ISSN characters. DOAJ finds `issn:1932-6203` and returns
+ * nothing for `issn:19326203` (measured 2026-11-18), so the hyphen is not optional.
+ */
+export function normalizeIssn(issn: string | null | undefined): string | null {
+  if (typeof issn !== 'string') return null;
+  const s = issn.replace(/^\s*(?:e-?|p-?)?issn\s*:?\s*/i, '').replace(/[\s\u2010-\u2015-]/g, '').toUpperCase();
+  return /^\d{7}[\dX]$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4)}` : null;
+}
+
