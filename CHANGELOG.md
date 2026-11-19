@@ -166,6 +166,15 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     entry before the title is read (`..., Donald P. Green. Title`). A Crossref family of one
     letter with a written-out given name (`R`, `Shakthi Kiran`) is read as an initial filed
     in the wrong field: the given name is compared as the surname.
+  - *DOI matcher, authors (round 15).* Vancouver entries with dotted initials (`Smith J.A.`,
+    `Jones K.`), a suffix (`Smith JA Jr`, `Smith JA 3rd`) or a three-word surname (`Garcia
+    Lopez Marquez G`), and Vancouver lists joined by `and`, `&` or `;`, are read; they used to
+    give no surname, so any record with the title was accepted. A section read only given-first
+    also keeps its first word as a second, family-first reading (`Wang Xiaoming and Li Hua` is
+    Wang). Two given-first entries with a dotted initial (`Michael J. Young, Donald P. Long`)
+    are a given-first list, and their surnames count even when they are title words. A name
+    that runs on into the title with no period (`Smith J Sleep and memory`) is a second
+    reading only, so a record by an author named like a title word is not taken for the work.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

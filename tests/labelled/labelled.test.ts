@@ -56,9 +56,9 @@ const isKnown = (r: { row: any }) =>
   KNOWN.some((k) => k.cls === `${r.row.kind}/${r.row.cls}` && (k.note === undefined || k.note === r.row.note) && (k.has === undefined || JSON.stringify(r.row).includes(k.has)));
 
 describe('labelled release set', () => {
-  it('is the frozen set: 565 deduplication pairs, 862 DOI candidates', () => {
+  it('is the frozen set: 565 deduplication pairs, 920 DOI candidates', () => {
     expect(ROWS.dedup.length).toBe(565);
-    expect(ROWS.doi.length).toBe(862);
+    expect(ROWS.doi.length).toBe(920);
   });
 
   it('every row gets its label, except the listed known errors', () => {

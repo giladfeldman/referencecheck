@@ -537,6 +537,7 @@ function addRound12Rows(addDoi) {
     }
   }
   addRound13Rows(addDoi);
+  addRound14Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -599,6 +600,67 @@ function addRound13Rows(addDoi) {
     const r = { ...base, DOI: `${WORKS[0].w.doi}.r13-l${k}`, title: [title], author: [{ family: fam, given: 'X.' }] };
     addDoi('wrong:title-word-author-later-word', 'reject', text, r, text.slice(0, 24));
   });
+}
+
+/**
+ * Review round 14: author sections the readers did not read (dotted initials, suffixes,
+ * "and" / "&" / ";" between Vancouver entries, three-word surnames), family-first full names
+ * joined by "and", a given-first list whose every later surname is a title word, and a
+ * given-first entry that runs on into the title.
+ */
+function addRound14Rows(addDoi) {
+  const TITLE = 'Sleep and memory consolidation in older adults';
+  const base = { ...WORKS[0].w.record, title: [TITLE], subtitle: [], published: { 'date-parts': [[2014]] } };
+  const rec = (doi, fams, title = TITLE) => ({ ...base, title: [title], DOI: `${WORKS[0].w.doi}.r14-${doi}`, author: fams.map((f) => ({ family: f, given: 'X.' })) });
+  const tail = `${TITLE}. J Sleep Res. 2014;1:1-9.`;
+  const VANCOUVER = [
+    ['dotted-initials', `Smith J.A., Jones B.C. ${tail}`, ['Smith', 'Jones']],
+    ['dotted-initials', `Smith J.A. ${tail}`, ['Smith']],
+    ['dotted-initials', `Smith J., Jones K. ${tail}`, ['Smith', 'Jones']],
+    ['dotted-initials', `Smith J.A. (2014). ${TITLE}. J Sleep Res, 1, 1-9.`, ['Smith']],
+    ['dotted-initials', `Smith J., Jones K. (2014). ${TITLE}. J Sleep Res, 1, 1-9.`, ['Smith', 'Jones']],
+    ['suffix', `Smith JA Jr. ${tail}`, ['Smith']],
+    ['suffix', `Smith JA 3rd, Jones BC. ${tail}`, ['Smith', 'Jones']],
+    ['and-separator', `Smith JA and Jones BC. ${tail}`, ['Smith', 'Jones']],
+    ['and-separator', `Smith JA & Jones BC. ${tail}`, ['Smith', 'Jones']],
+    ['and-separator', `Smith J and Jones B (2014) ${TITLE}. J Sleep Res 1:1-9.`, ['Smith', 'Jones']],
+    ['semicolon-separator', `Smith JA; Jones BC; Brown DE. ${tail}`, ['Smith', 'Jones', 'Brown']],
+    ['semicolon-separator', `Smith JA; Jones BC; et al. ${tail}`, ['Smith', 'Jones', 'Lee']],
+    ['three-word-surname', `Garcia Lopez Marquez G, Jones BC. ${tail}`, ['Garcia Lopez Marquez', 'Jones']],
+    ['three-word-surname', `Garcia Lopez Marquez G. ${tail}`, ['Garcia Lopez Marquez']],
+  ];
+  VANCOUVER.forEach(([shape, text, fams], k) => {
+    addDoi(`right:vancouver-r14-${shape}`, 'accept', text, rec(`v${k}`, fams), text.slice(0, 24));
+    addDoi(`wrong:vancouver-r14-${shape}`, 'reject', text, rec(`v${k}w`, ['Okafor', 'Lee']), text.slice(0, 24));
+    addDoi(`wrong:vancouver-r14-${shape}-title-word-author`, 'reject', text, rec(`v${k}s`, ['Sleep']), text.slice(0, 24));
+  });
+  // family-first full names: "Wang Xiaoming" is surname Wang
+  const FAMILY_FIRST = [
+    [`Wang Xiaoming and Li Hua. ${TITLE} (2014). J Sleep Res 1:1-9.`, ['Wang', 'Li']],
+    [`Wang Xiaoming & Zhang Wei. ${TITLE} (2014). J Sleep Res 1:1-9.`, ['Wang', 'Zhang']],
+    [`Wang Xiaoming, Li Hua, Zhang Wei. ${tail}`, ['Wang', 'Li', 'Zhang']],
+  ];
+  FAMILY_FIRST.forEach(([text, fams], k) => {
+    addDoi('right:family-first-full-names', 'accept', text, rec(`f${k}`, fams), text.slice(0, 24));
+    addDoi('wrong:family-first-full-names', 'reject', text, rec(`f${k}w`, ['Okafor']), text.slice(0, 24));
+  });
+  // a given-first list whose later surnames are all words of the title
+  const LONG = 'Long memory in young adults';
+  for (const [k, text] of [`Michael J. Young, Donald P. Long. ${LONG}. J Sleep Res. 2014;1:1-9.`, `Michael J. Young, Donald P. Long. ${LONG} (2014). J Sleep Res 1:1-9.`].entries()) {
+    addDoi('right:given-first-surnames-title-words', 'accept', text, rec(`g${k}`, ['Young', 'Long'], LONG), text.slice(0, 24));
+    addDoi('wrong:given-first-surnames-title-words', 'reject', text, rec(`g${k}w`, ['Okafor'], LONG), text.slice(0, 24));
+  }
+  // a capitalised title read as a second given-first entry ("Mood Disorders")
+  const MOOD = 'Sleep and Mood Disorders in Older Adults';
+  const mood = `Hoddy K. ${MOOD}. J Sleep Res. 2014;1:1-9.`;
+  addDoi('right:vancouver-one-author-title-case', 'accept', mood, rec('m0', ['Hoddy'], MOOD), 'Hoddy K.');
+  addDoi('wrong:vancouver-one-author-title-case', 'reject', mood, rec('m0s', ['Sleep'], MOOD), 'Hoddy K.');
+  addDoi('wrong:vancouver-one-author-title-case', 'reject', mood, rec('m0d', ['Disorders'], MOOD), 'Hoddy K.');
+  // an entry with no period before the title runs on into it
+  const run = `Smith J ${TITLE} (2014). J Sleep Res 1:1-9.`;
+  addDoi('right:entry-runs-into-title', 'accept', run, rec('r0', ['Smith']), 'Smith J');
+  addDoi('wrong:entry-runs-into-title', 'reject', run, rec('r0s', ['Sleep']), 'Smith J');
+  addDoi('wrong:entry-runs-into-title', 'reject', run, rec('r0w', ['Okafor']), 'Smith J');
 }
 
 export const ROWS = buildRows();

@@ -268,9 +268,15 @@ const PARTICLE_ANY_CASE = `(?:${NAME_PARTICLES.map((w) => `[${w[0]}${w[0].toUppe
  * "De la Cruz M", "Le Roux P") and one further surname word ("Garcia Marquez G") are part of
  * the surname read (round 13: those entries were not read, the list came back empty and the
  * author check was skipped). Every word of the surname needs a lower-case letter, so
- * "Hoddy KK Gibbons C." is not read as surname "Hoddy KK Gibbons".
+ * "Hoddy KK Gibbons C." is not read as surname "Hoddy KK Gibbons". Round 14: up to two
+ * further surname words ("Garcia Lopez Marquez G"), dotted initials ("Smith J.A.", "Jones
+ * K."), a suffix after the initials ("Smith JA Jr", "Smith JA 3rd"); entries may be joined by
+ * ",", ";", "&" or "and" (those lists were not read, the list came back empty and any record
+ * with the title was accepted).
  */
-const VANCOUVER_ENTRY = new RegExp(`^((?:${PARTICLE_ANY_CASE}\\s+)*\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*(?:\\s+\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*)?)\\s+(\\p{Lu}(?:-?\\p{Lu}){0,2})$`, 'u');
+const VANCOUVER_ENTRY = new RegExp(`^((?:${PARTICLE_ANY_CASE}\\s+)*\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*(?:\\s+\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*){0,2})\\s+(\\p{Lu}\\.?(?:-?\\p{Lu}\\.?){0,2})(?:\\s+(?:Jr|Sr|II|III|IV|2nd|3rd|4th)\\.?)?$`, 'u');
+/** Separators between Vancouver entries ("and others" closes a list, it is not one). */
+const VANCOUVER_SEPARATOR = /\s*(?:,|;|&|\band\b(?!\s+others\b))\s*/;
 /** "et al", "et al.", "and others" closing a Vancouver entry without a comma before it. */
 const ENTRY_ET_AL = /^(.*?)\s+(?:et\.?\s*al\b|and\s+others\b)/i;
 
@@ -294,13 +300,13 @@ function vancouverReading(section: string): { surnames: string[]; alternative: s
   let etAl = false;
   // An entry closed by "et al" / "and others" ends the list ("Hoddy K et al Sleep and ...",
   // with no period after "al", is cut there).
-  for (const raw of list.split(/\s*,\s*/).filter(Boolean)) {
+  for (const raw of list.split(VANCOUVER_SEPARATOR).filter(Boolean)) {
     if (/^et al\.?$/i.test(raw)) { etAl = true; continue; }
     const closed = raw.match(ENTRY_ET_AL);
     const m = (closed ? closed[1] : raw).match(VANCOUVER_ENTRY);
     if (!m) break;
     out.push(m[1]);
-    lastInitials = m[2];
+    lastInitials = m[2].replace(/[^\p{Lu}]/gu, '');
     if (closed) { etAl = true; break; }
   }
   if (out.length !== 1 || lastInitials.length !== 1 || cut < 0 || etAl) return { surnames: out, alternative: null };
@@ -318,19 +324,33 @@ function vancouverReading(section: string): { surnames: string[]; alternative: s
  */
 const GIVEN_PART = `(?:\\p{Lu}\\p{Ll}+(?:-\\p{Lu}\\p{Ll}+)?|\\p{Lu}\\.?(?:-\\p{Lu}\\.?)?)`;
 const GIVEN_FIRST_ENTRY = new RegExp(`^(?:${GIVEN_PART}\\s+)+((?:${PARTICLE_ANY_CASE}\\s+)*\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*)\\.?$`, 'u');
-function givenFirstSurnames(section: string): string[] {
-  const out: string[] = [];
-  for (const piece of section.split(/\s*(?:,|;|&|\band\b)\s*/u).map((p) => p.trim()).filter(Boolean)) {
+interface GivenFirstReading {
+  names: string[];
+  /** Entries with a dotted initial ("Donald P. Long"): two of them make a given-first list. */
+  withInitial: number;
+  /** A name whose entry was followed by a piece starting in lower case ("Smith J Sleep | and
+   *  memory"): the "and" was the title's, so the name may be a title word. */
+  runOn: Set<string>;
+}
+function givenFirstSurnames(section: string): GivenFirstReading {
+  const out: GivenFirstReading = { names: [], withInitial: 0, runOn: new Set() };
+  const pieces = section.split(/\s*(?:,|;|&|\band\b)\s*/u).map((p) => p.trim()).filter(Boolean);
+  for (const [i, piece] of pieces.entries()) {
     if (/^et\.?\s+al\.?$/i.test(piece)) continue;
     const m = piece.match(GIVEN_FIRST_ENTRY);
     if (!m || CORPORATE_WORD.test(piece)) {
       // The last entry runs on into the title ("..., Donald P. Green. Brown and the ..."): read
       // its surname up to the period (round 13), once an earlier entry was read given-first.
-      const last = out.length > 0 ? piece.match(GIVEN_FIRST_LAST) : null;
-      if (last && !CORPORATE_WORD.test(last[0])) out.push(last[1]);
+      const last = out.names.length > 0 ? piece.match(GIVEN_FIRST_LAST) : null;
+      if (last && !CORPORATE_WORD.test(last[0])) {
+        out.names.push(last[1]);
+        if (/\p{Lu}\.\s/u.test(last[0])) out.withInitial++;
+      }
       break;
     }
-    out.push(m[1]);
+    out.names.push(m[1]);
+    if (/\p{Lu}\.\s/u.test(piece)) out.withInitial++;
+    if (pieces[i + 1] !== undefined && /^\p{Ll}/u.test(pieces[i + 1])) out.runOn.add(m[1]);
   }
   return out;
 }
@@ -384,20 +404,36 @@ function extractAuthorsFromReference(referenceText: string): ReferenceAuthors {
   if (vancouver.surnames.length > 0 && vancouver.alternative === null) return { names: vancouver.surnames, uncertain: new Set() };
 
   const lastNames = [...authorSection.matchAll(APA_AUTHOR)].map((m) => m[1]);
-  for (const s of givenFirstSurnames(authorSection)) if (!lastNames.includes(s)) lastNames.push(s);
+  const apaCount = lastNames.length;
+  const givenFirst = givenFirstSurnames(authorSection);
+  for (const s of givenFirst.names) if (!lastNames.includes(s)) lastNames.push(s);
+  // Two given-first entries with a dotted initial ("Michael J. Young, Donald P. Long") are a
+  // given-first list: their surnames are certain even when they are title words (round 14).
+  const listIsGivenFirst = givenFirst.withInitial >= 2;
   if (vancouver.alternative !== null) {
     if (!lastNames.includes(vancouver.alternative)) lastNames.push(vancouver.alternative);
     // Only the second reading is uncertain: the Vancouver surname stays (round 13: "Darwin C.
     // Darwin and ..." lost its certain "Darwin" with the uncertain one).
-    const uncertain = new Set(lastNames.filter((s) => !vancouver.surnames.includes(s)));
+    const uncertain = new Set(lastNames.filter((s) => !vancouver.surnames.includes(s) && (givenFirst.runOn.has(s) || !(listIsGivenFirst && givenFirst.names.includes(s)))));
     return { names: [...vancouver.surnames, ...lastNames.filter((s) => !vancouver.surnames.includes(s))], uncertain };
+  }
+  const uncertain = new Set<string>(givenFirst.runOn);
+  // Read given-first only, the first word may still be the surname, written family first
+  // ("Wang Xiaoming and Li Hua", "Smith J Sleep and ..."): it is kept as a second, uncertain
+  // reading, as 0.2.x read it (round 14).
+  if (apaCount === 0 && givenFirst.names.length > 0) {
+    const first = authorSection.match(/^\p{Lu}[\p{L}'’-]*\p{Ll}[\p{L}'’-]*/u)?.[0];
+    if (first && !lastNames.includes(first) && !CORPORATE_WORD.test(first)) {
+      lastNames.push(first);
+      uncertain.add(first);
+    }
   }
   // Also try simpler pattern for single author or non-standard format
   if (lastNames.length === 0) {
     const simpleMatch = authorSection.match(LEADING_SURNAME);
     if (simpleMatch && !CORPORATE_WORD.test(simpleMatch[1])) lastNames.push(simpleMatch[1]);
   }
-  return { names: lastNames, uncertain: new Set() };
+  return { names: lastNames, uncertain };
 }
 
 /**
