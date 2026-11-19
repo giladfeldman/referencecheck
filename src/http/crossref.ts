@@ -520,7 +520,6 @@ function spellings(name: string): string[] {
   return digraph === name ? [name] : [name, digraph];
 }
 
-/** "smith" is a whole word of "smith jones"; "li" is not a word of "williams". */
 /**
  * A multi-word Crossref surname that is the leading words of a longer reading: "de Vries Jan"
  * (a family-first name read as one surname) and "de Vries" (round 16).
@@ -530,6 +529,8 @@ function leadsWith(read: string, family: string): boolean {
   const f = foldForMatch(family).split(' ');
   return f.length >= 2 && r.length > f.length && f.every((w, i) => r[i] === w);
 }
+
+/** "smith" is a whole word of "smith jones"; "li" is not a word of "williams". */
 function isWholeWordOf(single: string, multi: string): boolean {
   const s = foldForMatch(single);
   return s.length > 0 && !s.includes(' ') && foldForMatch(multi).split(' ').includes(s);
@@ -541,15 +542,39 @@ function isWholeWordOf(single: string, multi: string): boolean {
  * Latin). Same script: equal keys (folded; spaces, hyphens and apostrophes removed, so
  * "Van Dyke" = "VanDyke", "O'Brien" = "OBrien"), equal once one side's leading particles
  * are dropped ("van der Berg" / "Berg"), or one is a whole word of the other ("Smith" /
- * "Smith-Jones"); never a substring ("Li" / "Williams", "Smith" / "Goldsmith"). The German
+ * "Smith-Jones"), also once initials written on to the reference surname or particles joined
+ * to the Crossref one are dropped ("SmithJA" / "Smith", "Jong" / "DeJong"); never a substring
+ * ("Li" / "Williams", "Smith" / "Goldsmith"). The German
  * digraph spelling counts as the same name. Latin, Cyrillic and Greek against each other:
  * the loose romanisation ("Иванов" / "Ivanov" / "Ivanova", "Чайковский" / "Tchaikovsky").
  */
+/** A surname with its initials written on ("SmithJA", a database export): the surname alone (round 19). */
+function withoutGluedInitials(name: string): string[] {
+  const m = name.match(/^(\p{Lu}[\p{Ll}'’-]+)\p{Lu}{1,3}$/u);
+  return m ? [m[1]] : [];
+}
+
+/** Particles written joined to the surname in some deposits ("DeJong", "VanDerBerg"). Not "Mac",
+ *  "Mc", "O" or "D": those belong to the surname ("MacDonald" is not "Donald"). */
+const GLUED_PARTICLES = new Set<string>(NAME_PARTICLES.filter((p) => !['mac', 'mc', 'o', 'd'].includes(p)));
+
+/** A Crossref family with its particles joined on ("DeJong", "VanDerBerg"): the surname after
+ *  them ("Jong", "Berg"), which 0.2.x matched as a part of the name (round 19). */
+function withoutGluedParticles(name: string): string[] {
+  const out: string[] = [];
+  let rest = name;
+  for (let m = rest.match(/^(\p{Lu}\p{Ll}+)(\p{Lu}[\p{L}'’-]+)$/u); m && GLUED_PARTICLES.has(m[1].toLowerCase()); m = rest.match(/^(\p{Lu}\p{Ll}+)(\p{Lu}[\p{L}'’-]+)$/u)) {
+    rest = m[2];
+    out.push(rest);
+  }
+  return out;
+}
+
 function surnamesMatch(ref: string, crossref: string): boolean | null {
   if (!scriptsComparable(ref, crossref)) return null;
   if (crossScript(ref, crossref)) return looseSurnameMatch(ref, crossref);
-  for (const r of spellings(ref)) {
-    for (const c of spellings(crossref)) {
+  for (const r of [ref, ...withoutGluedInitials(ref)].flatMap(spellings)) {
+    for (const c of [crossref, ...withoutGluedParticles(crossref)].flatMap(spellings)) {
       if (sameSurname(r, c) || isWholeWordOf(r, c) || isWholeWordOf(c, r) || leadsWith(r, c)) return true;
     }
   }
@@ -761,7 +786,10 @@ type EntryOthers = string[] | null;
  * A.", "Smith JA") or whose entry is longer than four words on a side (the given name may be
  * among the words not looked at, round 18). Empty when the family name is not in the section.
  */
-function entriesOf(words: readonly SectionWord[], family: string): EntryOthers[] {
+/** Generational suffixes, which are not given names ("Smith Jr", round 19). */
+const NAME_SUFFIX = /^(?:jr|sr|jnr|snr)$/i;
+
+function entriesOf(words: readonly SectionWord[], family: string, firstWordRead: boolean): EntryOthers[] {
   const fam = foldForMatch(family);
   const out: EntryOthers[] = [];
   if (!fam) return out;
@@ -778,8 +806,14 @@ function entriesOf(words: readonly SectionWord[], family: string): EntryOthers[]
     let k = at - 1;
     for (let n = 0; k >= 0 && n < 4 && sameEntry(words, k); k--, n++) others.unshift(words[k].word);
     const cutBefore = k >= 0 && sameEntry(words, k);
-    const ambiguous = others.some((w) => !IS_INITIAL.test(w) && /^\p{Lu}/u.test(w));
-    out.push(ambiguous && !cutAfter && !cutBefore ? others : null);
+    const given = others.filter((w) => !NAME_SUFFIX.test(w));
+    const ambiguous = given.some((w) => !IS_INITIAL.test(w) && /^\p{Lu}/u.test(w));
+    // The sole author entry, first in a section with no "Surname, I." in it, is read family
+    // first, as 0.2.x read it ("Hernandez Ruiz (2014)": a second surname, not a given name;
+    // round 19). A list of entries ("Mark Little and Grace Collins") keeps the check.
+    const sole = i === words.length - 1 || /[.:;]/.test(words[i].after);
+    const readFirst = firstWordRead && at === 0 && sole;
+    out.push(ambiguous && !cutAfter && !cutBefore && !readFirst ? given : null);
   }
   return out;
 }
@@ -819,8 +853,8 @@ function givenConflicts(others: readonly string[], given: string | null): boolea
  * family name is of ambiguous order and the record's given name fits none of them (round 18: one
  * occurrence only was looked at, so "Mark Little and Zoe Mark" vetoed Zoe Mark's record).
  */
-function givenVetoes(words: readonly SectionWord[], family: string, given: string | null): boolean {
-  const entries = entriesOf(words, family);
+function givenVetoes(words: readonly SectionWord[], family: string, given: string | null, firstWordRead: boolean): boolean {
+  const entries = entriesOf(words, family, firstWordRead);
   return entries.length > 0 && entries.every((e) => e !== null && givenConflicts(e, given));
 }
 
@@ -855,6 +889,7 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
     .filter((p: { family: unknown }) => typeof p.family === 'string' && p.family.trim().length > 0);
   const crossrefAuthors = crossrefPeople.map((p) => p.family);
   const words = sectionWords((referenceText.split(/\(\d{4}/)[0] || '').trim());
+  const firstWordRead = legacySurnames(referenceText).firstWord;
   let authorCheck: DoiMatchCheck = 'not_comparable';
   if (refAuthors.length > 0 && crossrefAuthors.length > 0) {
     // Crossref authors none of the reference's surnames can be compared with (Han against
@@ -866,7 +901,7 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
       let comparable = false;
       // A family name read where the order is ambiguous matches only when the record's given
       // name agrees with the words written after it (round 17).
-      const vetoed = givenVetoes(words, c, given);
+      const vetoed = givenVetoes(words, c, given, firstWordRead);
       for (const r of refAuthors) {
         const m = surnamesMatch(r, c);
         if (m === true && !vetoed) authorCheck = 'matched';

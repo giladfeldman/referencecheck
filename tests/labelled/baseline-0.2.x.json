@@ -1030,6 +1030,62 @@
       "wrongAccepts": 0,
       "rightRejects": 0
     },
+    "doi/right:second-surname": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:second-surname": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:generational-suffix": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:generational-suffix": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:glued-initials": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:glued-initials": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:glued-particle": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:glued-particle": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 1,
+      "rightRejects": 0
+    },
     "doi/right:given-first-one-initial-bare-year": {
       "rows": 1,
       "falseMerges": 0,
@@ -1048,8 +1104,8 @@
   "total": {
     "falseMerges": 60,
     "missedMerges": 246,
-    "wrongAccepts": 187,
+    "wrongAccepts": 188,
     "rightRejects": 89,
-    "rows": 1568
+    "rows": 1581
   }
 }

@@ -204,6 +204,15 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     variant of a cited one (`Yulia` / `Julia`, `George` / `Jorge`: two edits or fewer). A
     record with family `R` and a given name in capitals (`SHAKTHI KIRAN`) is read as an
     initial filed as the family, as one in mixed case was.
+  - *DOI matcher, authors (round 20).* Four shapes 0.2.x accepted are accepted again: a
+    suffix (`Smith Jr`) is not taken for a given name; a sole author entry with no initials at
+    the start of the reference is read family first (`Hernandez Ruiz (2014)` against a record
+    by Hernandez, Maria: a second surname, not a given name); initials written on to the
+    surname are dropped (`SmithJA`); and particles joined to a Crossref family match the
+    surname after them (`DeJong` / `Jong`, `VanDerBerg` / `Berg`; not `Mac`, `Mc`, `O`, `D`, so
+    `MacDonald` is not `Donald`). Known limit, the same as 0.2.x: a sole author written given
+    name first (`Ana Muñoz (2014)`) is accepted against a record whose family name is the cited
+    given name (`Ana`) and that has the cited title and year.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

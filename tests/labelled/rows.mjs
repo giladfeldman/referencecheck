@@ -549,6 +549,7 @@ function addRound12Rows(addDoi) {
   addRound16Rows(addDoi);
   addRound17Rows(addDoi);
   addRound18Rows(addDoi);
+  addRound19Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -814,6 +815,30 @@ function addRound18Rows(addDoi) {
     addDoi('right:given-check-scope', 'accept', text, rec(`s${k}`, people), text.slice(0, 16));
     addDoi('wrong:given-check-scope', 'reject', text, rec(`s${k}w`, [['Okafor', 'Zoe']]), text.slice(0, 16));
   });
+}
+
+// ------------------------------------------------------------------ shapes added in review round 19
+// The given-name check took a second surname or a suffix for a given name, and the whole-word
+// compare missed initials or particles written joined to the surname. Labels by construction:
+// the record lists the cited author (accept) or only another author (reject).
+function addRound19Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const SD = 'Sleep deprivation affects memory';
+  const rec = (doi, people) => ({ ...base, title: [SD], DOI: `${WORKS[0].w.doi}.r19-${doi}`, author: people.map(([family, given]) => ({ family, given })) });
+  const rows = [
+    ['second-surname', `Hernandez Ruiz (2014). ${SD}. J Sleep Res.`, [['Hernandez', 'Maria']]],
+    ['generational-suffix', `Smith Jr (2014). ${SD}. J Sleep Res.`, [['Smith', 'Robert']]],
+    ['generational-suffix', `Smith Jr. (2014). ${SD}. J Sleep Res.`, [['Smith', 'Robert']]],
+    ['glued-initials', `SmithJA, Jones KL (2014). ${SD}. J Sleep Res.`, [['Smith', 'John A'], ['Jones', 'K']]],
+    ['glued-particle', `Jong, A. (2014). ${SD}. J Sleep Res.`, [['DeJong', 'A']]],
+    ['glued-particle', `Berg, A. (2014). ${SD}. J Sleep Res.`, [['VanDerBerg', 'A']]],
+  ];
+  rows.forEach(([shape, text, people], k) => {
+    addDoi(`right:${shape}`, 'accept', text, rec(`s${k}`, people), text.slice(0, 16));
+    addDoi(`wrong:${shape}`, 'reject', text, rec(`s${k}w`, [['Okafor', 'Zoe']]), text.slice(0, 16));
+  });
+  // "Mac" belongs to the surname: a record by MacDonald is not one by Donald.
+  addDoi('wrong:glued-particle', 'reject', `Donald, A. (2014). ${SD}. J Sleep Res.`, rec('mac', [['MacDonald', 'A']]), 'Donald, A.');
 }
 
 export const ROWS = buildRows();

@@ -1,0 +1,57 @@
+/**
+ * v0.3.0 review, attempt 19 (2026-11-19). Class: "the author check of v0.3.0 rejects a right
+ * record 0.2.x accepted". The given-name check of round 17 took a second surname ("Hernandez
+ * Ruiz") or a suffix ("Smith Jr") for a given name; the whole-word compare missed initials
+ * written on to the surname ("SmithJA") and particles joined to the Crossref family ("DeJong",
+ * "VanDerBerg"). 0.2.x accepted every right record below.
+ */
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+
+const axiosGetMock = jest.fn<any>();
+const axiosPostMock = jest.fn<any>();
+jest.unstable_mockModule('axios', () => {
+  const isAxiosError = (e: any) => !!e?.isAxiosError;
+  const api = { get: axiosGetMock, head: jest.fn(), post: axiosPostMock, isAxiosError };
+  return { default: api, ...api };
+});
+const lib: any = await import('../../src/index.js');
+
+beforeEach(() => {
+  axiosGetMock.mockReset();
+  axiosPostMock.mockReset();
+  axiosPostMock.mockRejectedValue(new Error('simple text query unavailable'));
+});
+
+const SD = 'Sleep deprivation affects memory';
+const accepts = async (text: string, people: Array<[string, string]>) => {
+  axiosGetMock.mockResolvedValue({ status: 200, data: { message: { items: [{
+    DOI: '10.1/found', score: 90, title: [SD],
+    author: people.map(([family, given]) => ({ family, given })),
+    published: { 'date-parts': [[2014, 1, 1]] },
+  }] } } });
+  return (await lib.findDOIFromReference(text))?.doi === '10.1/found';
+};
+
+describe('the right record is accepted', () => {
+  it.each([
+    [`Hernandez Ruiz (2014). ${SD}. J Sleep Res.`, [['Hernandez', 'Maria']]],
+    [`Smith Jr (2014). ${SD}. J Sleep Res.`, [['Smith', 'Robert']]],
+    [`Smith Jr. (2014). ${SD}. J Sleep Res.`, [['Smith', 'Robert']]],
+    [`SmithJA, Jones KL (2014). ${SD}. J Sleep Res.`, [['Smith', 'John A']]],
+    [`Jong, A. (2014). ${SD}. J Sleep Res.`, [['DeJong', 'A']]],
+    [`Berg, A. (2014). ${SD}. J Sleep Res.`, [['VanDerBerg', 'A']]],
+  ] as Array<[string, Array<[string, string]>]>)('%j', async (text, people) => {
+    expect(await accepts(text, people)).toBe(true);
+    expect(await accepts(text, [['Okafor', 'Zoe']])).toBe(false);
+  });
+});
+
+describe('records by other authors are still rejected', () => {
+  it.each([
+    [`Donald, A. (2014). ${SD}. J Sleep Res.`, 'MacDonald', 'A'],
+    [`Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, 'Mark', 'Zoe'],
+    [`Little Mark & Collins Grace 2014. ${SD}. J Sleep Res.`, 'Mark', 'Zoe'],
+  ])('%j vs a record by %s', async (text, family, given) => {
+    expect(await accepts(text, [[family, given]])).toBe(false);
+  });
+});
