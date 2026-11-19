@@ -197,6 +197,13 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     the other words of the entry; a record with no given name is compared as before. A
     citation that writes a nickname (`Bill`) for a record's formal given name (`William`) in
     such an entry is now rejected.
+  - *DOI matcher, authors (round 19).* The given-name check above vetoes a record only when
+    every entry of the reference that holds its family name is of ambiguous order and the
+    given name fits none of them (`Mark Little and Zoe Mark` accepts Zoe Mark's record), never
+    for an entry longer than four words on a side, and not when the given name is a spelling
+    variant of a cited one (`Yulia` / `Julia`, `George` / `Jorge`: two edits or fewer). A
+    record with family `R` and a given name in capitals (`SHAKTHI KIRAN`) is read as an
+    initial filed as the family, as one in mixed case was.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

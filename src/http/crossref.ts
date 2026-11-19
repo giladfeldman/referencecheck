@@ -748,44 +748,80 @@ function sameEntry(words: readonly SectionWord[], i: number): boolean {
   return sep === '' || (sep === '.' && IS_INITIAL.test(words[i].word)) || (sep === ',' && IS_INITIAL.test(next));
 }
 
+/** The other words of one author entry holding a record's family name, or null when the order there is not ambiguous. */
+type EntryOthers = string[] | null;
+
 /**
- * The initials written next to a record's family name in the reference, when the name order there
- * is ambiguous. A family name whose author entry also holds another written-out capitalised word
- * ("Mark Little", "Little Mark", "Rowe Hope", "Michael J. Young", "Wang Xiaoming", "Hoddy K.
+ * The other words of each author entry that holds a record's family name, where the name order
+ * there is ambiguous. A family name whose author entry also holds another written-out capitalised
+ * word ("Mark Little", "Little Mark", "Rowe Hope", "Michael J. Young", "Wang Xiaoming", "Hoddy K.
  * Sleep") may be a given name: the entry reads family first or given first, and the text cannot
- * tell which (round 17). The initials are those of the entry's other words (up to four on
- * each side), its given part in either reading. `undefined` when the order is not ambiguous
- * ("Smith, J. A.", "Smith JA") or the family name is not in the section.
+ * tell which (round 17). One element per occurrence of the family name in the section ("Mark
+ * Little and Zoe Mark": two); `null` for an occurrence whose order is not ambiguous ("Smith, J.
+ * A.", "Smith JA") or whose entry is longer than four words on a side (the given name may be
+ * among the words not looked at, round 18). Empty when the family name is not in the section.
  */
-function citedGivenOf(words: readonly SectionWord[], family: string): Set<string> | undefined {
+function entriesOf(words: readonly SectionWord[], family: string): EntryOthers[] {
   const fam = foldForMatch(family);
-  if (!fam) return undefined;
-  let at = -1;
-  let end = -1;
-  for (let i = 0; i < words.length && at < 0; i++) {
-    for (let j = i; j < Math.min(words.length, i + 4); j++) {
-      if (words.slice(i, j + 1).map((w) => foldForMatch(w.word)).join(' ') === fam) { at = i; end = j; break; }
+  const out: EntryOthers[] = [];
+  if (!fam) return out;
+  for (let at = 0; at < words.length; at++) {
+    let end = -1;
+    for (let j = at; j < Math.min(words.length, at + 4); j++) {
+      if (words.slice(at, j + 1).map((w) => foldForMatch(w.word)).join(' ') === fam) { end = j; break; }
     }
+    if (end < 0) continue;
+    const others: string[] = [];
+    let i = end;
+    for (; i < words.length - 1 && others.length < 4 && sameEntry(words, i); i++) others.push(words[i + 1].word);
+    const cutAfter = i < words.length - 1 && sameEntry(words, i);
+    let k = at - 1;
+    for (let n = 0; k >= 0 && n < 4 && sameEntry(words, k); k--, n++) others.unshift(words[k].word);
+    const cutBefore = k >= 0 && sameEntry(words, k);
+    const ambiguous = others.some((w) => !IS_INITIAL.test(w) && /^\p{Lu}/u.test(w));
+    out.push(ambiguous && !cutAfter && !cutBefore ? others : null);
   }
-  if (at < 0) return undefined;
-  const others: string[] = [];
-  for (let i = end; i < words.length - 1 && others.length < 4 && sameEntry(words, i); i++) others.push(words[i + 1].word);
-  for (let i = at - 1, n = 0; i >= 0 && n < 4 && sameEntry(words, i); i--, n++) others.unshift(words[i].word);
-  const ambiguous = others.some((w) => !IS_INITIAL.test(w) && /^\p{Lu}/u.test(w));
-  return ambiguous ? initialsOf(others.join(' ')) : undefined;
+  return out;
+}
+
+/** Edit distance of two short strings. */
+function editDistance(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
 }
 
 /**
- * A record's given name that shares no initial with the words written next to a surname of
- * ambiguous order: the record's author is not that person ("Mark Little" and a record by
- * "Mark, Zyxwv": "Mark" was a given name). No given name in the record, or one in another
- * script, decides nothing.
+ * A record's given name that does not fit the words written next to its family name in an
+ * entry of ambiguous order: it shares no initial with them, and no word of it is a spelling
+ * variant of one of them (two edits or fewer, four letters or more: "Yulia" / "Julia", "George" /
+ * "Jorge", round 18). Then the record's author is not that person ("Mark Little" and a record by
+ * "Mark, Zoe": "Mark" was a given name). No given name in the record, or one in another script,
+ * decides nothing.
  */
-function givenConflicts(cited: Set<string> | undefined, given: string | null): boolean {
-  if (!cited || cited.size === 0 || !given) return false;
+function givenConflicts(others: readonly string[], given: string | null): boolean {
+  const cited = initialsOf(others.join(' '));
+  if (cited.size === 0 || !given) return false;
   const recorded = initialsOf(given);
   if (recorded.size === 0 || [...recorded].some((l) => !/^[a-z]$/.test(l))) return false;
-  return ![...recorded].some((l) => cited.has(l));
+  if ([...recorded].some((l) => cited.has(l))) return false;
+  const long = (text: string) => foldForMatch(text).split(' ').filter((w) => w.length >= 4);
+  const written = long(others.join(' '));
+  return !long(given).some((g) => written.some((w) => editDistance(g, w) <= 2));
+}
+
+/**
+ * The record's author with this family name is vetoed: every entry of the reference holding the
+ * family name is of ambiguous order and the record's given name fits none of them (round 18: one
+ * occurrence only was looked at, so "Mark Little and Zoe Mark" vetoed Zoe Mark's record).
+ */
+function givenVetoes(words: readonly SectionWord[], family: string, given: string | null): boolean {
+  const entries = entriesOf(words, family);
+  return entries.length > 0 && entries.every((e) => e !== null && givenConflicts(e, given));
 }
 
 /**
@@ -810,9 +846,10 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
   const refAuthors = read.names.filter((r) => !read.uncertain.has(r) || !foldForMatch(r).split(' ').some((w) => titleWords.has(w)));
   // A family of one letter is an initial filed as the family ("R" with given "Shakthi Kiran",
   // a common deposit of names written "Shakthi Kiran R"): the surname is then in `given`, and
-  // there is no given name to compare.
+  // there is no given name to compare. A given in capitals ("SHAKTHI KIRAN") is a written-out
+  // name too (round 18: only one with a lower-case letter was moved).
   const crossrefPeople: Array<{ family: string; given: string | null }> = (crossrefResult.author || [])
-    .map((a: any) => (typeof a?.family === 'string' && foldForMatch(a.family).replace(/ /g, '').length === 1 && typeof a?.given === 'string' && /\p{Ll}/u.test(a.given)
+    .map((a: any) => (typeof a?.family === 'string' && foldForMatch(a.family).replace(/ /g, '').length === 1 && typeof a?.given === 'string' && /\p{Ll}|\p{Lu}{4,}/u.test(a.given)
       ? { family: a.given, given: null }
       : { family: a?.family, given: typeof a?.given === 'string' ? a.given : null }))
     .filter((p: { family: unknown }) => typeof p.family === 'string' && p.family.trim().length > 0);
@@ -829,7 +866,7 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
       let comparable = false;
       // A family name read where the order is ambiguous matches only when the record's given
       // name agrees with the words written after it (round 17).
-      const vetoed = givenConflicts(citedGivenOf(words, c), given);
+      const vetoed = givenVetoes(words, c, given);
       for (const r of refAuthors) {
         const m = surnamesMatch(r, c);
         if (m === true && !vetoed) authorCheck = 'matched';

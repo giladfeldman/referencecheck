@@ -548,6 +548,7 @@ function addRound12Rows(addDoi) {
   addRound15Rows(addDoi);
   addRound16Rows(addDoi);
   addRound17Rows(addDoi);
+  addRound18Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -789,6 +790,30 @@ function addRound17Rows(addDoi) {
     [`Michael Smith (2014). ${SD}. J Sleep Res.`, [['Smith', 'J. Michael']]],
   ];
   agrees.forEach(([text, people], k) => addDoi('right:ambiguous-order-given-agrees', 'accept', text, rec(`g${k}`, people), text.slice(0, 16)));
+}
+
+/**
+ * Review round 18: the given-name check of round 17 rejected the right record when the entry was
+ * longer than the words it looked at, when the family name also stood in another entry ("Mark
+ * Little and Zoe Mark"), or when the record spells the given name another way ("Yulia" /
+ * "Julia"); a record with family "R" and a given name in capitals was not read as "R" filed for
+ * an initial.
+ */
+function addRound18Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const SD = 'Sleep deprivation affects memory';
+  const rec = (doi, people) => ({ ...base, title: [SD], DOI: `${WORKS[0].w.doi}.r18-${doi}`, author: people.map(([family, given]) => ({ family, given })) });
+  const rows = [
+    [`Kiran Shakthi R (2014). ${SD}. J Sleep Res.`, [['R', 'SHAKTHI KIRAN']]],
+    [`Gomez Maria Jose Luz Elena Hernandez (2014). ${SD}. J Sleep Res.`, [['Gomez', 'Hernandez']]],
+    [`Mark Little and Zoe Mark (2014). ${SD}. J Sleep Res.`, [['Mark', 'Zoe']]],
+    [`Julia Smirnova (2014). ${SD}. J Sleep Res.`, [['Smirnova', 'Yulia']]],
+    [`Jorge Alvarez and Ana Ruiz (2014). ${SD}. J Sleep Res.`, [['Alvarez', 'George'], ['Ruiz', 'Ana']]],
+  ];
+  rows.forEach(([text, people], k) => {
+    addDoi('right:given-check-scope', 'accept', text, rec(`s${k}`, people), text.slice(0, 16));
+    addDoi('wrong:given-check-scope', 'reject', text, rec(`s${k}w`, [['Okafor', 'Zoe']]), text.slice(0, 16));
+  });
 }
 
 export const ROWS = buildRows();
