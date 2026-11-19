@@ -7,7 +7,7 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { formatError } from '../util/formatError.js';
 import type { MetadataCredentials } from './credentials.js';
 import { DEFAULT_POLITE_EMAIL } from './credentials.js';
-import { cleanDoiInput, findReferenceYear, foldForMatch, formatDateParts } from '../util/normalize.js';
+import { YEAR, cleanDoiInput, findReferenceYear, foldForMatch, formatDateParts } from '../util/normalize.js';
 
 export interface CrossrefResult {
   found: boolean;
@@ -223,8 +223,9 @@ function isUnpublishableWork(referenceText: string): boolean {
  * Extract year from reference text
  */
 function extractYearFromReference(referenceText: string): number | null {
-  // The shared reference-year reader: "(2019, March 3)" is 2019, and "arXiv:1706.03762",
-  // a page range or "(N = 1648)" is not a year (a wrong year rejects the right DOI).
+  // The shared reference-year reader: "(2019, March 3)" is 2019; "arXiv:1706.03762", a page
+  // range, "(N = 1648)" or a bare 1500-1899 count/volume is not a year (a wrong year rejects
+  // the right DOI).
   return findReferenceYear(referenceText);
 }
 
@@ -234,7 +235,7 @@ function extractYearFromReference(referenceText: string): number | null {
 function extractAuthorsFromReference(referenceText: string): string[] {
   // Common patterns for authors at start of reference
   // e.g., "Smith, J. A., & Jones, B. C. (2019)" or "Smith, J.A. (2019)"
-  const beforeYear = referenceText.split(/\(\s*(?:1[5-9]|20)\d{2}/)[0] || '';
+  const beforeYear = referenceText.split(new RegExp(`\\(\\s*${YEAR}`))[0] || '';
 
   // Extract last names (capitalized words before commas or &)
   const authorSection = beforeYear.trim();

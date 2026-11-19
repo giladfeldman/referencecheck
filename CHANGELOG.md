@@ -39,8 +39,10 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   in the text. Deduplication now uses `parseYear` (a value with no year counts as missing);
   the DOI matcher uses `findReferenceYear`, which reads a parenthetical only when it is a
   year and skips numbers inside identifiers and page ranges (`arXiv:1706.03762`,
-  `1648-1655`, `(N = 1648)`), so a wrong "year" no longer rejects the right DOI. It reads 1500-2099, the range
-  `parseYear` accepts, so a reference to a pre-1900 work ("Darwin (1859)") keeps its year check.
+  `1648-1655`, `(N = 1648)`), so a wrong "year" no longer rejects the right DOI. A parenthetical year reads 1500-2099,
+  the range `parseYear` accepts, so "Darwin, C. (1859)" keeps its year check, and "(1781/1998)" is
+  the reprint year; a bare number must be 1900-2099, as in 0.2.x, so a count or volume such as
+  "1650 participants" or "vol. 1521" is not the year.
 - **Author lists.** `calculateSimilarity` joined `normalized_authors` with ", " and
   `compareAuthors` split on every comma, so `["Smith, J.", "Jones, K."]` was compared as four
   people while `["J. Smith", "K. Jones"]` was two. Arrays are now passed through; strings go
@@ -88,7 +90,9 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   with its reason, and the count dropped under the relevance threshold. `findDOIFromReference`
   returned `null` for all four, and rejected candidates were only logged.
 - Shared readers, exported: `cleanDoiInput`, `doiForUrl`, `parseYear`, `foldForMatch`,
-  `splitAuthorList`, `formatDateParts`, `journalKey`, `normalizeIssn`, `findReferenceYear`.
+  `splitAuthorList`, `formatDateParts`, `journalKey`, `normalizeIssn`, `findReferenceYear`,
+  `findParentheticalYear`, and the one year definition every year reader uses: `YEAR`
+  (1500-2099) and `BARE_YEAR` (1900-2099, a bare number in running text).
 - `compareAuthors` accepts a string array as well as a string.
 
 ### Changed
