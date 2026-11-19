@@ -42,7 +42,9 @@ const KNOWN_PREPRINT_DOI_PREFIXES: Array<{ prefix: RegExp; server: string }> = [
   // Only the bioRxiv/medRxiv suffix forms (dated "2020.03.22.002386", or the older six-plus
   // digit "002386"). The 10.1101 prefix also carries Cold Spring Harbor journal articles
   // (10.1101/pdb.prot099176, 10.1101/gr.*), which Crossref types journal-article.
-  { prefix: /^10\.1101\/(?:\d{4}\.\d{2}\.\d{2}\.\d+|\d{6,})(?:\.?v\d+)?(?:\.full)?$/i, server: 'bioRxiv/medRxiv' },
+  // Not anchored at the end: version and file suffixes (v1, .full, .full.pdf,
+  // .supplementary-material) all name the same preprint, as in 0.2.x.
+  { prefix: /^10\.1101\/(?:\d{4}\.\d{2}\.\d{2}\.\d+|\d{6,})/i, server: 'bioRxiv/medRxiv' },
   // bioRxiv/medRxiv deposit new preprints under 10.64898 (openRxiv); every one of its
   // 453,106 Crossref works is posted-content (type facet, 2026-11-18).
   { prefix: /^10\.64898\//i, server: 'bioRxiv/medRxiv' },
@@ -67,8 +69,9 @@ const KNOWN_PREPRINT_URL_PATTERNS: Array<{ pattern: RegExp; server: string }> = 
 ];
 
 export function detectKnownPreprintFromDoi(doi: string | null | undefined): string | null {
-  // Trailing punctuation from the citation ("...002386.") is not part of the DOI.
-  const clean = cleanDoiInput(doi).replace(/[.,;]+$/, '');
+  // cleanDoiInput drops what the citation put after the DOI ("...002386).", " [preprint]"),
+  // so this test and the Crossref fallback read the same DOI.
+  const clean = cleanDoiInput(doi);
   if (!clean) return null;
   for (const { prefix, server } of KNOWN_PREPRINT_DOI_PREFIXES) {
     if (prefix.test(clean)) return server;

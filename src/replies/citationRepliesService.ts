@@ -50,7 +50,17 @@ async function checkForReplies(doi: string): Promise<CitationRepliesIssue[]> {
     const correctedBy = (Array.isArray(data['updated-by']) ? data['updated-by'] : []).filter(
       (u: any) => typeof u?.type === 'string' && CORRECTION_TYPES.has(u.type.toLowerCase()),
     );
-    const correctionDois = [...new Set(correctedBy.map((u: any) => u?.DOI).filter(Boolean))];
+    // One notice per DOI however it is written (case, resolver URL), and never the work itself.
+    const ownKey = cleanDoiInput(doi).toLowerCase();
+    const seen = new Set<string>();
+    const correctionDois: string[] = [];
+    for (const u of correctedBy) {
+      const d = cleanDoiInput(u?.DOI);
+      const key = d.toLowerCase();
+      if (!d || key === ownKey || seen.has(key)) continue;
+      seen.add(key);
+      correctionDois.push(d);
+    }
 
     // Check for errata
     if (correctedBy.length > 0) {

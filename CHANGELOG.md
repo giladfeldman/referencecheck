@@ -82,7 +82,22 @@ so it can never fire and reports clean**: the expression-of-concern check, below
 - **Expression of concern, Europe PMC:** the hit is matched with the shared DOI comparer, so a
   record writing `10.1371//journal…` is this paper.
 
+- **Review 2026-11-19: shapes this release first read worse than 0.2.x.** A DOI followed by
+  citation text (`...002386)`, `... [preprint]`, `...v1.full.pdf`) lost its bioRxiv preprint
+  flag: `cleanDoiInput` now drops that tail for every DOI reader, keeping brackets that belong
+  to the DOI (`(20)30183-5`, SICI `<...>`). The DOI matcher rejected the right DOI when the
+  surname was written in another script (`Иванов` / `Ivanov`) or with the German digraph
+  (`Müller` / `Mueller`): names in different scripts are no longer compared (as in 0.2.x) and
+  `ü` also matches `ue`; a Vancouver list (`Hoddy KK, Gibbons C`) is read as surnames, not
+  `KK`. Journal metadata took a page range from the text when Crossref's first ISSN failed
+  the check digit: it now takes the first valid Crossref ISSN, never reads the text when
+  Crossref listed any, and lists failed ones in `issnRejected`. Deduplication compares each
+  author as surname plus initials, so `Smith, J., Jones, K.` = `J. Smith; K. Jones`; two
+  symbol-only titles score 0, not 0.5. `HAS_ERRATA` counts one correction once whatever its
+  DOI's case, and never the work's own DOI.
+
 ### Added
+- `JournalMetadata.issnRejected`: ISSNs Crossref listed that fail the check digit.
 - `findDOIFromReferenceDetailed(referenceText, creds?)`: the DOI search with `status`
   (`found`, `no_match`, `skipped_unpublishable`, `lookup_failed`), every rejected candidate
   with its reason, and the count dropped under the relevance threshold. `findDOIFromReference`
@@ -96,7 +111,10 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   correction is not an expression of concern (corrections are `HAS_ERRATA`).
 - `EocUnavailableReason` gains `malformed_response` and `not_indexed`.
 - `CrossrefResult.publishedDate` is ISO at Crossref's precision: `"2019-03-05"`, `"1998-02"`
-  (was `"2019-3-5"`, `"1998-2"`). `validateDOI` and the DOI search now share one record mapper.
+  (was `"2019-3-5"`, `"1998-2"`), as are the preprint, reply and expression-of-concern dates.
+  `validateDOI` and the DOI search now share one record mapper. JavaScript's `new Date()` reads
+  a date-only ISO string as UTC midnight, so west of UTC `new Date("2019-01").getFullYear()` is
+  2018: read the year from the string (`Number(s.slice(0, 4))`).
 
 ### What a consumer does differently
 - Expect new expression-of-concern findings: the check works for the first time. One concern

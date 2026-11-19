@@ -58,6 +58,8 @@ export interface HeuristicsResult {
 export interface JournalMetadata {
   journal?: string;
   issn?: string;
+  /** ISSNs Crossref listed that fail the ISSN check digit (not used for any lookup). */
+  issnRejected?: string[];
   publisher?: string;
 }
 

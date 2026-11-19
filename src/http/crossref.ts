@@ -243,7 +243,52 @@ function extractYearFromReference(referenceText: string): number | null {
 }
 
 /**
- * Extract author last names from reference text (simplified extraction)
+ * Vancouver / NLM author lists ("Hoddy KK, Gibbons C, et al. Title."): a surname, then
+ * capital initials with no comma between them. Read from the start of the reference up to
+ * the first ". "; empty unless the FIRST entry has that shape. The APA pattern below read
+ * "Hoddy KK, Gibbons C" as surname "KK" (d-e977e3). A surname needs a lower-case letter, so
+ * initials are never one; lower-case particles ("van der Berg JH") are allowed before it.
+ */
+function vancouverSurnames(section: string): string[] {
+  const list = section.split(/\.\s/)[0];
+  const out: string[] = [];
+  for (const piece of list.split(/\s*,\s*/).filter(Boolean)) {
+    if (/^et al\.?$/i.test(piece)) continue;
+    const m = piece.match(/^(?:[\p{L}'’-]+\s+)*?(\p{Lu}[\p{L}'’-]*\p{Ll}[\p{L}'’-]*)\s+\p{Lu}{1,3}$/u);
+    if (!m) break;
+    out.push(m[1]);
+  }
+  return out;
+}
+
+/** The scripts a surname can be written in; two names in different ones cannot be compared. */
+const SCRIPTS: RegExp[] = [
+  /\p{Script=Latin}/u, /\p{Script=Cyrillic}/u, /\p{Script=Greek}/u,
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u, /\p{Script=Hangul}/u,
+  /\p{Script=Arabic}/u, /\p{Script=Hebrew}/u, /\p{Script=Devanagari}/u, /\p{Script=Thai}/u,
+  /\p{Script=Armenian}/u, /\p{Script=Georgian}/u,
+];
+function scriptOf(name: string): number {
+  return SCRIPTS.findIndex((re) => re.test(name));
+}
+
+/**
+ * Match keys for a surname: the accent fold ("Müller" -> "muller") and the German digraph
+ * spelling ("Müller" -> "mueller"), so a reference and a Crossref record that spell one
+ * name the two ways still match (review 2026-11-19).
+ */
+const DIGRAPH: Record<string, string> = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue' };
+function surnameKeys(name: string): string[] {
+  const keys = new Set([
+    foldForMatch(name),
+    foldForMatch(name.normalize('NFC').replace(/[äöüÄÖÜ]/g, (c) => DIGRAPH[c] ?? c)),
+  ]);
+  return [...keys].filter((k) => k.length > 0);
+}
+
+/**
+ * Extract author last names from reference text (simplified extraction), as written
+ * (not folded: validateDOIMatch needs the script and the digraph spelling).
  */
 function extractAuthorsFromReference(referenceText: string): string[] {
   // Common patterns for authors at start of reference
@@ -252,6 +297,8 @@ function extractAuthorsFromReference(referenceText: string): string[] {
 
   // Extract last names (capitalized words before commas or &)
   const authorSection = beforeYear.trim();
+  const vancouver = vancouverSurnames(authorSection);
+  if (vancouver.length > 0) return vancouver;
   const lastNames: string[] = [];
 
   // Pattern to match "LastName, Initials" format. Unicode letters (2026-11-18): the
@@ -260,7 +307,7 @@ function extractAuthorsFromReference(referenceText: string): string[] {
   const authorPattern = /(\p{Lu}[\p{L}'’-]+)(?:\s*,\s*\p{Lu}\.?)+/gu;
   let match;
   while ((match = authorPattern.exec(authorSection)) !== null) {
-    lastNames.push(foldForMatch(match[1]));
+    lastNames.push(match[1]);
   }
 
   // Also try simpler pattern for single author or non-standard format
@@ -268,7 +315,7 @@ function extractAuthorsFromReference(referenceText: string): string[] {
     const simplePattern = /^(\p{Lu}[\p{L}'’-]+)/u;
     const simpleMatch = authorSection.match(simplePattern);
     if (simpleMatch) {
-      lastNames.push(foldForMatch(simpleMatch[1]));
+      lastNames.push(simpleMatch[1]);
     }
   }
 
@@ -308,24 +355,29 @@ function validateDOIMatch(
   // Extract authors from reference
   const refAuthors = extractAuthorsFromReference(referenceText);
 
-  // Get authors from Crossref result
+  // Get authors from Crossref result, as written.
   const crossrefAuthors: string[] = (crossrefResult.author || [])
-    // Folded like the reference side, so Crossref's "Müller" meets a reference's "Muller".
-    .map((a: any) => foldForMatch(a.family))
-    .filter(Boolean);
+    .map((a: any) => a?.family)
+    .filter((f: unknown): f is string => typeof f === 'string' && f.trim().length > 0);
 
-  // Author validation: at least one author last name must match
-  if (refAuthors.length > 0 && crossrefAuthors.length > 0) {
-    const hasAuthorMatch = refAuthors.some(refAuthor =>
-      crossrefAuthors.some(crAuthor =>
-        crAuthor.includes(refAuthor) || refAuthor.includes(crAuthor)
-      )
+  // Author validation: at least one author last name must match. Only names written in
+  // the same script can be compared: a reference "Иванов" and a Crossref "Ivanov" are one
+  // person, and no spelling rule decides that, so the check is skipped (as 0.2.x did for
+  // every non-ASCII name) instead of rejecting the right DOI.
+  const comparable =
+    refAuthors.length > 0 &&
+    crossrefAuthors.length > 0 &&
+    refAuthors.some((r) => crossrefAuthors.some((c) => scriptOf(r) === scriptOf(c)));
+  if (comparable) {
+    const crossrefKeys = crossrefAuthors.flatMap(surnameKeys);
+    const hasAuthorMatch = refAuthors.some((refAuthor) =>
+      surnameKeys(refAuthor).some((rk) => crossrefKeys.some((ck) => ck.includes(rk) || rk.includes(ck))),
     );
 
     if (!hasAuthorMatch) {
       return {
         isValid: false,
-        reason: `Author mismatch: reference authors [${refAuthors.join(', ')}] don't match DOI authors [${crossrefAuthors.join(', ')}]`,
+        reason: `Author mismatch: reference authors [${refAuthors.map(foldForMatch).join(', ')}] don't match DOI authors [${crossrefAuthors.map(foldForMatch).join(', ')}]`,
       };
     }
   }

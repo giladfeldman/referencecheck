@@ -16,18 +16,56 @@ export function normalizeAuthorName(name: string): string {
   return foldForMatch(name);
 }
 
+/** One author as surname + initials, whatever order it was written in. */
+interface AuthorKey { surname: string; initials: string }
+
+const NAME_SUFFIX = /^(?:jr|sr|ii|iii|iv)$/;
+
+/**
+ * "Smith, J. A.", "J. A. Smith", "Smith JA" (Vancouver) and "John A. Smith" are one key
+ * {smith, ja} (review 2026-11-19): comparing the folded strings as written scored the same
+ * list lower when one side put initials first ("smith j" vs "j smith").
+ */
+function authorKey(name: string): AuthorKey {
+  const initialsOf = (words: string[]) =>
+    words.filter((w) => !NAME_SUFFIX.test(w)).map((w) => w[0]).join('');
+  const comma = name.indexOf(',');
+  if (comma >= 0) {
+    const surname = foldForMatch(name.slice(0, comma));
+    const rest = foldForMatch(name.slice(comma + 1)).split(' ').filter(Boolean);
+    return { surname, initials: initialsOf(rest) };
+  }
+  const raw = name.trim().split(/\s+/).filter(Boolean);
+  // Vancouver: a final token of 1-3 capitals is the initials ("Smith JA").
+  if (raw.length > 1 && /^\p{Lu}{1,3}$/u.test(raw[raw.length - 1])) {
+    return { surname: foldForMatch(raw.slice(0, -1).join(' ')), initials: foldForMatch(raw[raw.length - 1]).replace(/ /g, '') };
+  }
+  const words = foldForMatch(name).split(' ').filter(Boolean);
+  while (words.length > 1 && NAME_SUFFIX.test(words[words.length - 1])) words.pop();
+  return { surname: words[words.length - 1] ?? '', initials: initialsOf(words.slice(0, -1)) };
+}
+
+function ratio(a: string, b: string): number {
+  const maxLen = Math.max(a.length, b.length);
+  return maxLen === 0 ? 0 : 1 - distance(a, b) / maxLen;
+}
+
+/** Surnames compared; initials too when both sides have them. */
+function authorKeySimilarity(a: AuthorKey, b: AuthorKey): number {
+  if (!a.initials || !b.initials) return ratio(a.surname, b.surname);
+  return ratio(`${a.surname} ${a.initials}`, `${b.surname} ${b.initials}`);
+}
+
 /**
  * Average best-match similarity of every name in `from` against the names in
  * `to`. One-directional — see compareAuthors for why both directions are averaged.
  */
-function authorListDirectionalSimilarity(from: string[], to: string[]): number {
+function authorListDirectionalSimilarity(from: AuthorKey[], to: AuthorKey[]): number {
   let total = 0;
   for (const a of from) {
     let best = 0;
     for (const b of to) {
-      const maxLen = Math.max(a.length, b.length);
-      if (maxLen === 0) continue;
-      best = Math.max(best, 1 - distance(a, b) / maxLen);
+      best = Math.max(best, authorKeySimilarity(a, b));
     }
     total += best;
   }
@@ -52,8 +90,8 @@ export function compareAuthors(
   // Split into individual author names. An array is already one entry per author; a
   // string goes through splitAuthorList, which keeps "Smith, J." as ONE author (the old
   // split on every comma made it two, so a list's score depended on how it was written).
-  const authors1List = splitAuthorList(authors1).map(normalizeAuthorName).filter(a => a.length > 0);
-  const authors2List = splitAuthorList(authors2).map(normalizeAuthorName).filter(a => a.length > 0);
+  const authors1List = splitAuthorList(authors1).map(authorKey).filter(a => a.surname.length > 0);
+  const authors2List = splitAuthorList(authors2).map(authorKey).filter(a => a.surname.length > 0);
 
   if (authors1List.length === 0 || authors2List.length === 0) {
     // If both are missing, consider it a neutral match (0.5); if only one is, low.
@@ -86,7 +124,10 @@ export function compareTitle(title1: string, title2: string): number {
   const norm2 = foldForMatch(title2);
 
   if (norm1.length === 0 || norm2.length === 0) {
-    return norm1.length === 0 && norm2.length === 0 ? 0.5 : 0.0;
+    // Both titles present but made only of symbols ("???", "∑∫"): equal or not, never the
+    // neutral 0.5 that two ABSENT titles get (review 2026-11-19).
+    if (norm1.length === 0 && norm2.length === 0) return title1.trim() === title2.trim() ? 1.0 : 0.0;
+    return 0.0;
   }
 
   // Calculate Levenshtein distance

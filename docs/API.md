@@ -88,7 +88,7 @@ interface CrossrefResult {
   doi?: string;
   title?: string;
   authors?: string[];        // "Family, Given"
-  publishedDate?: string;    // ISO, at the precision Crossref gives: "1998-02", "2019-03-05" (before 0.3.0: "1998-2")
+  publishedDate?: string;    // ISO, at the precision Crossref gives: "1998-02", "2019-03-05" (before 0.3.0: "1998-2"). Read the year from the string: new Date("2019-01") is UTC midnight, 2018 west of UTC
   journal?: string;
   score: number;             // 100 from a DOI lookup, 50 from the resolver fallback, Crossref's relevance score from a search
   rawData?: any;             // the Crossref message
@@ -103,7 +103,9 @@ interface CrossrefResult {
 
 Finds the DOI of a free-text reference, or `null`. Tries Crossref's Simple Text Query, then
 the bibliographic search (top 5, relevance score of at least 50). A candidate is accepted only
-if its year is within one year of the reference's and at least one author surname matches.
+if its year is within one year of the reference's and at least one author surname matches
+(surnames as `Surname, I.` or Vancouver `Surname IJ`; `ü` also matches `ue`; a surname in a
+different script from every Crossref author, `Иванов` vs `Ivanov`, is not compared).
 Theses, dissertations, unpublished manuscripts, personal communications, and works "in
 preparation", "submitted" or "under review" are skipped without a request. Surnames are folded
 with `foldForMatch` on both sides. The reference's year is the first `(dddd)` or `(dddda)`,
@@ -140,7 +142,7 @@ this release: each year reader keeps its 0.2.x rule (`tests/parity/yearRules02.t
 
 | Export | Returns |
 |---|---|
-| `cleanDoiInput(doi)` | the DOI with surrounding whitespace, a resolver URL (`http(s)://`, `dx.`/`www.`, or bare `doi.org/`) or a `doi:` label removed and percent-encoding decoded; case kept; `''` for a non-string |
+| `cleanDoiInput(doi)` | the DOI with surrounding whitespace, a resolver URL (`http(s)://`, `dx.`/`www.`, or bare `doi.org/`) or a `doi:` label removed and percent-encoding decoded; for a DOI, also what a citation put after it: anything after a space, trailing `. , ; :` and quotes, and a closing bracket that closes nothing inside the DOI (`10.1101/x).` → `10.1101/x`; `(20)30183-5` kept); case kept; `''` for a non-string; any other input returned trimmed |
 | `doiForUrl(doi)` | `encodeURIComponent(cleanDoiInput(doi))`, the only form a DOI takes inside a request URL |
 | `foldForMatch(text)` | lower-cased, accents removed (`Müller` → `muller`; also ø ł ß đ ı æ œ þ: `Østergaard` → `ostergaard`), letters and digits of every script kept, everything else one space |
 | `splitAuthorList(authors)` | one entry per author from an array or a string; `;`, `&` and "and" always separate; a comma separates unless what follows is only initials (each capital followed by a period, space, hyphen or the end) or a suffix (`Smith, J., Jones, K.` and `LI, X., WU, Y.` → 2 authors) |
@@ -423,7 +425,7 @@ if (isValidReference(reference)) {
 | Export | Does |
 |---|---|
 | `isValidReference(reference)` | `false` for text that is not a reference: under 20 characters, main-text openings (`In Study`, `Table 1`, `See`, `e.g.` …), fewer than 2 of {authors, year, title, source}, or over 500 characters with neither year nor source |
-| `extractJournalMetadata(reference, useOpenAlex?, creds?)` | `JournalMetadata` from, in order: `doi_crossref_data`, `parsed_data.source`, an ISSN in `raw_text`, publisher phrases in `raw_text`, then (when `useOpenAlex`, default `true`) OpenAlex by DOI and by journal name, pausing 200 ms after each OpenAlex call |
+| `extractJournalMetadata(reference, useOpenAlex?, creds?)` | `JournalMetadata` from, in order: `doi_crossref_data` (the first Crossref ISSN that passes the check digit; failing ones go to `issnRejected`), `parsed_data.source`, the first valid ISSN in `raw_text` (only when Crossref listed none), publisher phrases in `raw_text`, then (when `useOpenAlex`, default `true`) OpenAlex by DOI and by journal name, pausing 200 ms after each OpenAlex call |
 | `loadBeallsList()` | the bundled `BeallsList` (cached after the first read) |
 | `checkBeallsList(publisher)` | `true` when the publisher name matches a listed publisher (word-sequence match, not raw substring; a single generic word does not match) |
 | `isKnownLegitimate(publisher)` | `true` for a publisher on the bundled legitimate list |
@@ -459,7 +461,7 @@ interface BeallsList {
   knownLegitimatePublishers: string[];
 }
 
-interface JournalMetadata { journal?: string; issn?: string; publisher?: string }
+interface JournalMetadata { journal?: string; issn?: string; issnRejected?: string[]; publisher?: string }
 
 interface DOAJResult { found: boolean; unavailable?: boolean; reason?: string; journalTitle?; publisher?; issn?; eissn?; url? }
 
@@ -499,8 +501,8 @@ All local; no network.
 | Export | Returns |
 |---|---|
 | `calculateSimilarity(ref1, ref2, config)` | `authorWeighting × authors + titleWeighting × title + (1 − both) × year`, from `normalized_authors`, `normalized_title`, `normalized_year` |
-| `compareAuthors(authors1, authors2)` | 0–1, symmetric; each argument a string or a string array, split with `splitAuthorList` and folded with `foldForMatch`; best Levenshtein match per author, averaged both ways; 0.5 when both are empty |
-| `compareTitle(title1, title2)` | `1 − Levenshtein distance / longer length` after `foldForMatch` (non-Latin titles compared, not emptied); 0.5 when both are empty |
+| `compareAuthors(authors1, authors2)` | 0–1, symmetric; each argument a string or a string array, split with `splitAuthorList`; each author read as surname + initials whatever the order (`Smith, J. A.` = `J. A. Smith` = `Smith JA`), folded with `foldForMatch`; surnames compared, and initials too when both sides have them; best Levenshtein match per author, averaged both ways; 0.5 when both are empty |
+| `compareTitle(title1, title2)` | `1 − Levenshtein distance / longer length` after `foldForMatch` (non-Latin titles compared, not emptied); 0.5 when both are empty; two titles made only of symbols (`???`) score 1 when identical, else 0 |
 | `compareYear(year1, year2)` | `parseInt` of each value (the 0.2.x rule): 1 same year, 0.5 one year apart, 0 otherwise; 0.5 when both are empty, 0 when one is or when either does not start with a number (`"(2019)"`, `"in press"`) |
 | `normalizeAuthorName(name)` | `foldForMatch(name)`: `"Smith, J."` → `"smith j"`, `"Müller"` → `"muller"` |
 | `scoreMetadataCompleteness(ref)` | 0–1 weighted presence of title, authors, year, DOI, source, volume, pages |

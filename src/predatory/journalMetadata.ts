@@ -80,6 +80,7 @@ export function isValidReference(reference: ReferenceInput): boolean {
  */
 export async function extractJournalMetadata(reference: ReferenceInput, useOpenAlex: boolean = true, creds?: MetadataCredentials): Promise<JournalMetadata> {
   const metadata: JournalMetadata = {};
+  let crossrefGaveIssn = false;
 
   // Priority 1: Extract from DOI Crossref data (most reliable)
   if (reference.doi_crossref_data) {
@@ -102,11 +103,17 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
       metadata.journal = shortTitle[0];
     }
 
-    // Extract ISSN
-    if (crossrefData.ISSN && Array.isArray(crossrefData.ISSN) && crossrefData.ISSN.length > 0) {
-      metadata.issn = normalizeIssn(crossrefData.ISSN[0]) ?? undefined;
-    } else if (crossrefData.ISSN && typeof crossrefData.ISSN === 'string') {
-      metadata.issn = normalizeIssn(crossrefData.ISSN) ?? undefined;
+    // The first ISSN that passes the check digit; one that fails is listed in
+    // issnRejected, not silently dropped.
+    const crossrefIssns: unknown[] = Array.isArray(crossrefData.ISSN)
+      ? crossrefData.ISSN
+      : typeof crossrefData.ISSN === 'string' ? [crossrefData.ISSN] : [];
+    for (const raw of crossrefIssns) {
+      if (typeof raw !== 'string' || !raw.trim()) continue;
+      crossrefGaveIssn = true;
+      const issn = normalizeIssn(raw);
+      if (issn) metadata.issn ??= issn;
+      else (metadata.issnRejected ??= []).push(raw);
     }
 
     // Extract publisher
@@ -121,11 +128,14 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
   }
 
   // Priority 3: Extract ISSN from raw text (format: XXXX-XXXX or XXXX-XXXX-X)
-  if (!metadata.issn) {
+  // Only when Crossref listed no ISSN: a page range such as 1015-1028 can pass the check
+  // digit (about 1 in 12 do), so the text never overrides what Crossref deposited.
+  if (!metadata.issn && !crossrefGaveIssn) {
     // Hyphen required (any dash): without it "2019 2020" or a page range would read as an ISSN.
-    const issnMatch = reference.raw_text.match(/\b(\d{4}[-\u2010-\u2015]\d{3}[\dxX])\b/);
-    if (issnMatch) {
-      metadata.issn = normalizeIssn(issnMatch[1]) ?? undefined;
+    // The first candidate that passes the check digit, not just the first candidate.
+    for (const m of reference.raw_text.matchAll(/\b(\d{4}[-\u2010-\u2015]\d{3}[\dxX])\b/g)) {
+      const issn = normalizeIssn(m[1]);
+      if (issn) { metadata.issn = issn; break; }
     }
   }
 

@@ -34,7 +34,29 @@ export function cleanDoiInput(doi: string | null | undefined): string {
       // A malformed escape is left as written; the shape check will reject it.
     }
   }
-  return d.trim();
+  d = d.trim();
+  if (/^10\.\d{4,9}\//.test(d)) d = stripCitationTail(d);
+  return d;
+}
+
+const CLOSE_TO_OPEN: Record<string, string> = { ')': '(', ']': '[', '>': '<', '}': '{' };
+
+/**
+ * What a citation puts after a DOI is not part of it (review 2026-11-19): a DOI holds no
+ * whitespace, so "10.1101/x [preprint]" is cut at the space; trailing . , ; : and quotes are
+ * sentence punctuation; a closing bracket is dropped only when it closes nothing inside the
+ * DOI, so "10.1016/S0140-6736(20)30183-5" and SICI forms ending in ">" stay whole while
+ * "(doi:10.1101/x)" loses its ")". Applied to DOI-shaped input only.
+ */
+function stripCitationTail(doi: string): string {
+  let d = doi.split(/\s/)[0];
+  const count = (ch: string) => d.split(ch).length - 1;
+  for (;;) {
+    const last = d.slice(-1);
+    if (/[.,;:'"‘’“”]/.test(last)) d = d.slice(0, -1);
+    else if (CLOSE_TO_OPEN[last] && count(last) > count(CLOSE_TO_OPEN[last])) d = d.slice(0, -1);
+    else return d;
+  }
 }
 
 /** `encodeURIComponent(cleanDoiInput(doi))` — the only form a DOI may take inside a URL. */
