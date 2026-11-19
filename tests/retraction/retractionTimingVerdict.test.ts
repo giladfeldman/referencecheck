@@ -354,6 +354,22 @@ describe('retraction timing relative to the citing paper', () => {
     expect(bad.timing).toMatchObject({ timing: 'unknown', unknownReason: 'unparseable_retraction_date' });
   });
 
+  it('every date on one result has one form: OpenRetractions and caller dates are padded too', async () => {
+    axiosGetMock.mockResolvedValue({ status: 200, data: { retracted: true, retraction_date: '2019-1-5' } });
+    const r = await checkRetraction(JAMA, { sources: ['openretractions'], citing: { publishedDate: '2019-2' } });
+    expect(r.retractionDate).toBe('2019-01-05');
+    expect(r.timing).toMatchObject({ retractionDate: '2019-01-05', citingPublishedDate: '2019-02', timing: 'before_citing' });
+
+    serve({ [JAMA]: fixture('retracted-rw-jama.json') });
+    const t = await checkRetraction(JAMA, { citing: { publishedDate: '2019-1-5T23:30:00-08:00' }, checkReplacement: false });
+    // The date part as written, never shifted through Date: 2019-01-05, not 2019-01-06 (UTC).
+    expect(t.timing.citingPublishedDate).toBe('2019-01-05');
+
+    axiosGetMock.mockResolvedValue({ status: 200, data: { retracted: true, retraction_date: 'October 2019' } });
+    const bad = await checkRetraction(JAMA, { sources: ['openretractions'] });
+    expect(bad.retractionDate).toBe('October 2019'); // unreadable: shown as given
+  });
+
   it.each([
     ['2019', 'same_period'], // year-only citing date in the retraction's year
     ['2019-10', 'same_period'], // same month, citing has no day

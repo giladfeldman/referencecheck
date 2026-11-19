@@ -45,6 +45,15 @@
   `CrossrefResult.publishedDate` (padded since 0.3.0) and the citing date in `timing`. A deposited date that is not
   a calendar date (month 13) is still returned, padded, and its `timing` is
   `unknown` / `unparseable_retraction_date`; date-parts with no year give no date.
+- **One date form per result.** The OpenRetractions `retraction_date` and a caller's
+  `citing.publishedDate` are written the same way (`2019-01-05`); an unreadable source date is
+  kept as given. A caller date with a time (`2019-1-5T23:30:00-08:00`) was cut to its first ten
+  characters (`2019-1-5T2`); it now gives the date as written (`2019-01-05`).
+- **Timing never depends on the machine's time zone.** Dates are compared as year, month and day
+  numbers, never through `Date` (which reads `2019-01` as UTC midnight, still 2018 in Los
+  Angeles). `tests/retraction/timezone.test.ts` re-runs the comparisons in a fresh Node under
+  `America/Los_Angeles`, `Pacific/Kiritimati` and `UTC`, each with a control proving its zone is
+  live.
 
 ### Consumer action
 - `retractionDate` is now zero-padded; a stored value from an earlier version may be unpadded,

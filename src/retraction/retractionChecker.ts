@@ -613,6 +613,17 @@ function datePartsToString(field: any): string | null {
   return formatPartialDate(valid);
 }
 
+/**
+ * A source's date string in the one returned form when it can be read
+ * ("2019-1-5" -> "2019-01-05"); kept as given when it cannot, so the caller
+ * sees what the source said and `timing` says it could not be read.
+ */
+function sameFormatDate(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const d = parsePartialDate(value);
+  return d ? formatPartialDate(d) : value;
+}
+
 /** The one writer of a validated date: the shared `formatDateParts`. */
 function formatPartialDate(d: PartialDate): string {
   return formatDateParts([d.y, d.m, d.d].filter((n) => n !== undefined)) as string;
@@ -686,7 +697,9 @@ function callerCitingDate(publishedDate: string): CitingPublicationDate {
       `citing.publishedDate must be YYYY, YYYY-MM or YYYY-MM-DD; got ${JSON.stringify(publishedDate)}`
     );
   }
-  return { date: publishedDate.trim().slice(0, 10), source: 'caller' };
+  // Written in the one returned form ("2012-05", never "2012-5" or a cut
+  // date-time), read from the parsed parts, never through `Date`.
+  return { date: formatPartialDate(parsed), source: 'caller' };
 }
 
 type CitingResolver = () => Promise<CitingPublicationDate | null>;
@@ -1096,8 +1109,7 @@ async function lookupRetraction(
               checked: true,
               sourcesChecked,
               sourcesUnavailable,
-              retractionDate:
-                typeof data.retraction_date === 'string' ? data.retraction_date : undefined,
+              retractionDate: sameFormatDate(data.retraction_date),
               retractionReason: data.reason,
               retractionNoticeUrl: data.retraction_notice_url,
               originalPaperDOI: cleanDOI,
