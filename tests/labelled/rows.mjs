@@ -536,12 +536,69 @@ function addRound12Rows(addDoi) {
       addDoi(`wrong:given-first-one-initial-${shape}`, 'reject', text, wrong, names);
     }
   }
+  addRound13Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
     addDoi('right:given-first-one-initial-bare-year', 'accept', text, record, 'bare year');
     addDoi('wrong:given-first-one-initial-bare-year', 'reject', text, { ...record, DOI: `${w.doi}.other-author`, author: [{ family: 'Broockman', given: 'D.' }] }, 'bare year');
   }
+}
+
+// ------------------------------------------------------------------ shapes added in review round 13
+// Vancouver entries with capitalised particles or two-word surnames, "et al" without a comma,
+// "and others"; an author whose surname is a word of the title (writing about their own name);
+// a record by an author named like any title word. Labels by construction: the record lists
+// the written authors (accept) or only other authors (reject).
+function addRound13Rows(addDoi) {
+  const TITLE = 'Sleep and memory consolidation in older adults';
+  const base = { ...WORKS[0].w.record, title: [TITLE], subtitle: [], published: { 'date-parts': [[2014]] } };
+  const rec = (doi, fams) => ({ ...base, DOI: `${WORKS[0].w.doi}.r13-${doi}`, author: fams.map((f) => ({ family: f, given: 'X.' })) });
+  const tail = `${TITLE}. J Sleep Res. 2014;1:1-9.`;
+  const VANCOUVER = [
+    ['two-word-surname', 'Garcia Marquez G', ['Garcia Marquez']],
+    ['capital-particle', 'Van Dyke J', ['Van Dyke']],
+    ['capital-particle', 'De la Cruz M', ['de la Cruz']],
+    ['capital-particle', 'Le Roux P', ['Le Roux']],
+    ['capital-particle', 'Van der Berg JH', ['van der Berg']],
+  ];
+  VANCOUVER.forEach(([shape, entry, fams], k) => {
+    for (const [n, text] of [['one', `${entry}. ${tail}`], ['two', `${entry}, Smith A. ${tail}`]]) {
+      const authors = n === 'one' ? fams : [...fams, 'Smith'];
+      addDoi(`right:vancouver-${shape}`, 'accept', text, rec(`v${k}${n}`, authors), entry);
+      addDoi(`wrong:vancouver-${shape}`, 'reject', text, rec(`v${k}${n}w`, ['Jones', 'Lee']), entry);
+      addDoi(`wrong:vancouver-${shape}-title-word-author`, 'reject', text, rec(`v${k}${n}s`, ['Sleep']), entry);
+    }
+  });
+  const ETAL = ['Hoddy K et al.', 'Hoddy KK et al.', 'Hoddy K, Gibbons C et al.', 'Hoddy K and others.', 'Hoddy K et al'];
+  ETAL.forEach((lead, k) => {
+    const text = `${lead} ${tail}`;
+    addDoi('right:vancouver-et-al-no-comma', 'accept', text, rec(`e${k}`, ['Hoddy', 'Gibbons', 'Lee']), lead);
+    addDoi('wrong:vancouver-et-al-no-comma', 'reject', text, rec(`e${k}w`, ['Smith', 'Lee']), lead);
+    addDoi('wrong:vancouver-et-al-no-comma', 'reject', text, rec(`e${k}s`, ['Sleep', 'Lee']), lead);
+  });
+  // an author whose surname is a word of the title
+  const own = [
+    ['Darwin C. Darwin and the origin of species. J Hist Biol. 2014;1:1-9.', 'Darwin and the origin of species', ['Darwin']],
+    ['Hoddy K. Hoddy and the origin of species. J Hist Biol. 2014;1:1-9.', 'Hoddy and the origin of species', ['Hoddy']],
+    ['Charles R. Brown, Donald P. Green. Brown and the hidden costs of anger. J Sleep Res. 2014.', 'Brown and the hidden costs of anger', ['Brown', 'Green']],
+    ['Charles R. Price, Donald P. Green. Price and the hidden costs of anger. J Sleep Res. 2014.', 'Price and the hidden costs of anger', ['Price', 'Green']],
+  ];
+  own.forEach(([text, title, fams], k) => {
+    const r = { ...base, DOI: `${WORKS[0].w.doi}.r13-o${k}`, title: [title], author: fams.map((f) => ({ family: f, given: 'X.' })) };
+    addDoi('right:own-name-in-title', 'accept', text, r, text.slice(0, 20));
+    addDoi('wrong:own-name-in-title', 'reject', text, { ...r, DOI: `${r.DOI}w`, author: [{ family: 'Smith', given: 'X.' }] }, text.slice(0, 20));
+  });
+  // a record by an author named like a title word that is not the first one
+  const later = [
+    ['Hoddy K. Garcia Marquez and magic realism. J Lit. 2014.', 'Garcia Marquez and magic realism', 'Marquez'],
+    ['Hoddy K. The Sleep and memory. J Sleep Res. 2014.', 'The Sleep and memory', 'Sleep'],
+    ['Hoddy K. Sleep and memory in older adults. J Sleep Res. 2014;1:1-9.', 'Memory and sleep in older adults', 'Sleep'],
+  ];
+  later.forEach(([text, title, fam], k) => {
+    const r = { ...base, DOI: `${WORKS[0].w.doi}.r13-l${k}`, title: [title], author: [{ family: fam, given: 'X.' }] };
+    addDoi('wrong:title-word-author-later-word', 'reject', text, r, text.slice(0, 24));
+  });
 }
 
 export const ROWS = buildRows();

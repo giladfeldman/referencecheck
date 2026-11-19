@@ -49,7 +49,6 @@ const KNOWN: Array<{ cls: string; note?: string; has?: string; why: string }> = 
   { cls: 'dedup/same:surname-full-given', note: 'retracted-title-case.json', why: 'one-letter surnames: "R Shakthi Kiran" has no surname of two letters to compare' },
   { cls: 'doi/wrong:same-title-other-authors', note: 'retracted-title-case.json', why: 'one-letter surnames ("R, S. K.") are not read, so only the title is compared (not_comparable)' },
   { cls: 'doi/wrong:same-title-other-authors~given-first', note: 'retracted-title-case.json', why: 'one-letter surnames are not read, so only the title is compared (not_comparable)' },
-  { cls: 'doi/wrong:same-title-other-authors~given-first-full', note: 'retracted-title-case.json', why: 'one-letter surnames are not read, so only the title is compared (not_comparable)' },
   { cls: 'doi/wrong:same-title-other-authors~mixed-script-record', note: 'retracted-title-case.json', why: 'one-letter surnames are not read, so only the title is compared (not_comparable)' },
   { cls: 'doi/wrong:same-title-other-authors~vancouver', note: 'retracted-plain-title-2.json', why: 'surnames in capitals written Vancouver ("IWAMOTO J") are not read, so only the title is compared' },
 ];
@@ -57,9 +56,9 @@ const isKnown = (r: { row: any }) =>
   KNOWN.some((k) => k.cls === `${r.row.kind}/${r.row.cls}` && (k.note === undefined || k.note === r.row.note) && (k.has === undefined || JSON.stringify(r.row).includes(k.has)));
 
 describe('labelled release set', () => {
-  it('is the frozen set: 565 deduplication pairs, 806 DOI candidates', () => {
+  it('is the frozen set: 565 deduplication pairs, 862 DOI candidates', () => {
     expect(ROWS.dedup.length).toBe(565);
-    expect(ROWS.doi.length).toBe(806);
+    expect(ROWS.doi.length).toBe(862);
   });
 
   it('every row gets its label, except the listed known errors', () => {

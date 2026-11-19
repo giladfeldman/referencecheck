@@ -254,10 +254,9 @@ function extractYearFromReference(referenceText: string): number | null {
 }
 
 /**
- * Particles as a regex alternation: lower-case only (Vancouver lists write "van der Berg JH")
- * or with either first-letter case (APA writes "Van Dyke, J." and "de la Cruz, M.").
+ * Particles as a regex alternation, with either first-letter case ("van der Berg JH",
+ * "Van Dyke, J.", "De la Cruz M", "de la Cruz, M.").
  */
-const PARTICLE = `(?:${NAME_PARTICLES.join('|')})`;
 const PARTICLE_ANY_CASE = `(?:${NAME_PARTICLES.map((w) => `[${w[0]}${w[0].toUpperCase()}]${w.slice(1)}`).join('|')})`;
 
 /**
@@ -265,11 +264,15 @@ const PARTICLE_ANY_CASE = `(?:${NAME_PARTICLES.map((w) => `[${w[0]}${w[0].toUppe
  * capital initials with no comma between them. Read from the start of the reference up to
  * the first ". "; empty unless the FIRST entry has that shape. The APA pattern below read
  * "Hoddy KK, Gibbons C" as surname "KK" (d-e977e3). A surname needs a lower-case letter, so
- * initials are never one. Only lower-case name particles ("van der Berg JH") may stand
- * before it, and they are part of the surname read: any word allowed there read
- * "Hoddy KK Gibbons C." as surname "Gibbons".
+ * initials are never one. Name particles in either case ("van der Berg JH", "Van Dyke J",
+ * "De la Cruz M", "Le Roux P") and one further surname word ("Garcia Marquez G") are part of
+ * the surname read (round 13: those entries were not read, the list came back empty and the
+ * author check was skipped). Every word of the surname needs a lower-case letter, so
+ * "Hoddy KK Gibbons C." is not read as surname "Hoddy KK Gibbons".
  */
-const VANCOUVER_ENTRY = new RegExp(`^((?:${PARTICLE}\\s+)*\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*)\\s+(\\p{Lu}(?:-?\\p{Lu}){0,2})$`, 'u');
+const VANCOUVER_ENTRY = new RegExp(`^((?:${PARTICLE_ANY_CASE}\\s+)*\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*(?:\\s+\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*)?)\\s+(\\p{Lu}(?:-?\\p{Lu}){0,2})$`, 'u');
+/** "et al", "et al.", "and others" closing a Vancouver entry without a comma before it. */
+const ENTRY_ET_AL = /^(.*?)\s+(?:et\.?\s*al\b|and\s+others\b)/i;
 
 /**
  * The Vancouver reading of an author section: its surnames, and, when the text can also be read
@@ -289,12 +292,16 @@ function vancouverReading(section: string): { surnames: string[]; alternative: s
   const out: string[] = [];
   let lastInitials = '';
   let etAl = false;
-  for (const piece of list.split(/\s*,\s*/).filter(Boolean)) {
-    if (/^et al\.?$/i.test(piece)) { etAl = true; continue; }
-    const m = piece.match(VANCOUVER_ENTRY);
+  // An entry closed by "et al" / "and others" ends the list ("Hoddy K et al Sleep and ...",
+  // with no period after "al", is cut there).
+  for (const raw of list.split(/\s*,\s*/).filter(Boolean)) {
+    if (/^et al\.?$/i.test(raw)) { etAl = true; continue; }
+    const closed = raw.match(ENTRY_ET_AL);
+    const m = (closed ? closed[1] : raw).match(VANCOUVER_ENTRY);
     if (!m) break;
     out.push(m[1]);
     lastInitials = m[2];
+    if (closed) { etAl = true; break; }
   }
   if (out.length !== 1 || lastInitials.length !== 1 || cut < 0 || etAl) return { surnames: out, alternative: null };
   const tail = section.slice(cut + 2).trim().match(GIVEN_FIRST_TAIL);
@@ -316,11 +323,18 @@ function givenFirstSurnames(section: string): string[] {
   for (const piece of section.split(/\s*(?:,|;|&|\band\b)\s*/u).map((p) => p.trim()).filter(Boolean)) {
     if (/^et\.?\s+al\.?$/i.test(piece)) continue;
     const m = piece.match(GIVEN_FIRST_ENTRY);
-    if (!m || CORPORATE_WORD.test(piece)) break;
+    if (!m || CORPORATE_WORD.test(piece)) {
+      // The last entry runs on into the title ("..., Donald P. Green. Brown and the ..."): read
+      // its surname up to the period (round 13), once an earlier entry was read given-first.
+      const last = out.length > 0 ? piece.match(GIVEN_FIRST_LAST) : null;
+      if (last && !CORPORATE_WORD.test(last[0])) out.push(last[1]);
+      break;
+    }
     out.push(m[1]);
   }
   return out;
 }
+const GIVEN_FIRST_LAST = new RegExp(`^(?:${GIVEN_PART}\\s+)+((?:${PARTICLE_ANY_CASE}\\s+)*\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*)(?=\\.\\s)`, 'u');
 
 /**
  * "Surname, I." with the surname's particles and further words: "Van Dyke, J." gives
@@ -373,8 +387,10 @@ function extractAuthorsFromReference(referenceText: string): ReferenceAuthors {
   for (const s of givenFirstSurnames(authorSection)) if (!lastNames.includes(s)) lastNames.push(s);
   if (vancouver.alternative !== null) {
     if (!lastNames.includes(vancouver.alternative)) lastNames.push(vancouver.alternative);
-    const uncertain = new Set(lastNames);
-    return { names: [...vancouver.surnames, ...lastNames], uncertain };
+    // Only the second reading is uncertain: the Vancouver surname stays (round 13: "Darwin C.
+    // Darwin and ..." lost its certain "Darwin" with the uncertain one).
+    const uncertain = new Set(lastNames.filter((s) => !vancouver.surnames.includes(s)));
+    return { names: [...vancouver.surnames, ...lastNames.filter((s) => !vancouver.surnames.includes(s))], uncertain };
   }
   // Also try simpler pattern for single author or non-standard format
   if (lastNames.length === 0) {
@@ -601,16 +617,16 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
     : Math.abs(refYear - crossrefYear) > 1 ? 'mismatched' : 'matched';
 
   const read = extractAuthorsFromReference(referenceText);
-  // A surname of the uncertain reading that is the first word(s) of this record's title says
-  // nothing about the author: drop it for this record.
-  const recordTitle = foldForMatch(crossrefTitle(crossrefResult));
-  const refAuthors = read.names.filter((r) => {
-    if (!read.uncertain.has(r)) return true;
-    const f = foldForMatch(r);
-    return !(recordTitle === f || recordTitle.startsWith(`${f} `));
-  });
+  // A surname of the uncertain reading with a word that is a word of this record's title may be
+  // that title word, so it says nothing about the author: drop it for this record (round 13:
+  // the first title word only was tested, so "Hoddy K. The Sleep and ..." or a reordered title
+  // still matched a record by an author named Sleep).
+  const titleWords = new Set(foldForMatch(crossrefTitle(crossrefResult)).split(' '));
+  const refAuthors = read.names.filter((r) => !read.uncertain.has(r) || !foldForMatch(r).split(' ').some((w) => titleWords.has(w)));
+  // A family of one letter is an initial filed as the family ("R" with given "Shakthi Kiran",
+  // a common deposit of names written "Shakthi Kiran R"): the surname is then in `given`.
   const crossrefAuthors: string[] = (crossrefResult.author || [])
-    .map((a: any) => a?.family)
+    .map((a: any) => (typeof a?.family === 'string' && foldForMatch(a.family).replace(/ /g, '').length === 1 && typeof a?.given === 'string' && /\p{Ll}/u.test(a.given) ? a.given : a?.family))
     .filter((f: unknown): f is string => typeof f === 'string' && f.trim().length > 0);
   let authorCheck: DoiMatchCheck = 'not_comparable';
   if (refAuthors.length > 0 && crossrefAuthors.length > 0) {

@@ -673,6 +673,83 @@
       "wrongAccepts": 0,
       "rightRejects": 0
     },
+    "doi/right:vancouver-two-word-surname": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:vancouver-two-word-surname": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:vancouver-two-word-surname-title-word-author": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:vancouver-capital-particle": {
+      "rows": 8,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 1
+    },
+    "doi/wrong:vancouver-capital-particle": {
+      "rows": 8,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 2,
+      "rightRejects": 0
+    },
+    "doi/wrong:vancouver-capital-particle-title-word-author": {
+      "rows": 8,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 2,
+      "rightRejects": 0
+    },
+    "doi/right:vancouver-et-al-no-comma": {
+      "rows": 5,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:vancouver-et-al-no-comma": {
+      "rows": 10,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:own-name-in-title": {
+      "rows": 4,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:own-name-in-title": {
+      "rows": 4,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:title-word-author-later-word": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
     "doi/right:given-first-one-initial-bare-year": {
       "rows": 1,
       "falseMerges": 0,
@@ -691,8 +768,8 @@
   "total": {
     "falseMerges": 60,
     "missedMerges": 246,
-    "wrongAccepts": 179,
-    "rightRejects": 83,
-    "rows": 1371
+    "wrongAccepts": 183,
+    "rightRejects": 84,
+    "rows": 1427
   }
 }

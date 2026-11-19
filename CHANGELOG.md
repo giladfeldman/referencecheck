@@ -156,6 +156,16 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     11 dropped the Vancouver reading and rejected the right DOI of one-author Vancouver
     references whose title starts like a name, and read `Michael` for given-first names with a
     particle or two-word surname, both of which 0.2.x accepted.)
+  - *DOI matcher, authors (round 14).* Vancouver entries with a capitalised particle or a
+    two-word surname (`Van Dyke J`, `De la Cruz M`, `Le Roux P`, `Garcia Marquez G`) and
+    entries closed by `et al` or `and others` without a comma are read; they used to give no
+    surname, the author check was skipped and any record with the title was accepted. The
+    Vancouver surname of an ambiguous section is never dropped with the other reading's
+    (`Darwin C. Darwin and ...`); the other reading's surname is dropped for a record when any
+    of its words is a word of that record's title (not only the first). The last given-first
+    entry before the title is read (`..., Donald P. Green. Title`). A Crossref family of one
+    letter with a written-out given name (`R`, `Shakthi Kiran`) is read as an initial filed
+    in the wrong field: the given name is compared as the surname.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops
