@@ -83,18 +83,27 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   record writing `10.1371//journal…` is this paper.
 
 - **Review 2026-11-19: shapes this release first read worse than 0.2.x.** A DOI followed by
-  citation text (`...002386)`, `... [preprint]`, `...v1.full.pdf`) lost its bioRxiv preprint
-  flag: `cleanDoiInput` now drops that tail for every DOI reader, keeping brackets that belong
-  to the DOI (`(20)30183-5`, SICI `<...>`). The DOI matcher rejected the right DOI when the
-  surname was written in another script (`Иванов` / `Ivanov`) or with the German digraph
-  (`Müller` / `Mueller`): names in different scripts are no longer compared (as in 0.2.x) and
-  `ü` also matches `ue`; a Vancouver list (`Hoddy KK, Gibbons C`) is read as surnames, not
-  `KK`. Journal metadata took a page range from the text when Crossref's first ISSN failed
-  the check digit: it now takes the first valid Crossref ISSN, never reads the text when
-  Crossref listed any, and lists failed ones in `issnRejected`. Deduplication compares each
-  author as surname plus initials, so `Smith, J., Jones, K.` = `J. Smith; K. Jones`; two
+  citation text (`...002386)`, `... [preprint]`, `...v1.full.pdf`, `... (PMID: 1)`) lost its
+  bioRxiv preprint flag: `cleanDoiInput` now drops that tail for every DOI reader, keeping
+  brackets that belong to the DOI (`(20)30183-5`, SICI `<...>`). It cuts at a space only when
+  a bracket or a citation word (`doi`, `PMID`, `Accessed`, `Retrieved`, a URL...) follows, so
+  a DOI broken by a space (`10.1371/journal.pone. 0123456`) stays whole and is still reported
+  malformed, as in 0.2.x. The DOI matcher rejected the right DOI when the surname was written
+  in Cyrillic or Greek (`Иванов` / `Ivanov`) or with the German digraph (`Müller` /
+  `Mueller`): such names are now also compared through their Latin spellings, and `ü` also
+  matches `ue`; a name in a script with no Latin table here (Han, Arabic, ...) still matches
+  only a name in its own script, as in 0.2.x. Surnames match as whole words, so `Li` no
+  longer matches `Williams`. A Vancouver list (`Hoddy KK, Gibbons C`, `Lee J-H`) is read as
+  surnames, not `KK`; only name particles (`van der`, `de la`) may stand before the surname.
+  Journal metadata took a page range from the text when Crossref's first ISSN failed the
+  check digit: it now takes the first valid Crossref ISSN, never reads the text when Crossref
+  listed any, and lists failed ones in `issnRejected`. Deduplication compares two names as
+  written (the 0.2.x comparison) and, when both show which part is the surname (a comma,
+  Vancouver initials, initials before the surname, mixed case), also as surname plus given
+  names, keeping the higher score: `Smith, J. A.; Jones, K.` = `Smith JA, Jones K`, while a
+  folded `smith j` scores as in 0.2.x and John and Jane Smith stay two people. Two
   symbol-only titles score 0, not 0.5. `HAS_ERRATA` counts one correction once whatever its
-  DOI's case, and never the work's own DOI.
+  DOI's case, never the work's own DOI, and does not fire when that is the only notice.
 
 ### Added
 - `JournalMetadata.issnRejected`: ISSNs Crossref listed that fail the check digit.

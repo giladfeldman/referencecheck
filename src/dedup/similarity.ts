@@ -16,33 +16,86 @@ export function normalizeAuthorName(name: string): string {
   return foldForMatch(name);
 }
 
-/** One author as surname + initials, whatever order it was written in. */
-interface AuthorKey { surname: string; initials: string }
+/**
+ * One author as surname + given names, when the way it is written shows which is which.
+ * Null when it does not: a folded string ("smith j", the `normalized_authors` shape) or an
+ * all-capitals name could be either order, so it is compared as written, as 0.2.x did.
+ */
+interface AuthorKey {
+  surname: string;
+  /** Initials of the given names, "ja". */
+  initials: string;
+  /** Given names as written, folded ("john a"); compared when neither side has initials only. */
+  given: string;
+  initialsOnly: boolean;
+}
 
-const NAME_SUFFIX = /^(?:jr|sr|ii|iii|iv)$/;
+interface AuthorEntry { folded: string; key: AuthorKey | null }
+
+/** "J", "J.", "JA", "J.A.", "J.-P.", "J-H": capitals only, at most three. */
+const INITIALS = /^\p{Lu}\.?(?:-?\p{Lu}\.?){0,2}$/u;
+const SUFFIX = /^(?:jr|sr)\.?,?$/i;
+const ROMAN = /^(?:ii|iii|iv)\.?,?$/i;
+
+/** "Smith J Jr", "Smith JH III", "Smith, J., Jr.": the suffix is not a name part. */
+function dropSuffixes(tokens: string[]): string[] {
+  const t = [...tokens];
+  for (;;) {
+    const last = t[t.length - 1];
+    if (last && SUFFIX.test(last)) t.pop();
+    // A roman numeral is a suffix only after initials ("Smith JH III"); "Ivanov II" is
+    // Vancouver initials.
+    else if (last && ROMAN.test(last) && t.length >= 3 && INITIALS.test(t[t.length - 2])) t.pop();
+    else return t;
+  }
+}
+
+function keyOf(surname: string, givenTokens: string[]): AuthorKey | null {
+  if (!surname) return null;
+  const initials = givenTokens
+    .map((g) => (INITIALS.test(g) ? foldForMatch(g).replace(/ /g, '') : foldForMatch(g).slice(0, 1)))
+    .join('');
+  return {
+    surname,
+    initials,
+    given: foldForMatch(givenTokens.join(' ')),
+    initialsOnly: givenTokens.every((g) => INITIALS.test(g)),
+  };
+}
 
 /**
- * "Smith, J. A.", "J. A. Smith", "Smith JA" (Vancouver) and "John A. Smith" are one key
- * {smith, ja} (review 2026-11-19): comparing the folded strings as written scored the same
- * list lower when one side put initials first ("smith j" vs "j smith").
+ * "Smith, J. A.", "J. A. Smith", "Smith JA" (Vancouver) and "Lee J-H" give the surname and
+ * the initials whatever the order (review 2026-11-19); "John Smith" keeps "john" as a name,
+ * so John and Jane Smith stay two people.
  */
-function authorKey(name: string): AuthorKey {
-  const initialsOf = (words: string[]) =>
-    words.filter((w) => !NAME_SUFFIX.test(w)).map((w) => w[0]).join('');
-  const comma = name.indexOf(',');
+function authorKey(name: string): AuthorKey | null {
+  const text = name.trim().replace(/,?\s*\bet\s+al\.?$/i, '').trim();
+  const comma = text.indexOf(',');
   if (comma >= 0) {
-    const surname = foldForMatch(name.slice(0, comma));
-    const rest = foldForMatch(name.slice(comma + 1)).split(' ').filter(Boolean);
-    return { surname, initials: initialsOf(rest) };
+    const rest = dropSuffixes(text.slice(comma + 1).split(/\s+/).filter(Boolean));
+    return keyOf(foldForMatch(text.slice(0, comma)), rest);
   }
-  const raw = name.trim().split(/\s+/).filter(Boolean);
-  // Vancouver: a final token of 1-3 capitals is the initials ("Smith JA").
-  if (raw.length > 1 && /^\p{Lu}{1,3}$/u.test(raw[raw.length - 1])) {
-    return { surname: foldForMatch(raw.slice(0, -1).join(' ')), initials: foldForMatch(raw[raw.length - 1]).replace(/ /g, '') };
+  const raw = dropSuffixes(text.split(/\s+/).filter(Boolean));
+  if (raw.length === 0) return null;
+  // One word is a surname alone.
+  if (raw.length === 1) return keyOf(foldForMatch(raw[0]), []);
+  // Order is shown only by mixed case: "smith j" and "SMITH J" could be either order.
+  if (!/\p{Ll}/u.test(text) || !/\p{Lu}/u.test(text)) return null;
+  const last = raw[raw.length - 1];
+  // Vancouver: capitals after a surname that has a lower-case letter ("Smith JA").
+  if (INITIALS.test(last) && /\p{Ll}/u.test(raw.slice(0, -1).join(' '))) {
+    return keyOf(foldForMatch(raw.slice(0, -1).join(' ')), [last]);
   }
-  const words = foldForMatch(name).split(' ').filter(Boolean);
-  while (words.length > 1 && NAME_SUFFIX.test(words[words.length - 1])) words.pop();
-  return { surname: words[words.length - 1] ?? '', initials: initialsOf(words.slice(0, -1)) };
+  // Given names first: the surname is everything after the last initial ("G. Garcia
+  // Marquez"), or the last word when no initial is written ("John Smith").
+  let lastInitial = -1;
+  raw.slice(0, -1).forEach((w, i) => { if (INITIALS.test(w)) lastInitial = i; });
+  const cut = lastInitial >= 0 ? lastInitial + 1 : raw.length - 1;
+  return keyOf(foldForMatch(raw.slice(cut).join(' ')), raw.slice(0, cut));
+}
+
+function authorEntry(name: string): AuthorEntry {
+  return { folded: foldForMatch(name), key: authorKey(name) };
 }
 
 function ratio(a: string, b: string): number {
@@ -50,22 +103,31 @@ function ratio(a: string, b: string): number {
   return maxLen === 0 ? 0 : 1 - distance(a, b) / maxLen;
 }
 
-/** Surnames compared; initials too when both sides have them. */
-function authorKeySimilarity(a: AuthorKey, b: AuthorKey): number {
+function keySimilarity(a: AuthorKey, b: AuthorKey): number {
   if (!a.initials || !b.initials) return ratio(a.surname, b.surname);
-  return ratio(`${a.surname} ${a.initials}`, `${b.surname} ${b.initials}`);
+  if (a.initialsOnly || b.initialsOnly) return ratio(`${a.surname} ${a.initials}`, `${b.surname} ${b.initials}`);
+  return ratio(`${a.surname} ${a.given}`, `${b.surname} ${b.given}`);
+}
+
+/**
+ * Two names: the 0.2.x comparison of the folded strings, raised to the surname-and-initials
+ * comparison when both names show their order. Never lower than comparing the two names as written.
+ */
+function authorSimilarity(a: AuthorEntry, b: AuthorEntry): number {
+  const asWritten = ratio(a.folded, b.folded);
+  return a.key && b.key ? Math.max(asWritten, keySimilarity(a.key, b.key)) : asWritten;
 }
 
 /**
  * Average best-match similarity of every name in `from` against the names in
  * `to`. One-directional — see compareAuthors for why both directions are averaged.
  */
-function authorListDirectionalSimilarity(from: AuthorKey[], to: AuthorKey[]): number {
+function authorListDirectionalSimilarity(from: AuthorEntry[], to: AuthorEntry[]): number {
   let total = 0;
   for (const a of from) {
     let best = 0;
     for (const b of to) {
-      best = Math.max(best, authorKeySimilarity(a, b));
+      best = Math.max(best, authorSimilarity(a, b));
     }
     total += best;
   }
@@ -90,8 +152,8 @@ export function compareAuthors(
   // Split into individual author names. An array is already one entry per author; a
   // string goes through splitAuthorList, which keeps "Smith, J." as ONE author (the old
   // split on every comma made it two, so a list's score depended on how it was written).
-  const authors1List = splitAuthorList(authors1).map(authorKey).filter(a => a.surname.length > 0);
-  const authors2List = splitAuthorList(authors2).map(authorKey).filter(a => a.surname.length > 0);
+  const authors1List = splitAuthorList(authors1).map(authorEntry).filter(a => a.folded.length > 0);
+  const authors2List = splitAuthorList(authors2).map(authorEntry).filter(a => a.folded.length > 0);
 
   if (authors1List.length === 0 || authors2List.length === 0) {
     // If both are missing, consider it a neutral match (0.5); if only one is, low.

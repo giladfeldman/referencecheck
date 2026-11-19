@@ -104,8 +104,11 @@ interface CrossrefResult {
 Finds the DOI of a free-text reference, or `null`. Tries Crossref's Simple Text Query, then
 the bibliographic search (top 5, relevance score of at least 50). A candidate is accepted only
 if its year is within one year of the reference's and at least one author surname matches
-(surnames as `Surname, I.` or Vancouver `Surname IJ`; `ü` also matches `ue`; a surname in a
-different script from every Crossref author, `Иванов` vs `Ivanov`, is not compared).
+(surnames as `Surname, I.` or Vancouver `Surname IJ` / `Surname J-H`, with only name particles
+such as `van der` before it; compared as whole words, so `Li` does not match `Williams`; `ü`
+also matches `ue`; Cyrillic and Greek surnames are also compared through their Latin
+spellings, `Иванов` = `Ivanov`; a name in another script matches only a name in the same
+script).
 Theses, dissertations, unpublished manuscripts, personal communications, and works "in
 preparation", "submitted" or "under review" are skipped without a request. Surnames are folded
 with `foldForMatch` on both sides. The reference's year is the first `(dddd)` or `(dddda)`,
@@ -142,7 +145,7 @@ this release: each year reader keeps its 0.2.x rule (`tests/parity/yearRules02.t
 
 | Export | Returns |
 |---|---|
-| `cleanDoiInput(doi)` | the DOI with surrounding whitespace, a resolver URL (`http(s)://`, `dx.`/`www.`, or bare `doi.org/`) or a `doi:` label removed and percent-encoding decoded; for a DOI, also what a citation put after it: anything after a space, trailing `. , ; :` and quotes, and a closing bracket that closes nothing inside the DOI (`10.1101/x).` → `10.1101/x`; `(20)30183-5` kept); case kept; `''` for a non-string; any other input returned trimmed |
+| `cleanDoiInput(doi)` | the DOI with surrounding whitespace, a resolver URL (`http(s)://`, `dx.`/`www.`, or bare `doi.org/`) or a `doi:` label removed and percent-encoding decoded; for a DOI, also what a citation put after it: anything after a space that is followed by a bracket, `doi`, `PMID`, `PMCID`, `Available`, `Accessed`, `Retrieved`, `Epub`, `Published`, `PDF`, `URL` or a URL (any other space stays, so `10.1371/journal.pone. 0123456` is still malformed), trailing `. , ; :` and quotes, and a closing bracket that closes nothing inside the DOI (`10.1101/x).` → `10.1101/x`; `(20)30183-5` kept); case kept; `''` for a non-string; any other input returned trimmed |
 | `doiForUrl(doi)` | `encodeURIComponent(cleanDoiInput(doi))`, the only form a DOI takes inside a request URL |
 | `foldForMatch(text)` | lower-cased, accents removed (`Müller` → `muller`; also ø ł ß đ ı æ œ þ: `Østergaard` → `ostergaard`), letters and digits of every script kept, everything else one space |
 | `splitAuthorList(authors)` | one entry per author from an array or a string; `;`, `&` and "and" always separate; a comma separates unless what follows is only initials (each capital followed by a period, space, hyphen or the end) or a suffix (`Smith, J., Jones, K.` and `LI, X., WU, Y.` → 2 authors) |
@@ -299,7 +302,7 @@ record's first request.
 
 `Promise<CitationRepliesIssue[]>` from one Crossref record: `updated-by` entries of type
 `correction`, `erratum` or `corrigendum` (`HAS_ERRATA`; not `addendum`; `replyDOI` is the first
-notice, `replyCount` the distinct notices, `replyDate` the earliest notice date as ISO
+notice, `replyCount` the distinct notices other than the work's own DOI, none of them meaning no `HAS_ERRATA`, `replyDate` the earliest notice date as ISO
 `YYYY-MM-DD`), and the relations `has-reply` (`HAS_AUTHOR_REPLY`), `has-comment`
 (`HAS_COMMENTS`) and `is-reply-to` (`IS_RESPONSE`). Before 0.3.0 `HAS_ERRATA` and
 `IS_RESPONSE` read relation types Crossref does not serve and never fired. `[]` for no DOI
@@ -501,7 +504,7 @@ All local; no network.
 | Export | Returns |
 |---|---|
 | `calculateSimilarity(ref1, ref2, config)` | `authorWeighting × authors + titleWeighting × title + (1 − both) × year`, from `normalized_authors`, `normalized_title`, `normalized_year` |
-| `compareAuthors(authors1, authors2)` | 0–1, symmetric; each argument a string or a string array, split with `splitAuthorList`; each author read as surname + initials whatever the order (`Smith, J. A.` = `J. A. Smith` = `Smith JA`), folded with `foldForMatch`; surnames compared, and initials too when both sides have them; best Levenshtein match per author, averaged both ways; 0.5 when both are empty |
+| `compareAuthors(authors1, authors2)` | 0–1, symmetric; each argument a string or a string array, split with `splitAuthorList`; two names compared as written after `foldForMatch`, and, when both show which part is the surname (a comma, Vancouver initials `Smith JA` / `Lee J-H`, initials before the surname, or mixed case; suffixes `Jr`, `Sr` and `III` after initials and a trailing `et al.` dropped), also as surname + given names, the higher score kept (`Smith, J. A.` = `J. A. Smith` = `Smith JA`; given names compared as initials when either side has initials only, else in full, so `John Smith` ≠ `Jane Smith`; a folded `smith j` or an all-capitals name only as written); best Levenshtein match per author, averaged both ways; 0.5 when both are empty |
 | `compareTitle(title1, title2)` | `1 − Levenshtein distance / longer length` after `foldForMatch` (non-Latin titles compared, not emptied); 0.5 when both are empty; two titles made only of symbols (`???`) score 1 when identical, else 0 |
 | `compareYear(year1, year2)` | `parseInt` of each value (the 0.2.x rule): 1 same year, 0.5 one year apart, 0 otherwise; 0.5 when both are empty, 0 when one is or when either does not start with a number (`"(2019)"`, `"in press"`) |
 | `normalizeAuthorName(name)` | `foldForMatch(name)`: `"Smith, J."` → `"smith j"`, `"Müller"` → `"muller"` |

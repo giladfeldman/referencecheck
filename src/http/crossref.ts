@@ -247,43 +247,72 @@ function extractYearFromReference(referenceText: string): number | null {
  * capital initials with no comma between them. Read from the start of the reference up to
  * the first ". "; empty unless the FIRST entry has that shape. The APA pattern below read
  * "Hoddy KK, Gibbons C" as surname "KK" (d-e977e3). A surname needs a lower-case letter, so
- * initials are never one; lower-case particles ("van der Berg JH") are allowed before it.
+ * initials are never one. Only lower-case name particles ("van der Berg JH") may stand
+ * before it: any word allowed there read "Hoddy KK Gibbons C." as surname "Gibbons".
  */
+const PARTICLE = '(?:van|von|der|den|de|del|della|di|da|du|la|le|dos|das|ter|ten|af|al|el|bin|ibn|ben|st)';
+const VANCOUVER_ENTRY = new RegExp(`^(?:${PARTICLE}\\s+)*(\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*)\\s+\\p{Lu}(?:-?\\p{Lu}){0,2}$`, 'u');
 function vancouverSurnames(section: string): string[] {
   const list = section.split(/\.\s/)[0];
   const out: string[] = [];
   for (const piece of list.split(/\s*,\s*/).filter(Boolean)) {
     if (/^et al\.?$/i.test(piece)) continue;
-    const m = piece.match(/^(?:[\p{L}'’-]+\s+)*?(\p{Lu}[\p{L}'’-]*\p{Ll}[\p{L}'’-]*)\s+\p{Lu}{1,3}$/u);
+    const m = piece.match(VANCOUVER_ENTRY);
     if (!m) break;
     out.push(m[1]);
   }
   return out;
 }
 
-/** The scripts a surname can be written in; two names in different ones cannot be compared. */
-const SCRIPTS: RegExp[] = [
-  /\p{Script=Latin}/u, /\p{Script=Cyrillic}/u, /\p{Script=Greek}/u,
-  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u, /\p{Script=Hangul}/u,
-  /\p{Script=Arabic}/u, /\p{Script=Hebrew}/u, /\p{Script=Devanagari}/u, /\p{Script=Thai}/u,
-  /\p{Script=Armenian}/u, /\p{Script=Georgian}/u,
-];
-function scriptOf(name: string): number {
-  return SCRIPTS.findIndex((re) => re.test(name));
+/**
+ * Cyrillic and Greek surnames are compared through their Latin spellings: "Иванов" and a Crossref
+ * "Ivanov" are one name (review 2026-11-19). Two common romanizations are produced
+ * ("й" as i and as y, "х" as kh and as h, ...). A name in a script with no table here
+ * (Han, Arabic, ...) is compared as written, so it matches only a name in the same script,
+ * the rule 0.2.x applied to every name.
+ */
+const TRANSLIT: Record<string, [string, string]> = {
+  'а': ['a', 'a'], 'б': ['b', 'b'], 'в': ['v', 'v'], 'г': ['g', 'g'], 'д': ['d', 'd'], 'е': ['e', 'e'], 'ё': ['e', 'yo'],
+  'ж': ['zh', 'zh'], 'з': ['z', 'z'], 'и': ['i', 'i'], 'й': ['i', 'y'], 'к': ['k', 'k'], 'л': ['l', 'l'], 'м': ['m', 'm'],
+  'н': ['n', 'n'], 'о': ['o', 'o'], 'п': ['p', 'p'], 'р': ['r', 'r'], 'с': ['s', 's'], 'т': ['t', 't'], 'у': ['u', 'u'],
+  'ф': ['f', 'f'], 'х': ['kh', 'h'], 'ц': ['ts', 'c'], 'ч': ['ch', 'ch'], 'ш': ['sh', 'sh'], 'щ': ['shch', 'sch'],
+  'ъ': ['', ''], 'ы': ['y', 'y'], 'ь': ['', ''], 'э': ['e', 'e'], 'ю': ['iu', 'yu'], 'я': ['ia', 'ya'],
+  'і': ['i', 'i'], 'ї': ['i', 'yi'], 'є': ['ie', 'ye'], 'ґ': ['g', 'g'], 'ў': ['u', 'u'],
+  'α': ['a', 'a'], 'β': ['v', 'b'], 'γ': ['g', 'g'], 'δ': ['d', 'd'], 'ε': ['e', 'e'], 'ζ': ['z', 'z'], 'η': ['i', 'e'],
+  'θ': ['th', 'th'], 'ι': ['i', 'i'], 'κ': ['k', 'k'], 'λ': ['l', 'l'], 'μ': ['m', 'm'], 'ν': ['n', 'n'], 'ξ': ['x', 'ks'],
+  'ο': ['o', 'o'], 'π': ['p', 'p'], 'ρ': ['r', 'r'], 'σ': ['s', 's'], 'ς': ['s', 's'], 'τ': ['t', 't'], 'υ': ['y', 'u'],
+  'φ': ['f', 'ph'], 'χ': ['ch', 'kh'], 'ψ': ['ps', 'ps'], 'ω': ['o', 'o'],
+};
+function transliterations(folded: string): string[] {
+  if (![...folded].some((c) => TRANSLIT[c])) return [];
+  return [0, 1].map((v) => [...folded].map((c) => TRANSLIT[c]?.[v] ?? c).join(''));
 }
 
 /**
- * Match keys for a surname: the accent fold ("Müller" -> "muller") and the German digraph
- * spelling ("Müller" -> "mueller"), so a reference and a Crossref record that spell one
- * name the two ways still match (review 2026-11-19).
+ * Match keys for a surname: the accent fold ("Müller" -> "muller"), the German digraph
+ * spelling ("Müller" -> "mueller") and, for Cyrillic and Greek, the Latin spellings, so a
+ * reference and a Crossref record that write one name these ways still match.
  */
 const DIGRAPH: Record<string, string> = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue' };
 function surnameKeys(name: string): string[] {
+  const folded = foldForMatch(name);
   const keys = new Set([
-    foldForMatch(name),
+    folded,
     foldForMatch(name.normalize('NFC').replace(/[äöüÄÖÜ]/g, (c) => DIGRAPH[c] ?? c)),
+    ...transliterations(folded),
   ]);
   return [...keys].filter((k) => k.length > 0);
+}
+
+/**
+ * One reference surname key against one Crossref surname key: equal, or one is a whole word
+ * of the other ("berg" in "van der berg", "smith" in "smith jones"), or equal once spaces
+ * are removed ("obrien" / "o brien"). Not a substring: "li" is inside "williams".
+ */
+function surnameKeyMatches(rk: string, ck: string): boolean {
+  if (rk === ck) return true;
+  if (ck.split(' ').includes(rk) || rk.split(' ').includes(ck)) return true;
+  return rk.replace(/ /g, '') === ck.replace(/ /g, '');
 }
 
 /**
@@ -360,18 +389,12 @@ function validateDOIMatch(
     .map((a: any) => a?.family)
     .filter((f: unknown): f is string => typeof f === 'string' && f.trim().length > 0);
 
-  // Author validation: at least one author last name must match. Only names written in
-  // the same script can be compared: a reference "Иванов" and a Crossref "Ivanov" are one
-  // person, and no spelling rule decides that, so the check is skipped (as 0.2.x did for
-  // every non-ASCII name) instead of rejecting the right DOI.
-  const comparable =
-    refAuthors.length > 0 &&
-    crossrefAuthors.length > 0 &&
-    refAuthors.some((r) => crossrefAuthors.some((c) => scriptOf(r) === scriptOf(c)));
-  if (comparable) {
+  // Author validation: at least one author last name must match, compared through the keys
+  // above (fold, digraph, Latin spelling) and as whole words.
+  if (refAuthors.length > 0 && crossrefAuthors.length > 0) {
     const crossrefKeys = crossrefAuthors.flatMap(surnameKeys);
     const hasAuthorMatch = refAuthors.some((refAuthor) =>
-      surnameKeys(refAuthor).some((rk) => crossrefKeys.some((ck) => ck.includes(rk) || rk.includes(ck))),
+      surnameKeys(refAuthor).some((rk) => crossrefKeys.some((ck) => surnameKeyMatches(rk, ck))),
     );
 
     if (!hasAuthorMatch) {

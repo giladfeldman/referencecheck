@@ -42,14 +42,23 @@ export function cleanDoiInput(doi: string | null | undefined): string {
 const CLOSE_TO_OPEN: Record<string, string> = { ')': '(', ']': '[', '>': '<', '}': '{' };
 
 /**
- * What a citation puts after a DOI is not part of it (review 2026-11-19): a DOI holds no
- * whitespace, so "10.1101/x [preprint]" is cut at the space; trailing . , ; : and quotes are
- * sentence punctuation; a closing bracket is dropped only when it closes nothing inside the
- * DOI, so "10.1016/S0140-6736(20)30183-5" and SICI forms ending in ">" stay whole while
- * "(doi:10.1101/x)" loses its ")". Applied to DOI-shaped input only.
+ * What a citation writes after a DOI ("[preprint]", "(PMID 123)", "Accessed 2020") follows
+ * a space; it starts with a bracket or one of these words.
+ */
+const CITATION_TAIL = /^(?:[\[(]|(?:doi|pmid|pmcid|available|accessed|retrieved|epub|published|pdf|url)\b|https?:)/i;
+
+/**
+ * What a citation puts after a DOI is not part of it (review 2026-11-19). A space is cut at
+ * only when a citation tail follows it: "10.1371/journal.pone. 0123456" is a DOI broken by a
+ * space, and stays whole so the shape check reports it, as 0.2.x did, instead of becoming the
+ * different DOI "10.1371/journal.pone". Trailing . , ; : and quotes are sentence
+ * punctuation; a closing bracket is dropped only when it closes nothing inside the DOI, so
+ * "10.1016/S0140-6736(20)30183-5" and SICI forms ending in ">" stay whole while
+ * "10.1101/x)." loses ")." Applied to input that starts with a DOI only.
  */
 function stripCitationTail(doi: string): string {
-  let d = doi.split(/\s/)[0];
+  const m = doi.match(/^(\S+)\s+([\s\S]*)$/);
+  let d = m && CITATION_TAIL.test(m[2]) ? m[1] : doi;
   const count = (ch: string) => d.split(ch).length - 1;
   for (;;) {
     const last = d.slice(-1);

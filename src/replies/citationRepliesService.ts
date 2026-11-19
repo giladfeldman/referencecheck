@@ -50,21 +50,23 @@ async function checkForReplies(doi: string): Promise<CitationRepliesIssue[]> {
     const correctedBy = (Array.isArray(data['updated-by']) ? data['updated-by'] : []).filter(
       (u: any) => typeof u?.type === 'string' && CORRECTION_TYPES.has(u.type.toLowerCase()),
     );
-    // One notice per DOI however it is written (case, resolver URL), and never the work itself.
+    // One notice per DOI however it is written (case, resolver URL), and never the work
+    // itself: a record listing only its own DOI as its correction has no errata (review
+    // 2026-11-19). A notice with no DOI still counts, once each.
     const ownKey = cleanDoiInput(doi).toLowerCase();
     const seen = new Set<string>();
-    const correctionDois: string[] = [];
+    const notices: any[] = [];
     for (const u of correctedBy) {
-      const d = cleanDoiInput(u?.DOI);
-      const key = d.toLowerCase();
-      if (!d || key === ownKey || seen.has(key)) continue;
-      seen.add(key);
-      correctionDois.push(d);
+      const key = cleanDoiInput(u?.DOI).toLowerCase();
+      if (key && (key === ownKey || seen.has(key))) continue;
+      if (key) seen.add(key);
+      notices.push(u);
     }
+    const correctionDois = notices.map((u: any) => cleanDoiInput(u?.DOI)).filter(Boolean);
 
     // Check for errata
-    if (correctedBy.length > 0) {
-      const earliest = correctedBy
+    if (notices.length > 0) {
+      const earliest = notices
         .map((u: any) => formatDateParts(u?.updated?.['date-parts']?.[0]))
         .filter(Boolean)
         .sort()[0];
@@ -72,13 +74,13 @@ async function checkForReplies(doi: string): Promise<CitationRepliesIssue[]> {
         type: 'citation-replies',
         severity: 'warning',
         code: 'HAS_ERRATA',
-        description: `This paper has ${correctionDois.length || correctedBy.length} errata or correction(s)`,
+        description: `This paper has ${notices.length} errata or correction(s)`,
         location: doi,
         suggestion: 'Review the errata to understand what was corrected',
         metadata: {
           doi,
           replyType: 'errata',
-          replyCount: correctionDois.length || correctedBy.length,
+          replyCount: notices.length,
           replyDOI: correctionDois[0] as string | undefined,
           replyDate: earliest,
           source: 'CrossRef',
