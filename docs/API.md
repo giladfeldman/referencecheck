@@ -145,7 +145,7 @@ so one input is read the same way everywhere (bound by `tests/parity/`).
 | `splitAuthorList(authors)` | one entry per author from an array or a string; `;`, `&` and "and" always separate; a comma separates unless what follows is only initials (each capital followed by a period, space, hyphen or the end) or a suffix (`Smith, J., Jones, K.` and `LI, X., WU, Y.` → 2 authors) |
 | `formatDateParts(parts)` | Crossref `date-parts` as ISO at the given precision: `[2019, 3, 5]` → `"2019-03-05"`, `[2019]` → `"2019"`, else `undefined` |
 | `normalizeIssn(issn)` | an ISSN as `NNNN-NNNC` with the check digit upper-cased, from any spacing, dash or `ISSN`/`eISSN` label; `null` unless it has eight ISSN characters and a correct mod-11 check digit (`1648-1655` is a page range) |
-| `findReferenceYear(text)` | the year of a whole reference string: a parenthetical that is only a year (`(2019)`, `(2019a)`, `(2019, March 3)`), else the first 1900–2099 number not inside an identifier or a range (`arXiv:1706.03762`, `1648-1655`); `null` when none. Used by the DOI matcher |
+| `findReferenceYear(text)` | the year of a whole reference string: a parenthetical that is only a year (`(2019)`, `(2019a)`, `(2019, March 3)`), else the first 1500–2099 number (the range `parseYear` accepts) not inside an identifier or a range (`arXiv:1706.03762`, `1648-1655`); `null` when none. Used by the DOI matcher |
 | `journalKey(name)` | `foldForMatch(name)` with the words "and" and "the" dropped: the key both sides of a journal-name comparison use (`Journal of Personality & Social Psychology` = `Journal of Personality and Social Psychology`) |
 
 ## DOI shape and shortDOIs

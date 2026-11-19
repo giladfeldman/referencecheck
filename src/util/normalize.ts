@@ -142,14 +142,14 @@ export function normalizeIssn(issn: string | null | undefined): string | null {
 /**
  * The publication year of a whole reference string (not of a year field: that is
  * `parseYear`). A parenthetical that is only a year wins: "(2019)", "(2019a)",
- * "(2019, March 3)". Otherwise the first 1900-2099 number that is not part of an
+ * "(2019, March 3)". Otherwise the first 1500-2099 number (the range parseYear accepts) that is not part of an
  * identifier, page range or volume(issue) run: "arXiv:1706.03762" and "1648-1655" are
  * not years. Null when there is none.
  */
 export function findReferenceYear(text: string | null | undefined): number | null {
   if (typeof text !== 'string') return null;
-  for (const m of text.matchAll(/\(\s*((?:19|20)\d{2})[a-z]?\s*(?:,[^()]*)?\)/g)) return parseInt(m[1], 10);
-  const m = text.match(/(?<![\d.:/–-])((?:19|20)\d{2})[a-z]?(?![\d]|\s*[–-]\s*\d|\.\d|:\d)/);
+  for (const m of text.matchAll(/\(\s*((?:1[5-9]|20)\d{2})[a-z]?\s*(?:,[^()]*)?\)/g)) return parseInt(m[1], 10);
+  const m = text.match(/(?<![\d.:/–-])((?:1[5-9]|20)\d{2})[a-z]?(?![\d]|\s*[–-]\s*\d|\.\d|:\d)/);
   return m ? parseInt(m[1], 10) : null;
 }
 

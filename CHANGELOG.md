@@ -39,7 +39,8 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   in the text. Deduplication now uses `parseYear` (a value with no year counts as missing);
   the DOI matcher uses `findReferenceYear`, which reads a parenthetical only when it is a
   year and skips numbers inside identifiers and page ranges (`arXiv:1706.03762`,
-  `1648-1655`, `(N = 1648)`), so a wrong "year" no longer rejects the right DOI.
+  `1648-1655`, `(N = 1648)`), so a wrong "year" no longer rejects the right DOI. It reads 1500-2099, the range
+  `parseYear` accepts, so a reference to a pre-1900 work ("Darwin (1859)") keeps its year check.
 - **Author lists.** `calculateSimilarity` joined `normalized_authors` with ", " and
   `compareAuthors` split on every comma, so `["Smith, J.", "Jones, K."]` was compared as four
   people while `["J. Smith", "K. Jones"]` was two. Arrays are now passed through; strings go
