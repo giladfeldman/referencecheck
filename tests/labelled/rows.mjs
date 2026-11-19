@@ -539,6 +539,7 @@ function addRound12Rows(addDoi) {
   addRound13Rows(addDoi);
   addRound14Rows(addDoi);
   addRound15Rows(addDoi);
+  addRound16Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -717,6 +718,34 @@ function addRound15Rows(addDoi) {
   titleRepeats.forEach(([text, title, fams, other], k) => {
     addDoi('right:entry-runs-into-name-title', 'accept', text, rec(`t${k}`, fams, title), text.slice(0, 16));
     addDoi('wrong:entry-runs-into-name-title', 'reject', text, rec(`t${k}w`, [other], title), text.slice(0, 16));
+  });
+}
+
+/**
+ * Review round 16: accented surnames without a comma ("GARCÍA J", "Dvořák P") were cut at the
+ * accent ("Garc"), and family-first names with a lower-case particle ("de Vries Jan") were
+ * read as one surname that matched no record.
+ */
+function addRound16Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const rec = (doi, fams, title) => ({ ...base, title: [title], DOI: `${WORKS[0].w.doi}.r16-${doi}`, author: fams.map((f) => ({ family: f, given: 'X.' })) });
+  const SD = 'Sleep deprivation affects memory';
+  const rows = [
+    [`GARCÍA J (2014). ${SD}. J Sleep Res.`, ['García']],
+    [`GARCÍA J, SMITH B (2014). ${SD}. J Sleep Res.`, ['García', 'Smith']],
+    [`García J ${SD}. J Sleep Res. 2014.`, ['García']],
+    [`MUÑOZ A, JONES J (2014). ${SD}. J Sleep Res.`, ['Muñoz', 'Jones']],
+    [`Dvořák P ${SD}. J Sleep Res. 2014.`, ['Dvořák']],
+    [`Schäfer K: ${SD}. J Sleep Res. 2014.`, ['Schäfer']],
+    [`de Vries Jan (2014). ${SD}. J Sleep Res.`, ['de Vries']],
+    [`von Neumann John (2014). ${SD}. J Sleep Res.`, ['von Neumann']],
+    [`van der Berg Jan (2014). ${SD}. J Sleep Res.`, ['van der Berg']],
+    [`de Vries Jan and Smith John (2014). ${SD}. J Sleep Res.`, ['de Vries', 'Smith']],
+  ];
+  rows.forEach(([text, fams], k) => {
+    const shape = /^[a-z]/.test(text) ? 'lowercase-particle-family-first' : 'accented-surname';
+    addDoi(`right:${shape}`, 'accept', text, rec(`a${k}`, fams, SD), text.slice(0, 16));
+    addDoi(`wrong:${shape}`, 'reject', text, rec(`a${k}w`, ['Okafor'], SD), text.slice(0, 16));
   });
 }
 

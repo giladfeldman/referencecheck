@@ -967,6 +967,34 @@
       "wrongAccepts": 0,
       "rightRejects": 0
     },
+    "doi/right:accented-surname": {
+      "rows": 6,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:accented-surname": {
+      "rows": 6,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:lowercase-particle-family-first": {
+      "rows": 4,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:lowercase-particle-family-first": {
+      "rows": 4,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 4,
+      "rightRejects": 0
+    },
     "doi/right:given-first-one-initial-bare-year": {
       "rows": 1,
       "falseMerges": 0,
@@ -985,8 +1013,8 @@
   "total": {
     "falseMerges": 60,
     "missedMerges": 246,
-    "wrongAccepts": 183,
+    "wrongAccepts": 187,
     "rightRejects": 85,
-    "rows": 1519
+    "rows": 1539
   }
 }

@@ -444,15 +444,19 @@ function extractAuthorsFromReference(referenceText: string): ReferenceAuthors {
 
 const FIRST_WORD_INITIALS = /^\p{Lu}[\p{L}'’-]*\p{Ll}[\p{L}'’-]*\s+\p{Lu}(?:\.?-?\p{Lu}){0,2}\.?(?=[\s:,;.]|$)/u;
 
-/** The 0.2.x author reader, unchanged (33278cf); `firstWord` when it read the first word only. */
+/**
+ * The 0.2.x author reader (33278cf), with Unicode letters: 0.2.x's ASCII classes cut "GARCÍA J"
+ * to "GARC", which its loose compare accepted against "García" and the whole-word compare
+ * does not (round 16). `firstWord` when it read the first word only.
+ */
 function legacySurnames(referenceText: string): { names: string[]; firstWord: boolean } {
   const authorSection = (referenceText.split(/\(\d{4}/)[0] || '').trim();
   const lastNames: string[] = [];
-  const authorPattern = /([A-Z][a-zA-Z'-]+)(?:\s*,\s*[A-Z]\.?)+/g;
+  const authorPattern = /(\p{Lu}[\p{L}'’-]+)(?:\s*,\s*\p{Lu}\.?)+/gu;
   let match;
   while ((match = authorPattern.exec(authorSection)) !== null) lastNames.push(match[1]);
   if (lastNames.length === 0) {
-    const simpleMatch = authorSection.match(/^([A-Z][a-zA-Z'-]+)/);
+    const simpleMatch = authorSection.match(/^(\p{Lu}[\p{L}'’-]+)/u);
     if (simpleMatch) return { names: [simpleMatch[1]], firstWord: true };
   }
   return { names: lastNames, firstWord: false };
@@ -517,6 +521,15 @@ function spellings(name: string): string[] {
 }
 
 /** "smith" is a whole word of "smith jones"; "li" is not a word of "williams". */
+/**
+ * A multi-word Crossref surname that is the leading words of a longer reading: "de Vries Jan"
+ * (a family-first name read as one surname) and "de Vries" (round 16).
+ */
+function leadsWith(read: string, family: string): boolean {
+  const r = foldForMatch(read).split(' ');
+  const f = foldForMatch(family).split(' ');
+  return f.length >= 2 && r.length > f.length && f.every((w, i) => r[i] === w);
+}
 function isWholeWordOf(single: string, multi: string): boolean {
   const s = foldForMatch(single);
   return s.length > 0 && !s.includes(' ') && foldForMatch(multi).split(' ').includes(s);
@@ -537,7 +550,7 @@ function surnamesMatch(ref: string, crossref: string): boolean | null {
   if (crossScript(ref, crossref)) return looseSurnameMatch(ref, crossref);
   for (const r of spellings(ref)) {
     for (const c of spellings(crossref)) {
-      if (sameSurname(r, c) || isWholeWordOf(r, c) || isWholeWordOf(c, r)) return true;
+      if (sameSurname(r, c) || isWholeWordOf(r, c) || isWholeWordOf(c, r) || leadsWith(r, c)) return true;
     }
   }
   return false;

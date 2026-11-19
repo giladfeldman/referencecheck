@@ -185,6 +185,10 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     (`Hope A. Nakamura, Will D. Long`) the first given name is not read as a surname, and an
     entry followed by a piece that is not a name ran on into the title (`Young K Smith and
     Jones revisited`), so its surname is a second reading only.
+  - *DOI matcher, authors (round 17).* An accented surname with no comma after it (`GARCÍA J`,
+    `Dvořák P`) is read whole; it was cut at the accent (`Garc`), so the right record was
+    rejected. A family-first name with a lower-case particle (`de Vries Jan`) matches a record
+    whose family name is `de Vries`.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops
