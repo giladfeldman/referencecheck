@@ -65,7 +65,9 @@ describe('the DOI matcher accepts and rejects exactly as 0.2.x did', () => {
     axiosPostMock.mockRejectedValue(new Error('simple text query unavailable'));
   });
   const item = (year: number) => ({
-    DOI: '10.1/found', score: 90, title: ['Priming effects'], author: [{ family: 'Smith', given: 'J.' }],
+    // No title: these references name other works, and 0.3.0's title check (not a year rule)
+    // would reject the candidate; without a title it is not_comparable and only the year decides.
+    DOI: '10.1/found', score: 90, title: [], author: [{ family: 'Smith', given: 'J.' }],
     published: { 'date-parts': [[year, 1, 1]] },
   });
   it.each(REFS)('%j', async (text) => {

@@ -1,0 +1,306 @@
+{
+  "library": "0.2.x (33278cf)",
+  "classes": {
+    "dedup/same:vancouver": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 19,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:given-first": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 19,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:consumer-surnames": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:folded-initials": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 19,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:all-caps": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:one-string": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:suffix": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:consumer~vancouver": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 4,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:consumer~given-first": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 6,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:consumer~folded-initials": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 6,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:same-doi-short-title": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 19,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/owner:initial-conflict": {
+      "rows": 19,
+      "falseMerges": 7,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/owner:given-conflict": {
+      "rows": 15,
+      "falseMerges": 9,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/neg:adjacent-year-other-work": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/owner:preprint-vs-published": {
+      "rows": 19,
+      "falseMerges": 19,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/neg:part-i-vs-part-ii": {
+      "rows": 19,
+      "falseMerges": 19,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:cyrillic": {
+      "rows": 4,
+      "falseMerges": 0,
+      "missedMerges": 4,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/owner:ivanov-ivanova": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 1,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:accents-stripped": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:particle": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 1,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:glued-spaced": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/neg:reply-vs-work": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/neg:correction-notice": {
+      "rows": 2,
+      "falseMerges": 2,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:apa": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:vancouver": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 5
+    },
+    "doi/right:given-first": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:all-caps": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:folded": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:suffix": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:same-author-adjacent-year": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 19,
+      "rightRejects": 0
+    },
+    "doi/wrong:same-surname-other-initial": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 19,
+      "rightRejects": 0
+    },
+    "doi/wrong:other-authors": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 6,
+      "rightRejects": 0
+    },
+    "doi/wrong:part-ii": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 19,
+      "rightRejects": 0
+    },
+    "doi/owner:preprint-for-published": {
+      "rows": 20,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 20,
+      "rightRejects": 0
+    },
+    "doi/right:cyrillic": {
+      "rows": 4,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/owner:ivanov-ivanova": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:accents-stripped": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 2
+    },
+    "doi/right:particle": {
+      "rows": 6,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:glued-spaced": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:reply": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 1,
+      "rightRejects": 0
+    },
+    "doi/wrong:correction-notice": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 2,
+      "rightRejects": 0
+    },
+    "doi/wrong:editorial": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 3,
+      "rightRejects": 0
+    }
+  },
+  "total": {
+    "falseMerges": 56,
+    "missedMerges": 98,
+    "wrongAccepts": 89,
+    "rightRejects": 7,
+    "rows": 545
+  }
+}

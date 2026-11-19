@@ -250,8 +250,10 @@ and pass them in, as the quickstart does with `CROSSREF_EMAIL`. The
 
 **Deduplication weights.** `calculateSimilarity` takes a `DeduplicationConfig`
 `{ threshold, authorWeighting, titleWeighting }`; the year weight is
-`1 - authorWeighting - titleWeighting`. The library does not apply `threshold` itself: compare
-the returned similarity with it and pass the pairs above it to `findDuplicateGroups`.
+`1 - authorWeighting - titleWeighting`. The library does not merge by `threshold` itself: compare
+the returned similarity with it and pass the pairs above it to `findDuplicateGroups`. It does use
+`threshold` for one rule: two references with different well-formed DOIs score just under it (and
+the same DOI scores 1), so a preprint and its published version are never merged.
 
 **Heuristic sensitivity.** `checkHeuristics(journalName, { heuristicSensitivity })` with
 `low`, `medium` (default) or `high`.

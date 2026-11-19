@@ -92,7 +92,19 @@ interface CrossrefResult {
   journal?: string;
   score: number;             // 100 from a DOI lookup, 50 from the resolver fallback, Crossref's relevance score from a search
   rawData?: any;             // the Crossref message
+  // Set only on a result found by findDOIFromReference / findDOIFromReferenceDetailed (0.3.0):
+  authorCheck?: DoiMatchCheck;
+  yearCheck?: DoiMatchCheck;
+  titleCheck?: DoiMatchCheck;
 }
+
+// How one check of a found DOI against the reference went:
+//  'matched'        the evidence agrees
+//  'mismatched'     the evidence disagrees (the candidate is rejected; never on a returned result)
+//  'not_comparable' nothing to compare: no surname or year read from the reference, none in the
+//                   Crossref record, names or titles in scripts that cannot be compared (Han vs
+//                   Latin), or a title with fewer than two distinctive words. Does not reject.
+type DoiMatchCheck = 'matched' | 'mismatched' | 'not_comparable';
 ```
 
 ### `validateMultipleDOIs(dois, creds?)`
@@ -102,13 +114,25 @@ interface CrossrefResult {
 ### `findDOIFromReference(referenceText, creds?)`
 
 Finds the DOI of a free-text reference, or `null`. Tries Crossref's Simple Text Query, then
-the bibliographic search (top 5, relevance score of at least 50). A candidate is accepted only
-if its year is within one year of the reference's and at least one author surname matches
-(surnames as `Surname, I.` or Vancouver `Surname IJ` / `Surname J-H`, with only name particles
-such as `van der` before it; compared as whole words, so `Li` does not match `Williams`; `ü`
-also matches `ue`; Cyrillic and Greek surnames are also compared through their Latin
-spellings, `Иванов` = `Ivanov`; a name in another script matches only a name in the same
-script).
+the bibliographic search (top 5, relevance score of at least 50). Each candidate gets three
+checks, each `matched`, `mismatched` or `not_comparable` (`DoiMatchCheck`); a candidate is
+rejected if any check is `mismatched`, in this order:
+
+- **year**: within one year of the reference's;
+- **author**: at least one surname matches. Surnames are read as `Surname, I.` (a surname may be
+  up to three capitalised words, with name particles such as `van der`, `de la`, `Mc`) or
+  Vancouver `Surname IJ` / `Surname J-H` (only name particles before it); compared as whole
+  words or with spaces removed (`Van Dyke` = `VanDyke`; `de la Cruz` = `Cruz`), so `Li` matches
+  neither `Liu` nor `Williams`, and `Smith` not `Goldsmith`; `ü` also matches `ue`. A Cyrillic
+  or Greek surname is compared with a Latin one by first letter and consonant skeleton of a
+  loose romanisation (`Достоевский` = `Dostoevsky` = `Dostoyevsky`, `Иванов` = `Ivanoff` =
+  `Ivanova`; `Иванов` ≠ `Ivashov`, `Ли` ≠ `Lu`). A pair in scripts that cannot be compared (Han
+  vs Latin) makes the check `not_comparable` unless another pair matches;
+- **title**: of the Crossref title's (plus subtitle's) words of four or more letters, stopwords
+  removed, at least 60% must occur in the reference text. Fewer than two such words, or a title
+  in another script than the reference, is `not_comparable`.
+
+A `not_comparable` check does not reject; the returned result carries all three checks.
 Theses, dissertations, unpublished manuscripts, personal communications, and works "in
 preparation", "submitted" or "under review" are skipped without a request. Surnames are folded
 with `foldForMatch` on both sides. The reference's year is the first `(dddd)` or `(dddda)`,
@@ -123,15 +147,19 @@ different facts; this returns `Promise<DoiSearchOutcome>`:
 interface DoiSearchOutcome {
   result: CrossrefResult | null;
   status: 'found' | 'no_match' | 'skipped_unpublishable' | 'lookup_failed';
-  rejected: RejectedDoiCandidate[];   // every candidate the author/year check refused
+  rejected: RejectedDoiCandidate[];   // every candidate the year/author/title check refused
   belowScoreThreshold: number;        // search candidates under relevance 50, dropped unchecked
   errors: string[];                   // per-stage errors, in order
+  notComparable: { author: number; year: number; title: number }; // checked candidates (accepted or rejected), per check that was not_comparable
 }
 
 interface RejectedDoiCandidate {
   doi: string;
   stage: 'simple_text_query' | 'search';
-  reason: string;                     // "Author mismatch: ...", "Year mismatch: ...", "DOI did not validate: ..."
+  reason: string;                     // "Year mismatch: ...", "Author mismatch: ...", "Title mismatch: ...", "DOI did not validate: ..."
+  authorCheck?: DoiMatchCheck;        // the three checks; absent for "DOI did not validate"
+  yearCheck?: DoiMatchCheck;
+  titleCheck?: DoiMatchCheck;
 }
 ```
 
@@ -145,10 +173,11 @@ this release: each year reader keeps its 0.2.x rule (`tests/parity/yearRules02.t
 
 | Export | Returns |
 |---|---|
-| `cleanDoiInput(doi)` | the DOI with surrounding whitespace, a resolver URL (`http(s)://`, `dx.`/`www.`, or bare `doi.org/`) or a `doi:` label removed and percent-encoding decoded; for a DOI, also what a citation put after it: anything after a space that is followed by a bracket, `doi`, `PMID`, `PMCID`, `Available`, `Accessed`, `Retrieved`, `Epub`, `Published`, `PDF`, `URL` or a URL (any other space stays, so `10.1371/journal.pone. 0123456` is still malformed), trailing `. , ; :` and quotes, and a closing bracket that closes nothing inside the DOI (`10.1101/x).` → `10.1101/x`; `(20)30183-5` kept); case kept; `''` for a non-string; any other input returned trimmed |
+| `cleanDoiInput(doi)` | the DOI with surrounding whitespace, a resolver URL (`http(s)://`, `dx.`/`www.`, or bare `doi.org/`) or a `doi:` label removed and percent-encoding decoded (unless decoding would add whitespace: `10.1000/a%20b` stays `10.1000/a%20b`, a well-formed DOI); for a DOI, also what a citation put after it: anything after a space that is followed by a bracket, `doi`, `PMID`, `PMCID`, `Available`, `Accessed`, `Retrieved`, `Epub`, `Published`, `PDF`, `URL` or a URL (any other space stays, so `10.1371/journal.pone. 0123456` is still malformed), trailing `. , ; :` and quotes, and a closing bracket that closes nothing inside the DOI (`10.1101/x).` → `10.1101/x`; `(20)30183-5` kept); case kept; `''` for a non-string; any other input returned trimmed |
 | `doiForUrl(doi)` | `encodeURIComponent(cleanDoiInput(doi))`, the only form a DOI takes inside a request URL |
 | `foldForMatch(text)` | lower-cased, accents removed (`Müller` → `muller`; also ø ł ß đ ı æ œ þ: `Østergaard` → `ostergaard`), letters and digits of every script kept, everything else one space |
-| `splitAuthorList(authors)` | one entry per author from an array or a string; `;`, `&` and "and" always separate; a comma separates unless what follows is only initials (each capital followed by a period, space, hyphen or the end) or a suffix (`Smith, J., Jones, K.` and `LI, X., WU, Y.` → 2 authors) |
+| `splitAuthorList(authors)` | one entry per author from a string or an array (every element split the same way); `;`, `&` and "and" always separate; a trailing `et al.` is dropped; a comma separates, except that initials join the piece before them when that piece has no comma (`Smith, J., Jones, K.` and `LI, X., WU, Y.` → 2 authors), a given part mixing full names and initials joins a bare surname (`Smith, John A.` → 1; `Smith JA, Jones KB` → 2), and a suffix (`Jr`, `Sr`, `II`–`IV`) always joins; a string with one comma and no initials on either side is one name, surname first (`Smith, John` → 1, and so is `Smith, Jones`) |
+| `parseName(name)` | `ParsedName` `{ surname, initials, given?, order, raw }`: the one reading of a name that deduplication uses. `surname` folded with `foldForMatch`, particles kept (`van der berg`); `initials` folded (`Smith, J. A.` = `Smith JA` = `J. A. Smith` → `ja`; `Lee J-H` → `jh`); `given` the full given names when written out; suffixes and `et al.` dropped. `order` is `'known'` when the name shows its surname (a comma, Vancouver initials, initials first, a folded `smith j`) and `'unknown'` for full words in no shown order (`John Smith`, `Wang Wei`), where `surname` holds the whole name and deduplication tries every reading |
 | `formatDateParts(parts)` | Crossref `date-parts` as ISO at the given precision: `[2019, 3, 5]` → `"2019-03-05"`, `[2019]` → `"2019"`, else `undefined` |
 | `normalizeIssn(issn)` | an ISSN as `NNNN-NNNC` with the check digit upper-cased, from any spacing, dash or `ISSN`/`eISSN` label; `null` unless it has eight ISSN characters and a correct mod-11 check digit (`1648-1655` is a page range) |
 | `journalKey(name)` | `foldForMatch(name)` with the words "and" and "the" dropped: the key both sides of a journal-name comparison use (`Journal of Personality & Social Psychology` = `Journal of Personality and Social Psychology`) |
@@ -503,18 +532,18 @@ All local; no network.
 
 | Export | Returns |
 |---|---|
-| `calculateSimilarity(ref1, ref2, config)` | `authorWeighting × authors + titleWeighting × title + (1 − both) × year`, from `normalized_authors`, `normalized_title`, `normalized_year` |
-| `compareAuthors(authors1, authors2)` | 0–1, symmetric; each argument a string or a string array, split with `splitAuthorList`; two names compared as written after `foldForMatch`, and, when both show which part is the surname (a comma, Vancouver initials `Smith JA` / `Lee J-H`, initials before the surname, or mixed case; suffixes `Jr`, `Sr` and `III` after initials and a trailing `et al.` dropped), also as surname + given names, the higher score kept (`Smith, J. A.` = `J. A. Smith` = `Smith JA`; given names compared as initials when either side has initials only, else in full, so `John Smith` ≠ `Jane Smith`; a folded `smith j` or an all-capitals name only as written); best Levenshtein match per author, averaged both ways; 0.5 when both are empty |
+| `calculateSimilarity(ref1, ref2, config)` | 1 when both references carry the same well-formed DOI (any written form); otherwise `authorWeighting × authors + titleWeighting × title + (1 − both) × year`, from `normalized_authors`, `normalized_title`, `normalized_year`, capped just under `config.threshold` (0.85 when not set) when both carry different well-formed DOIs, so a preprint and its published version, or Part I and Part II with their own DOIs, are not merged |
+| `compareAuthors(authors1, authors2)` | 0–1, symmetric; each argument a string or a string array, split with `splitAuthorList`, each name read by `parseName`; the best-scoring match per author, averaged both ways; 0.5 when both are empty, 0 when one is. Two names score by level: **1** identical after folding, or the same surname with compatible given names (initials agreeing with each other or with full names: `Smith, J. A.` = `J. A. Smith` = `Smith JA` = `Smith, John A.`) or none on either side; **0.75** the same surname with a given name on one side only (`Smith` vs `Smith, K.`), a name in no shown order of which one reading is compatible (`Wang Wei` vs `Wei, W.`; `John Smith` vs `Smith, J.`), or a near surname (both at least five letters, similarity at least 0.85, given names not conflicting: `Papadopoulos`/`Papadopoulou`); **0.5** the same surname with conflicting given names (`Smith, J.` vs `Smith, K.`; `John Smith` vs `Jane Smith`), never merged at the README weights; **0** otherwise (`Li` vs `Lu`). Surnames compare with spaces removed and also without leading particles (`van der Berg` = `Berg`); a Cyrillic or Greek surname and a Latin one compare by loose romanisation, a feminine ending not counted (`Иванов` = `Ivanova`) |
 | `compareTitle(title1, title2)` | `1 − Levenshtein distance / longer length` after `foldForMatch` (non-Latin titles compared, not emptied); 0.5 when both are empty; two titles made only of symbols (`???`) score 1 when identical, else 0 |
 | `compareYear(year1, year2)` | `parseInt` of each value (the 0.2.x rule): 1 same year, 0.5 one year apart, 0 otherwise; 0.5 when both are empty, 0 when one is or when either does not start with a number (`"(2019)"`, `"in press"`) |
 | `normalizeAuthorName(name)` | `foldForMatch(name)`: `"Smith, J."` → `"smith j"`, `"Müller"` → `"muller"` |
 | `scoreMetadataCompleteness(ref)` | 0–1 weighted presence of title, authors, year, DOI, source, volume, pages |
-| `findDuplicateGroups(pairs)` | `DuplicateGroup[]` by transitive closure (A=B and B=C gives one group) |
+| `findDuplicateGroups(pairs)` | `DuplicateGroup[]` by transitive closure (A=B and B=C gives one group); a pair whose references carry two different well-formed DOIs is dropped first. Two such references can still end in one group through a third reference, without a DOI, that is close to both |
 | `selectBestReference(refs)` | the most complete reference; throws on an empty array |
 
 ```ts
 interface DeduplicationConfig {
-  threshold: number;        // for the caller: the library does not apply it
+  threshold: number;        // the caller's merge cut-off; calculateSimilarity also caps different-DOI pairs just under it
   authorWeighting: number;
   titleWeighting: number;
 }

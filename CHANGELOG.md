@@ -88,22 +88,45 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   brackets that belong to the DOI (`(20)30183-5`, SICI `<...>`). It cuts at a space only when
   a bracket or a citation word (`doi`, `PMID`, `Accessed`, `Retrieved`, a URL...) follows, so
   a DOI broken by a space (`10.1371/journal.pone. 0123456`) stays whole and is still reported
-  malformed, as in 0.2.x. The DOI matcher rejected the right DOI when the surname was written
-  in Cyrillic or Greek (`Иванов` / `Ivanov`) or with the German digraph (`Müller` /
-  `Mueller`): such names are now also compared through their Latin spellings, and `ü` also
-  matches `ue`; a name in a script with no Latin table here (Han, Arabic, ...) still matches
-  only a name in its own script, as in 0.2.x. Surnames match as whole words, so `Li` no
-  longer matches `Williams`. A Vancouver list (`Hoddy KK, Gibbons C`, `Lee J-H`) is read as
-  surnames, not `KK`; only name particles (`van der`, `de la`) may stand before the surname.
-  Journal metadata took a page range from the text when Crossref's first ISSN failed the
-  check digit: it now takes the first valid Crossref ISSN, never reads the text when Crossref
-  listed any, and lists failed ones in `issnRejected`. Deduplication compares two names as
-  written (the 0.2.x comparison) and, when both show which part is the surname (a comma,
-  Vancouver initials, initials before the surname, mixed case), also as surname plus given
-  names, keeping the higher score: `Smith, J. A.; Jones, K.` = `Smith JA, Jones K`, while a
-  folded `smith j` scores as in 0.2.x and John and Jane Smith stay two people. Two
-  symbol-only titles score 0, not 0.5. `HAS_ERRATA` counts one correction once whatever its
-  DOI's case, never the work's own DOI, and does not fire when that is the only notice.
+  malformed, as in 0.2.x; a percent-encoded space (`10.1000/a%20b`) is kept encoded, so that
+  DOI stays well-formed. Journal metadata took a page range from the text when Crossref's
+  first ISSN failed the check digit: it now takes the first valid Crossref ISSN, never reads
+  the text when Crossref listed any, and lists failed ones in `issnRejected`. Two symbol-only
+  titles score 0, not 0.5. `HAS_ERRATA` counts one correction once whatever its DOI's case,
+  never the work's own DOI, and does not fire when that is the only notice.
+- **Review 2026-11-19: names are read once, by one parser, and decided on evidence.** Eight
+  review rounds each fixed a name shape and broke another, because deduplication, the author
+  splitter and the DOI matcher each had their own reading of a name. They now share one parser
+  (`parseName`), and the release is gated on a labelled set of 545 decisions built from the
+  Crossref fixtures (`tests/labelled/`: 314 deduplication pairs, 231 DOI candidates, labels by
+  construction), per shape class, against the same set scored on 0.2.x: no class has more
+  errors, and the total falls from 250 to 67.
+  - *Deduplication* scores each pair of names by level instead of a share of letters: same
+    surname with compatible given names 1; given name on one side only, or a name in no shown
+    order (`Wang Wei`) of which one reading fits, 0.75; same surname with a conflicting initial
+    or given name 0.5 (0.2.x scored `Smith, J.` / `Smith, K.` high enough to merge); different
+    surnames 0 (0.2.x gave `smith j` / `jones j` 2/7). Vancouver, given-first and folded forms
+    of one name, Cyrillic and Latin spellings of one name (`Иванов` = `Ivanova`), names with
+    particles, and two references with the same DOI and a short title, which 0.2.x missed,
+    now merge. Two references with different well-formed DOIs are never merged (a preprint
+    and its published version, Part I and Part II); the same DOI scores 1.
+  - *The DOI matcher* reports each check (author, year, title) as `matched`, `mismatched` or
+    `not_comparable`, and rejects on `mismatched` only. It now also checks the title: at least
+    60% of the Crossref title's distinctive words must occur in the reference (measured on the
+    labelled set: every right candidate shares 100%; wrong candidates by other authors or of
+    another year 0-25%, one 67%; Part II, correction notices and preprints 76-100%, which the
+    title cannot separate).
+    Cyrillic and Greek surnames are compared with Latin ones by a loose romanisation
+    (`Достоевский` = `Dostoevsky` = `Dostoyevsky`, `Иванов` ≠ `Ivashov`); a name in a script
+    that cannot be compared (Han, Arabic, ...) no longer rejects the right DOI, it is
+    `not_comparable`. Surnames match as whole words or with spaces removed (`Van Dyke` =
+    `VanDyke`), so `Li` matches neither `Liu` nor `Williams`. A Vancouver list (`Hoddy KK`,
+    `Lee J-H`) is read as surnames; only name particles may stand before the surname.
+  - Still wrong, and listed in the labelled test: Part I vs Part II and correction notices
+    without DOIs merge; the matcher accepts Part II, a correction notice or a preprint for the
+    published work (it does not read the record type), a one-word title (`Editorial`) when
+    author and year fit, and a candidate whose title words occur in the journal name;
+    one-letter surnames written Vancouver (`R SK`) are read as surname `SK`.
 
 ### Added
 - `JournalMetadata.issnRejected`: ISSNs Crossref listed that fail the check digit.
@@ -114,6 +137,15 @@ so it can never fire and reports clean**: the expression-of-concern check, below
 - Shared readers, exported: `cleanDoiInput`, `doiForUrl`, `foldForMatch`, `splitAuthorList`,
   `formatDateParts`, `journalKey`, `normalizeIssn`.
 - `compareAuthors` accepts a string array as well as a string.
+- `parseName(name)` and `ParsedName` (`surname`, `initials`, `given`, `order`: `'known'` /
+  `'unknown'`, `raw`): the one name reading deduplication uses.
+- `DoiMatchCheck` (`matched` / `mismatched` / `not_comparable`); `authorCheck`, `yearCheck`
+  and `titleCheck` on a `CrossrefResult` found by the DOI search and on each
+  `RejectedDoiCandidate`; `DoiSearchOutcome.notComparable` counts candidates per check that
+  was `not_comparable`. New rejection reason `Title mismatch: ...`.
+- `tests/labelled/` (the labelled release set and its 0.2.x baseline counts) and
+  `scripts/labelled-report.mjs` (scores any build on the set; `--compare` fails when a class
+  is worse than a baseline).
 
 ### Changed
 - `CORRECTION_NOTICE` is gone: it read a field Crossref does not serve and never fired, and a
@@ -129,9 +161,13 @@ so it can never fire and reports clean**: the expression-of-concern check, below
 - Expect new expression-of-concern findings: the check works for the first time. One concern
   found by both sources is two issues (one per source). Nothing else is required. A consumer that rendered `publishedDate` sees zero-padded dates. A
   consumer that wants to say "DOI search failed" rather than "no DOI found" switches to
-  `findDOIFromReferenceDetailed`. Deduplication scores change only for inputs the old rules
-  misread (non-Latin or accented names and titles, "Surname, Initials" lists); year scores
-  are unchanged.
+  `findDOIFromReferenceDetailed`. Author scores in deduplication change for most inputs (by
+  level, not by letters: different surnames now score 0, the same surname with another
+  initial 0.5), and two references with different DOIs no longer reach the threshold; year
+  scores are unchanged. A found DOI whose `authorCheck`, `yearCheck` or `titleCheck` is
+  `not_comparable` was accepted on less evidence: show it as such. The DOI search now rejects
+  candidates whose title does not fit, so some DOIs 0.2.x found are no longer found (on the
+  labelled set, only wrong ones).
 
 ## 0.2.0 — 2026-10-14
 

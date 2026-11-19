@@ -41,6 +41,8 @@ describe('findDOIFromReferenceDetailed', () => {
     expect(fields).toEqual({
       found: true, doi: '10.1/ok', title: 'Priming effects', authors: ['Alder, J.', 'Berg'],
       publishedDate: '2019-03-05', journal: 'Journal of Psychology', score: 80,
+      // 0.3.0: how each check against the reference went
+      authorCheck: 'matched', yearCheck: 'matched', titleCheck: 'matched',
     });
     expect(rawData.DOI).toBe('10.1/ok');
   });
@@ -82,7 +84,8 @@ describe('findDOIFromReferenceDetailed', () => {
     });
     const out = await lib.findDOIFromReferenceDetailed(REF);
     expect(out.status).toBe('no_match');
-    expect(out.rejected).toEqual([{ doi: '10.1/st', stage: 'simple_text_query', reason: expect.stringMatching(/^Author mismatch/) }]);
+    expect(out.rejected).toEqual([{ doi: '10.1/st', stage: 'simple_text_query', reason: expect.stringMatching(/^Author mismatch/),
+      authorCheck: 'mismatched', yearCheck: 'matched', titleCheck: 'matched' }]);
   });
 });
 

@@ -107,9 +107,11 @@ describe('deduplication', () => {
     ['Smith, J. A.; Jones, K.', 'Smith JA, Jones K'],
     ['Smith, J. and Jones, K.', 'J. Smith & K. Jones'],
     ['Smith, Jr., Jones', 'Smith Jr; Jones'],
-    ['Smith', 'Smith, J.'],
   ])('%j and %j are one list', (a, b) => {
     expect(lib.compareAuthors(a, b)).toBeCloseTo(1.0, 10);
+  });
+  it('a surname with no given name matches at the one-side-missing level (0.75)', () => {
+    expect(lib.compareAuthors('Smith', 'Smith, J.')).toBeCloseTo(0.75, 10);
   });
   it('different people stay apart (control)', () => {
     expect(lib.compareAuthors('Smith, J.', 'Jones, K.')).toBeLessThan(0.5);

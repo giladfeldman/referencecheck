@@ -1,12 +1,18 @@
 import type { ReferenceInput } from '../types.js';
 import type { DuplicatePair, DuplicateGroup } from './types.js';
-import { scoreMetadataCompleteness } from './similarity.js';
+import { doiRelation, scoreMetadataCompleteness } from './similarity.js';
 
 /**
  * Find duplicate groups using transitive closure
- * If A=B and B=C, then A=B=C is one group
+ * If A=B and B=C, then A=B=C is one group.
+ *
+ * A pair whose two references carry different DOIs is not an edge, whatever its
+ * similarity (the same rule as calculateSimilarity, applied here too for pairs scored
+ * elsewhere). Transitive closure can still join two such references through a third that
+ * has no DOI; the group then lists both.
  */
 export function findDuplicateGroups(pairs: DuplicatePair[]): DuplicateGroup[] {
+  pairs = pairs.filter((p) => doiRelation(p.ref1, p.ref2) !== 'different');
   if (pairs.length === 0) return [];
 
   // Build adjacency map

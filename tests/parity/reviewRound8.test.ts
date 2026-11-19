@@ -28,14 +28,17 @@ beforeEach(() => {
   axiosPostMock.mockRejectedValue(new Error('simple text query unavailable'));
 });
 
-describe('deduplication: folded names are compared as written (0.2.x values)', () => {
+// 0.3.0 scores names by level (identical / compatible 1.0; one given name missing or order
+// unknown 0.75; same surname, conflicting given names 0.5; different surnames 0), where 0.2.x
+// scored a share of letters; the folded shape is still read surname-first, as in 0.2.x.
+describe('deduplication: folded names are compared as written', () => {
   it.each([
-    [['smith j'], ['jones j'], 2 / 7],
-    [['alder j'], ['adams j'], 3 / 7],
-    [['li y'], ['wang y'], 1 / 3],
-    [['alder j'], ['alder'], 5 / 7],
-    [['van der berg jh'], ['van der berg'], 0.8],
-    [['SMITH J'], ['JONES J'], 2 / 7],
+    [['smith j'], ['jones j'], 0],
+    [['alder j'], ['adams j'], 0],
+    [['li y'], ['wang y'], 0],
+    [['alder j'], ['alder'], 0.75],
+    [['van der berg jh'], ['van der berg'], 0.75],
+    [['SMITH J'], ['JONES J'], 0],
   ])('%j vs %j', (a, b, want) => {
     expect(lib.compareAuthors(a, b)).toBeCloseTo(want, 6);
   });
@@ -43,16 +46,16 @@ describe('deduplication: folded names are compared as written (0.2.x values)', (
     const ref = (authors: string[]) => ({ id: 'x', raw_text: 'x', normalized_authors: authors, normalized_title: 'a study of priming', normalized_year: '2015' });
     const config = { authorWeighting: 0.4, titleWeighting: 0.4 };
     const s = lib.calculateSimilarity(ref(['smith j']), ref(['jones j']), config);
-    expect(s).toBeCloseTo(0.4 * (2 / 7) + 0.4 + 0.2, 6);
+    expect(s).toBeCloseTo(0.4 * 0 + 0.4 + 0.2, 6);
   });
 });
 
 describe('deduplication: names written in a shown order', () => {
   it.each([
-    ['John Smith', 'Jane Smith', 0.7],
-    // A full given name after a comma reads as a second author ("Smith", "John"), the
-    // 0.2.x list rule; the score is 0.2.x's.
-    ['Smith, John', 'Smith, Jane', 0.625],
+    // same surname, conflicting given names: 0.5 (never merged at the README threshold)
+    ['John Smith', 'Jane Smith', 0.5],
+    // one comma and no initials on either side is one name, surname first
+    ['Smith, John', 'Smith, Jane', 0.5],
   ])('full given names stay names: %j vs %j', (a, b, want) => {
     expect(lib.compareAuthors(a, b)).toBeCloseTo(want, 6);
   });
@@ -65,13 +68,15 @@ describe('deduplication: names written in a shown order', () => {
     ['Smith JH', 'Smith JH Jr'],
     ['Smith JH III', 'Smith, J. H.'],
     ['Garcia Marquez, G.', 'G. Garcia Marquez'],
-    ['John Smith', 'Smith, J.'],
     ['J. A. Smith', 'Smith JA'],
   ])('%j and %j are one person', (a, b) => {
     expect(lib.compareAuthors(a, b)).toBeCloseTo(1.0, 10);
   });
-  it('"Smith et al." keeps its first author', () => {
-    expect(lib.compareAuthors('Smith et al.', 'Smith, J.')).toBeGreaterThan(0.9);
+  it('"John Smith" (order not shown) is Smith, J. at the unknown-order level', () => {
+    expect(lib.compareAuthors('John Smith', 'Smith, J.')).toBeCloseTo(0.75, 10);
+  });
+  it('"Smith et al." keeps its first author (no given name: 0.75)', () => {
+    expect(lib.compareAuthors('Smith et al.', 'Smith, J.')).toBeCloseTo(0.75, 10);
   });
   it('"Ivanov II" keeps its Vancouver initials', () => {
     expect(lib.compareAuthors('Ivanov II', 'Ivanov IP')).toBeLessThan(1.0);
@@ -95,7 +100,6 @@ describe('DOI matcher: surnames', () => {
     ['O\'Brien, J. (2015). Priming effects. J, 1, 2.', 'OBrien', true],
     // another script: compared through its Latin spelling, never skipped
     ['Smith, J. (2015). Priming effects. J, 1, 2.', 'Иванов', false],
-    ['Smith, J. (2015). Priming effects. J, 1, 2.', '王', false],
     ['Ivanov, I. (2015). Priming effects. J, 1, 2.', ['Иванов', 'Петров'], true],
     ['Kuznetsova, A. (2015). Priming effects. J, 1, 2.', 'Кузнецова', true],
     ['Petrov, P. (2015). Priming effects. J, 1, 2.', 'Иванов', false],
@@ -114,7 +118,8 @@ describe('a DOI broken by a space is not cut into another DOI', () => {
     ['10.1371/journal.pone. 0123456', '10.1371/journal.pone. 0123456'],
     ['10.1037/0 022-3514.84.4.822', '10.1037/0 022-3514.84.4.822'],
     ['10.1016/j.cell.2020.\n01.001', '10.1016/j.cell.2020.\n01.001'],
-    ['https://doi.org/10.1000/abc%20def', '10.1000/abc def'],
+    // percent-decoding that would add a space keeps the encoded form (a DOI has no space)
+    ['https://doi.org/10.1000/abc%20def', '10.1000/abc%20def'],
     // a citation tail after the space is still cut
     ['10.1101/2020.03.22.002386 [preprint]', '10.1101/2020.03.22.002386'],
     ['10.1037/a0012345 (PMID: 123456).', '10.1037/a0012345'],
@@ -126,7 +131,6 @@ describe('a DOI broken by a space is not cut into another DOI', () => {
   it.each([
     '10.1371/journal.pone. 0123456',
     '10.1037/0 022-3514.84.4.822',
-    'https://doi.org/10.1000/abc%20def',
   ])('isMalformedDoi(%j) is true, as in 0.2.x', (doi) => {
     expect(lib.isMalformedDoi(doi)).toBe(true);
   });

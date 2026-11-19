@@ -1,7 +1,11 @@
 import { distance } from 'fastest-levenshtein';
 import type { ReferenceInput } from '../types.js';
 import type { DeduplicationConfig } from './types.js';
-import { foldForMatch, splitAuthorList } from '../util/normalize.js';
+import { cleanDoiInput, foldForMatch, parseName, splitAuthorList } from '../util/normalize.js';
+import type { ParsedName } from '../util/normalize.js';
+import {
+  crossScript, looseInitial, looseSurnameMatch, sameSurname, scriptsComparable, surnameKey,
+} from '../util/surnames.js';
 
 /**
  * Normalize author name for comparison
@@ -16,86 +20,73 @@ export function normalizeAuthorName(name: string): string {
   return foldForMatch(name);
 }
 
-/**
- * One author as surname + given names, when the way it is written shows which is which.
- * Null when it does not: a folded string ("smith j", the `normalized_authors` shape) or an
- * all-capitals name could be either order, so it is compared as written, as 0.2.x did.
- */
-interface AuthorKey {
-  surname: string;
-  /** Initials of the given names, "ja". */
-  initials: string;
-  /** Given names as written, folded ("john a"); compared when neither side has initials only. */
-  given: string;
-  initialsOnly: boolean;
-}
+interface AuthorEntry { folded: string; name: ParsedName }
 
-interface AuthorEntry { folded: string; key: AuthorKey | null }
+/** One reading of a name: a surname and the given names as initial letters or full words. */
+interface Reading { surname: string; items: string[] }
 
-/** "J", "J.", "JA", "J.A.", "J.-P.", "J-H": capitals only, at most three. */
-const INITIALS = /^\p{Lu}\.?(?:-?\p{Lu}\.?){0,2}$/u;
-const SUFFIX = /^(?:jr|sr)\.?,?$/i;
-const ROMAN = /^(?:ii|iii|iv)\.?,?$/i;
-
-/** "Smith J Jr", "Smith JH III", "Smith, J., Jr.": the suffix is not a name part. */
-function dropSuffixes(tokens: string[]): string[] {
-  const t = [...tokens];
-  for (;;) {
-    const last = t[t.length - 1];
-    if (last && SUFFIX.test(last)) t.pop();
-    // A roman numeral is a suffix only after initials ("Smith JH III"); "Ivanov II" is
-    // Vancouver initials.
-    else if (last && ROMAN.test(last) && t.length >= 3 && INITIALS.test(t[t.length - 2])) t.pop();
-    else return t;
-  }
-}
-
-function keyOf(surname: string, givenTokens: string[]): AuthorKey | null {
-  if (!surname) return null;
-  const initials = givenTokens
-    .map((g) => (INITIALS.test(g) ? foldForMatch(g).replace(/ /g, '') : foldForMatch(g).slice(0, 1)))
-    .join('');
-  return {
-    surname,
-    initials,
-    given: foldForMatch(givenTokens.join(' ')),
-    initialsOnly: givenTokens.every((g) => INITIALS.test(g)),
-  };
+function itemsOf(name: ParsedName): string[] {
+  return name.given ? name.given.split(' ').filter(Boolean) : [...name.initials];
 }
 
 /**
- * "Smith, J. A.", "J. A. Smith", "Smith JA" (Vancouver) and "Lee J-H" give the surname and
- * the initials whatever the order (review 2026-11-19); "John Smith" keeps "john" as a name,
- * so John and Jane Smith stay two people.
+ * The readings of a name. A name whose order is known has one. A name whose order is
+ * unknown ("wang wei", "John Smith", a folded multi-word surname) has every split into
+ * surname and given names, either way round, plus the whole name as a surname.
  */
-function authorKey(name: string): AuthorKey | null {
-  const text = name.trim().replace(/,?\s*\bet\s+al\.?$/i, '').trim();
-  const comma = text.indexOf(',');
-  if (comma >= 0) {
-    const rest = dropSuffixes(text.slice(comma + 1).split(/\s+/).filter(Boolean));
-    return keyOf(foldForMatch(text.slice(0, comma)), rest);
+function readings(name: ParsedName): Reading[] {
+  if (name.order === 'known') return [{ surname: name.surname, items: itemsOf(name) }];
+  const w = name.surname.split(' ').filter(Boolean);
+  const out: Reading[] = [{ surname: w.join(' '), items: [] }];
+  for (let k = 1; k < w.length; k++) {
+    out.push({ surname: w.slice(k).join(' '), items: w.slice(0, k) });
+    out.push({ surname: w.slice(0, k).join(' '), items: w.slice(k) });
   }
-  const raw = dropSuffixes(text.split(/\s+/).filter(Boolean));
-  if (raw.length === 0) return null;
-  // One word is a surname alone.
-  if (raw.length === 1) return keyOf(foldForMatch(raw[0]), []);
-  // Order is shown only by mixed case: "smith j" and "SMITH J" could be either order.
-  if (!/\p{Ll}/u.test(text) || !/\p{Lu}/u.test(text)) return null;
-  const last = raw[raw.length - 1];
-  // Vancouver: capitals after a surname that has a lower-case letter ("Smith JA").
-  if (INITIALS.test(last) && /\p{Ll}/u.test(raw.slice(0, -1).join(' '))) {
-    return keyOf(foldForMatch(raw.slice(0, -1).join(' ')), [last]);
+  return out;
+}
+
+type GivenRelation = 'compatible' | 'one_absent' | 'both_absent' | 'conflict';
+
+/**
+ * Given names position by position: an initial matches a name with that first letter
+ * ("J" / "John" / "JA"), two full names must be equal ("John" / "Jane" conflict), and a
+ * shorter list is a prefix of the longer one. Across scripts only first letters are
+ * compared, through the loose romanisation.
+ */
+function compareGiven(a: string[], b: string[], cross: boolean): GivenRelation {
+  if (a.length === 0 && b.length === 0) return 'both_absent';
+  if (a.length === 0 || b.length === 0) return 'one_absent';
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    const x = a[i];
+    const y = b[i];
+    const same = cross
+      ? looseInitial(x) === looseInitial(y)
+      : x.length > 1 && y.length > 1 ? x === y : x[0] === y[0];
+    if (!same) return 'conflict';
   }
-  // Given names first: the surname is everything after the last initial ("G. Garcia
-  // Marquez"), or the last word when no initial is written ("John Smith").
-  let lastInitial = -1;
-  raw.slice(0, -1).forEach((w, i) => { if (INITIALS.test(w)) lastInitial = i; });
-  const cut = lastInitial >= 0 ? lastInitial + 1 : raw.length - 1;
-  return keyOf(foldForMatch(raw.slice(cut).join(' ')), raw.slice(0, cut));
+  return 'compatible';
+}
+
+/** The per-name levels (see compareAuthors) for one reading of each name. */
+function readingScore(a: Reading, b: Reading): number {
+  if (!a.surname || !b.surname || !scriptsComparable(a.surname, b.surname)) return 0;
+  const cross = crossScript(a.surname, b.surname);
+  const given = compareGiven(a.items, b.items, cross);
+  const equal = cross ? looseSurnameMatch(a.surname, b.surname) : sameSurname(a.surname, b.surname);
+  if (equal) {
+    if (given === 'compatible' || given === 'both_absent') return 1.0;
+    return given === 'one_absent' ? 0.75 : 0.5;
+  }
+  if (!cross && given !== 'conflict') {
+    const ka = surnameKey(a.surname);
+    const kb = surnameKey(b.surname);
+    if (ka.length >= 5 && kb.length >= 5 && ratio(ka, kb) >= 0.85) return 0.75;
+  }
+  return 0;
 }
 
 function authorEntry(name: string): AuthorEntry {
-  return { folded: foldForMatch(name), key: authorKey(name) };
+  return { folded: foldForMatch(name), name: parseName(name) };
 }
 
 function ratio(a: string, b: string): number {
@@ -103,19 +94,29 @@ function ratio(a: string, b: string): number {
   return maxLen === 0 ? 0 : 1 - distance(a, b) / maxLen;
 }
 
-function keySimilarity(a: AuthorKey, b: AuthorKey): number {
-  if (!a.initials || !b.initials) return ratio(a.surname, b.surname);
-  if (a.initialsOnly || b.initialsOnly) return ratio(`${a.surname} ${a.initials}`, `${b.surname} ${b.initials}`);
-  return ratio(`${a.surname} ${a.given}`, `${b.surname} ${b.given}`);
-}
-
 /**
- * Two names: the 0.2.x comparison of the folded strings, raised to the surname-and-initials
- * comparison when both names show their order. Never lower than comparing the two names as written.
+ * Two names, by level (not by edit distance over the whole name, which made an initial's
+ * weight depend on the surname's length):
+ *
+ * | comparison | score |
+ * |---|---|
+ * | written identically after folding | 1.0 |
+ * | surname equal, given names compatible (J / JA / John) or absent on both sides | 1.0 |
+ * | surname equal, one side has no given name | 0.75 |
+ * | order unknown on a side, and one reading is compatible ("Wang Wei" / "Wei, W.") | 0.75 (never more) |
+ * | surname equal, a given name or initial conflicts (J / K, John / Jane) | 0.5 |
+ * | surname near (edit ratio >= 0.85, both keys >= 5 letters), given names not conflicting | 0.75 |
+ * | otherwise, or the two scripts cannot be compared (Han / Latin) | 0 |
+ *
+ * "Surname equal": same key (folded, spaces/hyphens/apostrophes removed), or equal once
+ * leading particles are dropped from one side ("van der berg" / "berg"); across Latin,
+ * Cyrillic and Greek, the loose romanisation ("Иванов" / "Ivanova").
  */
 function authorSimilarity(a: AuthorEntry, b: AuthorEntry): number {
-  const asWritten = ratio(a.folded, b.folded);
-  return a.key && b.key ? Math.max(asWritten, keySimilarity(a.key, b.key)) : asWritten;
+  if (a.folded === b.folded) return 1.0;
+  let best = 0;
+  for (const ra of readings(a.name)) for (const rb of readings(b.name)) best = Math.max(best, readingScore(ra, rb));
+  return a.name.order === 'unknown' || b.name.order === 'unknown' ? Math.min(best, 0.75) : best;
 }
 
 /**
@@ -149,9 +150,10 @@ export function compareAuthors(
   authors1: string | readonly string[],
   authors2: string | readonly string[]
 ): number {
-  // Split into individual author names. An array is already one entry per author; a
-  // string goes through splitAuthorList, which keeps "Smith, J." as ONE author (the old
-  // split on every comma made it two, so a list's score depended on how it was written).
+  // Split into individual author names: strings and every array element go through
+  // splitAuthorList, which keeps "Smith, J." as ONE author (the old split on every comma
+  // made it two, so a list's score depended on how it was written). Each name is then
+  // read once by parseName and scored by level (authorSimilarity).
   const authors1List = splitAuthorList(authors1).map(authorEntry).filter(a => a.folded.length > 0);
   const authors2List = splitAuthorList(authors2).map(authorEntry).filter(a => a.folded.length > 0);
 
@@ -279,8 +281,35 @@ export function scoreMetadataCompleteness(ref: ReferenceInput): number {
   return totalFields > 0 ? score / totalFields : 0;
 }
 
+/** A reference's DOI for comparison: cleaned, lower-cased; '' when it is not a DOI. */
+function comparableDoi(ref: ReferenceInput): string {
+  const d = cleanDoiInput(ref.doi).toLowerCase();
+  return /^10\.\d{4,9}\/\S+$/.test(d) ? d : '';
+}
+
 /**
- * Calculate similarity between two references
+ * Internal (not exported from the package root): `same` when both references carry the
+ * same DOI, `different` when both carry a DOI and they differ, `null` otherwise.
+ */
+export function doiRelation(ref1: ReferenceInput, ref2: ReferenceInput): 'same' | 'different' | null {
+  const d1 = comparableDoi(ref1);
+  const d2 = comparableDoi(ref2);
+  if (!d1 || !d2) return null;
+  return d1 === d2 ? 'same' : 'different';
+}
+
+/** Fallback merge threshold for the different-DOI cap when the config carries none. */
+const DEFAULT_THRESHOLD = 0.85;
+
+/**
+ * Calculate similarity between two references.
+ *
+ * Identifiers first: when both references carry a DOI (`doi`, read with `cleanDoiInput`,
+ * case-insensitive), the same DOI is the same work (similarity 1.0) and two different DOIs
+ * are two works, so the weighted score is capped strictly below `config.threshold` (below
+ * 0.85 when the config has no numeric threshold): a preprint and its published version,
+ * which carry different DOIs, are not merged however alike their metadata. Otherwise the
+ * weighted author/title/year score.
  */
 export function calculateSimilarity(
   ref1: ReferenceInput,
@@ -296,6 +325,9 @@ export function calculateSimilarity(
   const year1 = ref1.normalized_year;
   const year2 = ref2.normalized_year;
 
+  const dois = doiRelation(ref1, ref2);
+  if (dois === 'same') return 1.0;
+
   // Calculate component similarities
   const authorSim = compareAuthors(authors1, authors2);
   const titleSim = compareTitle(title1, title2);
@@ -310,5 +342,12 @@ export function calculateSimilarity(
     titleSim * config.titleWeighting +
     yearSim * yearWeighting;
 
+  if (dois === 'different') return Math.min(similarity, differentDoiCap(config));
   return similarity;
+}
+
+/** Strictly below the merge threshold: two different DOIs never reach it. */
+function differentDoiCap(config: DeduplicationConfig): number {
+  const t = typeof config?.threshold === 'number' && Number.isFinite(config.threshold) ? config.threshold : DEFAULT_THRESHOLD;
+  return Math.max(0, t - 1e-6);
 }
