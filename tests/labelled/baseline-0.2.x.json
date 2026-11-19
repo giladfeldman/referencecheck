@@ -162,6 +162,104 @@
       "wrongAccepts": 0,
       "rightRejects": 0
     },
+    "dedup/same:first-author-only": {
+      "rows": 15,
+      "falseMerges": 0,
+      "missedMerges": 1,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:et-al-string": {
+      "rows": 30,
+      "falseMerges": 0,
+      "missedMerges": 13,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:et-al-element": {
+      "rows": 15,
+      "falseMerges": 0,
+      "missedMerges": 11,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:surname-full-given": {
+      "rows": 30,
+      "falseMerges": 0,
+      "missedMerges": 22,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:doi-tail": {
+      "rows": 76,
+      "falseMerges": 0,
+      "missedMerges": 76,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/owner:same-doi-contradicted": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:same-doi-other-title": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 19,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/owner:preprint-versions": {
+      "rows": 20,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:corporate-author": {
+      "rows": 8,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:mixed-script-list": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/owner:apostrophe-conflict": {
+      "rows": 4,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:apostrophe-written-two-ways": {
+      "rows": 4,
+      "falseMerges": 0,
+      "missedMerges": 3,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/owner:given-first-one-letter": {
+      "rows": 4,
+      "falseMerges": 4,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "dedup/same:full-given-forms": {
+      "rows": 5,
+      "falseMerges": 0,
+      "missedMerges": 3,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
     "doi/right:apa": {
       "rows": 19,
       "falseMerges": 0,
@@ -294,13 +392,188 @@
       "missedMerges": 0,
       "wrongAccepts": 3,
       "rightRejects": 0
+    },
+    "doi/right:given-first-full": {
+      "rows": 20,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 4
+    },
+    "doi/right:given-first-full-and": {
+      "rows": 20,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 7
+    },
+    "doi/right:et-al-string": {
+      "rows": 38,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:subtitle-dropped-short": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:subtitle-dropped-long": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:title-one-word-variant": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:title-truncated": {
+      "rows": 18,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:no-authors": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 16
+    },
+    "doi/right:corporate-author": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:corporate-reference-person-record": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 18
+    },
+    "doi/wrong:same-title-other-authors": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 4,
+      "rightRejects": 0
+    },
+    "doi/wrong:same-title-other-authors~vancouver": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 2,
+      "rightRejects": 0
+    },
+    "doi/wrong:same-title-other-authors~given-first": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 7,
+      "rightRejects": 0
+    },
+    "doi/wrong:same-title-other-authors~given-first-full": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 2,
+      "rightRejects": 0
+    },
+    "doi/wrong:same-title-other-authors~mixed-script-record": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 3,
+      "rightRejects": 0
+    },
+    "doi/right:mixed-script-record": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:same-author-adjacent-year~vancouver": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 14,
+      "rightRejects": 0
+    },
+    "doi/wrong:same-author-adjacent-year~given-first-full": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 15,
+      "rightRejects": 0
+    },
+    "doi/wrong:other-authors~vancouver": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 4,
+      "rightRejects": 0
+    },
+    "doi/wrong:other-authors~given-first": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 9,
+      "rightRejects": 0
+    },
+    "doi/wrong:no-authors-other-work": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 2,
+      "rightRejects": 0
+    },
+    "doi/wrong:corporate-reference-person-record": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 1,
+      "rightRejects": 0
+    },
+    "doi/wrong:corporate-other-work": {
+      "rows": 19,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 19,
+      "rightRejects": 0
+    },
+    "doi/right:mixed-script-list": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:short-title-variant": {
+      "rows": 8,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
     }
   },
   "total": {
-    "falseMerges": 56,
-    "missedMerges": 98,
-    "wrongAccepts": 89,
-    "rightRejects": 7,
-    "rows": 545
+    "falseMerges": 60,
+    "missedMerges": 246,
+    "wrongAccepts": 171,
+    "rightRejects": 52,
+    "rows": 1263
   }
 }

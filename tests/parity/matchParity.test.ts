@@ -53,8 +53,10 @@ describe('author-list parity: one list, every way it is written', () => {
     expect(withCommas).toBeCloseTo(plain, 10);
     expect(withCommas).toBeCloseTo(1.0, 10);
   });
+  // Round 11 (owner decision F6): a list naming only the first author scores as the full
+  // list, so the control names the second author alone, which is not a prefix.
   it('an extra author still lowers the score (control)', () => {
-    expect(lib.compareAuthors('Smith, J.', 'Smith, J.; Jones, K.')).toBeLessThan(0.9);
+    expect(lib.compareAuthors('Jones, K.', 'Smith, J.; Jones, K.')).toBeLessThan(0.9);
   });
 });
 

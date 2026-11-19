@@ -269,14 +269,51 @@ const PARTICLE_ANY_CASE = `(?:${NAME_PARTICLES.map((w) => `[${w[0]}${w[0].toUppe
  * before it, and they are part of the surname read: any word allowed there read
  * "Hoddy KK Gibbons C." as surname "Gibbons".
  */
-const VANCOUVER_ENTRY = new RegExp(`^((?:${PARTICLE}\\s+)*\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*)\\s+\\p{Lu}(?:-?\\p{Lu}){0,2}$`, 'u');
+const VANCOUVER_ENTRY = new RegExp(`^((?:${PARTICLE}\\s+)*\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*)\\s+(\\p{Lu}(?:-?\\p{Lu}){0,2})$`, 'u');
+
+/**
+ * What follows the cut when the cut was a given-first middle initial: "Michael J. | LaCour,
+ * Donald P. Green" or "Michael J. | LaCour (2014)". A capitalised word, then a comma before a
+ * capital, "and", "&", a year in brackets, or the end of the author section. A title after a
+ * real Vancouver list ("Hoddy K. Obesity, diabetes and ...") goes on in lower case.
+ */
+const NAME_CONTINUES = /^\p{Lu}[\p{L}'’-]*\p{Ll}[\p{L}'’-]*\s*(?:,\s*\p{Lu}|&|\band\b|\(\d{4}|$)/u;
+
 function vancouverSurnames(section: string): string[] {
-  const list = section.split(/\.\s/)[0];
+  const cut = section.search(/\.\s/);
+  const list = cut >= 0 ? section.slice(0, cut) : section;
   const out: string[] = [];
+  let lastInitials = '';
   for (const piece of list.split(/\s*,\s*/).filter(Boolean)) {
     if (/^et al\.?$/i.test(piece)) continue;
     const m = piece.match(VANCOUVER_ENTRY);
     if (!m) break;
+    out.push(m[1]);
+    lastInitials = m[2];
+  }
+  // One entry ending in ONE initial, and the text after the cut goes on with a name: the
+  // cut was a middle initial of a name written given-first ("Michael J. LaCour"), and the
+  // "surname" read is a given name (round 11). Not a Vancouver list.
+  if (out.length === 1 && lastInitials.length === 1 && cut >= 0 && NAME_CONTINUES.test(section.slice(cut + 2).trim())) return [];
+  return out;
+}
+
+/**
+ * Given names first: "Michael J. LaCour, Donald P. Green", "J. A. Smith, K. Jones", "Jordan
+ * B. Fishman and Eric A. Berg". Each entry is given names (capitalised words) or initials
+ * (one capital, a period optional, "J.-P."), then the surname (name particles allowed before
+ * it). Read from the start up to the first entry of another shape (a title in quotes, an
+ * APA "Smith"), so a title is not read. Two-letter capitals ("KK") are Vancouver initials,
+ * never a given part here.
+ */
+const GIVEN_PART = `(?:\\p{Lu}\\p{Ll}+(?:-\\p{Lu}\\p{Ll}+)?|\\p{Lu}\\.?(?:-\\p{Lu}\\.?)?)`;
+const GIVEN_FIRST_ENTRY = new RegExp(`^(?:${GIVEN_PART}\\s+)+((?:${PARTICLE_ANY_CASE}\\s+)*\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*)\\.?$`, 'u');
+function givenFirstSurnames(section: string): string[] {
+  const out: string[] = [];
+  for (const piece of section.split(/\s*(?:,|;|&|\band\b)\s*/u).map((p) => p.trim()).filter(Boolean)) {
+    if (/^et\.?\s+al\.?$/i.test(piece)) continue;
+    const m = piece.match(GIVEN_FIRST_ENTRY);
+    if (!m || CORPORATE_WORD.test(piece)) break;
     out.push(m[1]);
   }
   return out;
@@ -291,11 +328,22 @@ function vancouverSurnames(section: string): string[] {
  */
 const SURNAME = `(?:${PARTICLE_ANY_CASE}\\s+)*\\p{Lu}[\\p{L}'’-]+(?:\\s+\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*){0,2}`;
 const APA_AUTHOR = new RegExp(`(?<![\\p{L}'’-])(${SURNAME})(?:\\s*,\\s*\\p{Lu}\\.?)+`, 'gu');
-const LEADING_SURNAME = new RegExp(`^(${SURNAME})`, 'u');
+/**
+ * A surname alone at the start ("Smith (2019)", "Smith. 2019", "Smith & Jones"): followed by a
+ * comma, period, "&", "and", "et al.", a bracket or the end of the author section. A
+ * reference that starts with its title ("Retracted: Faux Reality Detector. (2024)",
+ * "Mechanisms responsible for ...") has no surname to read (round 11: its first word was read
+ * as a surname and rejected the right DOI).
+ */
+const LEADING_SURNAME = new RegExp(`^(${SURNAME})(?=\\s*(?:[,.;&(]|\\band\\b|\\bet al\\b|$))`, 'u');
 
 /**
  * Extract author last names from reference text (simplified extraction), as written
  * (not folded: validateDOIMatch needs the script and the digraph spelling).
+ *
+ * A Vancouver list ("Hoddy KK, Gibbons C.") is read alone. Otherwise the surnames of every
+ * other reading are kept: the APA "Surname, I." pattern and the given-first reader
+ * ("Michael J. LaCour, Donald P. Green"); a surname from either counts (round 11).
  */
 function extractAuthorsFromReference(referenceText: string): string[] {
   // Common patterns for authors at start of reference
@@ -306,13 +354,21 @@ function extractAuthorsFromReference(referenceText: string): string[] {
   if (vancouver.length > 0) return vancouver;
 
   const lastNames = [...authorSection.matchAll(APA_AUTHOR)].map((m) => m[1]);
+  for (const s of givenFirstSurnames(authorSection)) if (!lastNames.includes(s)) lastNames.push(s);
   // Also try simpler pattern for single author or non-standard format
   if (lastNames.length === 0) {
     const simpleMatch = authorSection.match(LEADING_SURNAME);
-    if (simpleMatch) lastNames.push(simpleMatch[1]);
+    if (simpleMatch && !CORPORATE_WORD.test(simpleMatch[1])) lastNames.push(simpleMatch[1]);
   }
   return lastNames;
 }
+
+/**
+ * A group author ("World Health Organization", "Open Science Collaboration", "Research
+ * Group") is not a surname: compared with the persons of a Crossref record it says nothing,
+ * so the author check is `not_comparable` (round 11).
+ */
+const CORPORATE_WORD = /\b(?:Organi[sz]ation|Association|Society|Committee|Consortium|Institute|Council|Collaboration|Group|Team|Network|Agency|Department|Ministry|Office|Foundation|Cent(?:er|re)|University|Commission|Board|Panel|Initiative|Project|Bureau|Federation|Union|Alliance|Authority)\b/u;
 
 /** The German digraph spelling ("Müller" -> "Mueller"), so either spelling matches the other. */
 const DIGRAPH: Record<string, string> = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue' };
@@ -381,6 +437,9 @@ const TITLE_STOPWORDS = new Set([
  * Crossref records rendered as references in ten shapes) share 1.0; the confusers with a
  * different title share 0.00-0.25, except one at 0.67 whose title words also occur in the
  * journal name ("Data Science"). 0.6 leaves room for a reference that drops a subtitle.
+ * Since round 11 the share is computed on word stems (-ise/-ize, -our/-or, plurals, -ing),
+ * on the main title and on the full title (either may pass), and on the words before an
+ * ellipsis when the reference cuts the title short. The 0.6 value itself is unchanged.
  */
 const TITLE_MATCH_SHARE = 0.6;
 
@@ -397,29 +456,106 @@ function majorityScript(text: string): string {
   return best;
 }
 
-/** The distinctive words of a Crossref title (title plus subtitle): folded, 4+ letters, no stopwords. */
-function titleWords(title: string): string[] {
-  const words = foldForMatch(title.replace(/<[^>]+>/g, ' ')).split(' ');
+/** Every word of a title, folded, in order (markup removed). */
+function titleSequence(title: string): string[] {
+  return foldForMatch(title.replace(/<[^>]+>/g, ' ')).split(' ').filter(Boolean);
+}
+
+/** The distinctive words of a title: folded, 4+ letters, no stopwords. */
+function distinctive(words: readonly string[]): string[] {
   return [...new Set(words.filter((w) => [...w].length >= 4 && !TITLE_STOPWORDS.has(w)))];
+}
+
+/**
+ * One stem per spelling of a title word (round 11): UK and US spellings (behaviour /
+ * behavior, organisation / organization, modelling / modeling, judgement / judgment) and
+ * the plural or -ing form (network / networks, studies / study) compare equal. Applied to
+ * both sides alike; a stem is never compared by prefix, so "inform" and "informal" differ.
+ */
+function titleStem(word: string): string {
+  let s = word
+    .replace(/isation/g, 'ization')
+    .replace(/is(e|es|ed|ing)$/, 'iz$1')
+    .replace(/ys(e|es|ed|ing)$/, 'yz$1')
+    .replace(/our/g, 'or')
+    .replace(/ement(s?)$/, 'ment$1')
+    .replace(/ll(ing|ed)$/, 'l$1');
+  if (/ies$/.test(s)) s = `${s.slice(0, -3)}y`;
+  else if (/[^s]s$/.test(s)) s = s.slice(0, -1);
+  if (s.length > 6 && /ing$/.test(s)) s = s.slice(0, -3);
+  return s;
+}
+
+/** The title words written before an ellipsis in the reference ("Mechanisms of the initiation of a fast..."). */
+function wordsBeforeEllipsis(referenceText: string, sequence: readonly string[]): string[] | null {
+  const at = referenceText.search(/\.\.\.|…/);
+  if (at < 0) return null;
+  const before = foldForMatch(referenceText.slice(0, at)).split(' ');
+  const last = before[before.length - 1];
+  if (!last) return null;
+  for (let k = sequence.length - 1; k > 0; k--) {
+    const w = sequence[k];
+    if (w === last || (last.length >= 3 && w.startsWith(last))) {
+      // The words before it must be the title's words before it, as written.
+      const head = sequence.slice(0, k);
+      const tail = before.slice(-1 - head.length, -1);
+      if (head.length > 0 && head.join(' ') === tail.join(' ')) return sequence.slice(0, k + (w === last ? 1 : 0));
+    }
+  }
+  return null;
 }
 
 function crossrefTitle(item: any): string {
   return [item?.title?.[0], item?.subtitle?.[0]].filter((t): t is string => typeof t === 'string').join(' ');
 }
 
+interface TitleEvidence {
+  check: DoiMatchCheck;
+  /** Distinctive words of the title compared (main title when it decided). */
+  words: number;
+  /** Share of them found in the reference. */
+  share: number;
+}
+
+/** Share of `words` whose stem occurs among the reference's word stems. */
+function shareIn(words: readonly string[], refStems: ReadonlySet<string>): number {
+  return words.length === 0 ? 0 : words.filter((w) => refStems.has(titleStem(w))).length / words.length;
+}
+
 /**
  * Title evidence: do the Crossref title's distinctive words occur in the reference text?
  * Fewer than two such words, or a title in another script than the reference (a Russian
  * reference to a record with an English title), is `not_comparable`.
+ *
+ * Round 11: the subtitle is never required. The main title (`title[0]`) and the full title
+ * (with `subtitle[0]`) are each compared; either passing is a match, and a one-word main
+ * title found in the reference is `not_comparable`, never `mismatched`. Words compare by
+ * stem (see titleStem). A reference that cuts the title with "..." is compared on the title
+ * words written before the cut.
  */
-function checkTitle(referenceText: string, item: any): DoiMatchCheck {
-  const title = crossrefTitle(item);
-  const words = titleWords(title);
-  if (words.length < 2) return 'not_comparable';
-  if (majorityScript(title) !== majorityScript(referenceText)) return 'not_comparable';
-  const refWords = new Set(foldForMatch(referenceText).split(' '));
-  const share = words.filter((w) => refWords.has(w)).length / words.length;
-  return share >= TITLE_MATCH_SHARE ? 'matched' : 'mismatched';
+function checkTitle(referenceText: string, item: any): TitleEvidence {
+  const full = crossrefTitle(item);
+  const main = typeof item?.title?.[0] === 'string' ? item.title[0] : '';
+  const fullSeq = titleSequence(full);
+  if (distinctive(fullSeq).length < 2 && distinctive(titleSequence(main)).length < 2) return { check: 'not_comparable', words: 0, share: 0 };
+  if (majorityScript(full) !== majorityScript(referenceText)) return { check: 'not_comparable', words: 0, share: 0 };
+  const refStems = new Set(foldForMatch(referenceText).split(' ').filter(Boolean).map(titleStem));
+
+  const candidates: string[][] = [];
+  for (const seq of [titleSequence(main), fullSeq]) {
+    const cut = wordsBeforeEllipsis(referenceText, seq);
+    candidates.push(distinctive(cut ?? seq));
+  }
+  let best: TitleEvidence | null = null;
+  for (const words of candidates) {
+    if (words.length < 2) continue;
+    const share = shareIn(words, refStems);
+    if (share >= TITLE_MATCH_SHARE) return { check: 'matched', words: words.length, share };
+    if (!best || share > best.share) best = { check: 'mismatched', words: words.length, share };
+  }
+  const mainWords = candidates[0];
+  if (mainWords.length === 1 && shareIn(mainWords, refStems) === 1) return { check: 'not_comparable', words: 1, share: 1 };
+  return best ?? { check: 'not_comparable', words: 0, share: 0 };
 }
 
 function crossrefYearOf(item: any): number | null {
@@ -449,19 +585,36 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
     .filter((f: unknown): f is string => typeof f === 'string' && f.trim().length > 0);
   let authorCheck: DoiMatchCheck = 'not_comparable';
   if (refAuthors.length > 0 && crossrefAuthors.length > 0) {
-    let incomparable = false;
+    // Crossref authors none of the reference's surnames can be compared with (Han against
+    // Latin ...), and ones that were compared and differ.
+    let incomparable = 0;
+    let compared = 0;
     authorCheck = 'mismatched';
-    for (const r of refAuthors) {
-      for (const c of crossrefAuthors) {
+    for (const c of crossrefAuthors) {
+      let comparable = false;
+      for (const r of refAuthors) {
         const m = surnamesMatch(r, c);
         if (m === true) authorCheck = 'matched';
-        else if (m === null) incomparable = true;
+        if (m !== null) comparable = true;
       }
+      if (comparable) compared += 1;
+      else incomparable += 1;
     }
-    if (authorCheck !== 'matched' && incomparable) authorCheck = 'not_comparable';
+    // No surname matched: a mismatch when most of the Crossref authors could be compared
+    // (round 11: a record listing "Jones" and "李" against a reference by "Smith" was
+    // not_comparable and accepted on the title alone); not_comparable when most could not.
+    if (authorCheck !== 'matched' && incomparable > compared) authorCheck = 'not_comparable';
   }
 
-  const titleCheck = checkTitle(referenceText, crossrefResult);
+  const title = checkTitle(referenceText, crossrefResult);
+  let titleCheck = title.check;
+  // A short title (two or three distinctive words) that shares some but too few words, for
+  // a candidate whose author AND year matched: the title cannot decide (one changed word is
+  // a third or half of it), so it is `not_comparable`, not a rejection (round 11). A short
+  // title sharing no word still rejects.
+  if (titleCheck === 'mismatched' && title.words <= 3 && title.share > 0 && authorCheck === 'matched' && yearCheck === 'matched') {
+    titleCheck = 'not_comparable';
+  }
   const checks = { authorCheck, yearCheck, titleCheck };
 
   if (yearCheck === 'mismatched') {

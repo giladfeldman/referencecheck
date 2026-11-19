@@ -25,8 +25,10 @@ describe('compareAuthors (D9 symmetry)', () => {
     expect(compareAuthors(a, b)).toBeCloseTo(compareAuthors(b, a), 10);
   });
 
+  // Round 11 (owner decision F6): a first-author prefix scores 1; a subset that is not a
+  // prefix (the second author alone) is still penalized.
   it('penalizes an unmatched extra author (a subset is not a perfect match)', () => {
-    expect(compareAuthors('Smith, J', 'Smith, J; Jones, A')).toBeLessThan(1.0);
+    expect(compareAuthors('Jones, A', 'Smith, J; Jones, A')).toBeLessThan(1.0);
   });
 
   it('returns 0.5 when both lists are missing and 0 when only one is', () => {

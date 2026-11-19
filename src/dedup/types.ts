@@ -6,6 +6,12 @@ export interface DuplicatePair {
   similarity: number;
 }
 
+/** Filled by `findDuplicateGroups` when passed: what it left out, so a drop is counted. */
+export interface DuplicateGroupingDiagnostics {
+  /** Pairs given whose two references carry different DOIs, which are never an edge. */
+  droppedDifferentDoi: number;
+}
+
 export interface DuplicateGroup {
   references: ReferenceInput[];
   bestReference: ReferenceInput;

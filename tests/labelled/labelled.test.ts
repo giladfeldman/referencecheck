@@ -30,8 +30,11 @@ const results = await scoreRows(lib, (items) => {
   axiosGetMock.mockResolvedValue({ status: 200, data: { message: { items } } });
 });
 
-/** Rows still decided wrongly, by class and (optionally) the row's note, with the reason. */
-const KNOWN: Array<{ cls: string; note?: string; why: string }> = [
+/**
+ * Rows still decided wrongly, by class and (optionally) the row's note and a text the row
+ * contains (`has`, when rows of one class and note differ in outcome), with the reason.
+ */
+const KNOWN: Array<{ cls: string; note?: string; has?: string; why: string }> = [
   { cls: 'dedup/neg:part-i-vs-part-ii', why: 'titles one character apart; nothing in the metadata separates Part I from Part II' },
   { cls: 'doi/wrong:part-ii', why: 'every title word of Part II occurs in a reference to Part I' },
   { cls: 'dedup/neg:correction-notice', why: 'a correction notice repeats the work\'s title and authors, one year later' },
@@ -42,14 +45,21 @@ const KNOWN: Array<{ cls: string; note?: string; why: string }> = [
   { cls: 'doi/wrong:same-surname-other-initial', note: 'has-reply.json', why: 'two of the three title words ("data", "science") occur in the journal name' },
   { cls: 'doi/right:vancouver', note: 'retracted-title-case.json', why: 'one-letter surnames written Vancouver ("R SK"): "SK" is read as the surname' },
   { cls: 'dedup/same:consumer~vancouver', note: 'retracted-title-case.json', why: 'one-letter surnames: "R SK" with no case is read as initial R, surname SK' },
+  { cls: 'dedup/same:et-al-string', note: 'retracted-title-case.json', has: 'R SK, A S, et al.', why: 'one-letter surnames: "R SK, A S, et al." is read as initials and surnames SK, S' },
+  { cls: 'dedup/same:surname-full-given', note: 'retracted-title-case.json', why: 'one-letter surnames: "R Shakthi Kiran" has no surname of two letters to compare' },
+  { cls: 'doi/wrong:same-title-other-authors', note: 'retracted-title-case.json', why: 'one-letter surnames ("R, S. K.") are not read, so only the title is compared (not_comparable)' },
+  { cls: 'doi/wrong:same-title-other-authors~given-first', note: 'retracted-title-case.json', why: 'one-letter surnames are not read, so only the title is compared (not_comparable)' },
+  { cls: 'doi/wrong:same-title-other-authors~given-first-full', note: 'retracted-title-case.json', why: 'one-letter surnames are not read, so only the title is compared (not_comparable)' },
+  { cls: 'doi/wrong:same-title-other-authors~mixed-script-record', note: 'retracted-title-case.json', why: 'one-letter surnames are not read, so only the title is compared (not_comparable)' },
+  { cls: 'doi/wrong:same-title-other-authors~vancouver', note: 'retracted-plain-title-2.json', why: 'surnames in capitals written Vancouver ("IWAMOTO J") are not read, so only the title is compared' },
 ];
 const isKnown = (r: { row: any }) =>
-  KNOWN.some((k) => k.cls === `${r.row.kind}/${r.row.cls}` && (k.note === undefined || k.note === r.row.note));
+  KNOWN.some((k) => k.cls === `${r.row.kind}/${r.row.cls}` && (k.note === undefined || k.note === r.row.note) && (k.has === undefined || JSON.stringify(r.row).includes(k.has)));
 
 describe('labelled release set', () => {
-  it('is the frozen set: 314 deduplication pairs, 231 DOI candidates', () => {
-    expect(ROWS.dedup.length).toBe(314);
-    expect(ROWS.doi.length).toBe(231);
+  it('is the frozen set: 565 deduplication pairs, 698 DOI candidates', () => {
+    expect(ROWS.dedup.length).toBe(565);
+    expect(ROWS.doi.length).toBe(698);
   });
 
   it('every row gets its label, except the listed known errors', () => {
@@ -87,5 +97,12 @@ describe('labelled release set', () => {
     expect(oneWord?.result.titleCheck).toBe('not_comparable');
     const folded = results.filter((r) => r.row.cls === 'right:folded');
     expect(folded.every((r) => r.result.authorCheck === 'not_comparable')).toBe(true);
+    // A reference that starts with its title, or names a group author, has no surname to
+    // compare: accepted on title and year, and said so (round 11).
+    for (const cls of ['right:no-authors', 'right:corporate-author', 'right:corporate-reference-person-record']) {
+      const rows = results.filter((r) => r.row.cls === cls);
+      expect(rows.length).toBeGreaterThan(10);
+      expect(rows.map((r) => r.result?.authorCheck)).toEqual(rows.map(() => 'not_comparable'));
+    }
   });
 });

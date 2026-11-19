@@ -1,5 +1,5 @@
 import type { ReferenceInput } from '../types.js';
-import type { DuplicatePair, DuplicateGroup } from './types.js';
+import type { DuplicatePair, DuplicateGroup, DuplicateGroupingDiagnostics } from './types.js';
 import { doiRelation, scoreMetadataCompleteness } from './similarity.js';
 
 /**
@@ -10,9 +10,14 @@ import { doiRelation, scoreMetadataCompleteness } from './similarity.js';
  * similarity (the same rule as calculateSimilarity, applied here too for pairs scored
  * elsewhere). Transitive closure can still join two such references through a third that
  * has no DOI; the group then lists both.
+ *
+ * Pass `diagnostics` to learn how many pairs were dropped for that reason
+ * (`droppedDifferentDoi`), so the drop is not silent.
  */
-export function findDuplicateGroups(pairs: DuplicatePair[]): DuplicateGroup[] {
+export function findDuplicateGroups(pairs: DuplicatePair[], diagnostics?: DuplicateGroupingDiagnostics): DuplicateGroup[] {
+  const before = pairs.length;
   pairs = pairs.filter((p) => doiRelation(p.ref1, p.ref2) !== 'different');
+  if (diagnostics) diagnostics.droppedDifferentDoi = before - pairs.length;
   if (pairs.length === 0) return [];
 
   // Build adjacency map

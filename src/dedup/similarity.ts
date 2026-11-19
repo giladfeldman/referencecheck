@@ -4,7 +4,7 @@ import type { DeduplicationConfig } from './types.js';
 import { cleanDoiInput, foldForMatch, parseName, splitAuthorList } from '../util/normalize.js';
 import type { ParsedName } from '../util/normalize.js';
 import {
-  crossScript, looseInitial, looseSurnameMatch, sameSurname, scriptsComparable, surnameKey,
+  crossScript, isParticle, looseInitial, looseSurnameMatch, sameSurname, scriptsComparable, surnameKey,
 } from '../util/surnames.js';
 
 /**
@@ -36,6 +36,24 @@ function itemsOf(name: ParsedName): string[] {
  */
 function readings(name: ParsedName): Reading[] {
   if (name.order === 'known') return [{ surname: name.surname, items: itemsOf(name) }];
+  return unknownReadings(name);
+}
+
+/**
+ * The second reading of a name written surname first with no comma, two words and then
+ * initials ("Garcia Marquez G", "Bazhin Alexandr V", "smith john a"): the two words may be a
+ * surname of two words, or a surname and a given name. parseName keeps the two-word
+ * surname (the Vancouver form); this is the other reading, scored as a name of unknown
+ * order (round 11).
+ */
+function secondReading(name: ParsedName): Reading | null {
+  if (name.order !== 'known' || name.given !== undefined || !name.initials || name.raw.includes(',')) return null;
+  const w = name.surname.split(' ').filter(Boolean);
+  if (w.length !== 2 || isParticle(w[0])) return null;
+  return { surname: w[0], items: [w[1], ...name.initials] };
+}
+
+function unknownReadings(name: ParsedName): Reading[] {
   const w = name.surname.split(' ').filter(Boolean);
   const out: Reading[] = [{ surname: w.join(' '), items: [] }];
   for (let k = 1; k < w.length; k++) {
@@ -80,9 +98,23 @@ function readingScore(a: Reading, b: Reading): number {
   if (!cross && given !== 'conflict') {
     const ka = surnameKey(a.surname);
     const kb = surnameKey(b.surname);
-    if (ka.length >= 5 && kb.length >= 5 && ratio(ka, kb) >= 0.85) return 0.75;
+    if (ka.length >= 5 && kb.length >= 5 && ratio(ka, kb) >= 0.85 && !oneTrailingLetter(ka, kb)) return 0.75;
   }
   return 0;
+}
+
+/**
+ * The longer key is the shorter plus one letter at the end ("obrien" / "obrienz", "wangli" /
+ * "wanglin"): a stray initial or a given name one letter longer, not a misspelt surname.
+ */
+function oneTrailingLetter(a: string, b: string): boolean {
+  const [s, l] = a.length <= b.length ? [a, b] : [b, a];
+  return l.length === s.length + 1 && l.startsWith(s);
+}
+
+function isSurnameEqual(a: Reading, b: Reading): boolean {
+  if (!a.surname || !b.surname || !scriptsComparable(a.surname, b.surname)) return false;
+  return crossScript(a.surname, b.surname) ? looseSurnameMatch(a.surname, b.surname) : sameSurname(a.surname, b.surname);
 }
 
 function authorEntry(name: string): AuthorEntry {
@@ -114,9 +146,32 @@ function ratio(a: string, b: string): number {
  */
 function authorSimilarity(a: AuthorEntry, b: AuthorEntry): number {
   if (a.folded === b.folded) return 1.0;
-  let best = 0;
-  for (const ra of readings(a.name)) for (const rb of readings(b.name)) best = Math.max(best, readingScore(ra, rb));
-  return a.name.order === 'unknown' || b.name.order === 'unknown' ? Math.min(best, 0.75) : best;
+  const score = (ra: Reading[], rb: Reading[]): number => {
+    // When some reading of each name has the same surname, the given names decide: a near
+    // surname from another reading never outscores them ("Maria Garcia" / "Mario Garcia" is
+    // Garcia with conflicting given names, 0.5; not the near whole names "mariagarcia" /
+    // "mariogarcia", round 11).
+    let bestEqual = -1;
+    let best = 0;
+    for (const x of ra) {
+      for (const y of rb) {
+        const s = readingScore(x, y);
+        if (isSurnameEqual(x, y)) bestEqual = Math.max(bestEqual, s);
+        best = Math.max(best, s);
+      }
+    }
+    return bestEqual >= 0 ? bestEqual : best;
+  };
+  const first = score(readings(a.name), readings(b.name));
+  const sure = a.name.order === 'unknown' || b.name.order === 'unknown' ? Math.min(first, 0.75) : first;
+  if (sure >= 0.75) return sure;
+  // The other reading of a "Garcia Marquez G" name, at most 0.75 (its order is not shown).
+  const altA = secondReading(a.name);
+  const altB = secondReading(b.name);
+  if (!altA && !altB) return sure;
+  const ra = altA ? [...readings(a.name), altA] : readings(a.name);
+  const rb = altB ? [...readings(b.name), altB] : readings(b.name);
+  return Math.max(sure, Math.min(score(ra, rb), 0.75));
 }
 
 /**
@@ -145,6 +200,11 @@ function authorListDirectionalSimilarity(from: AuthorEntry[], to: AuthorEntry[])
  * dedup similarity non-deterministic with respect to pair ordering. We now
  * average both directions, which penalizes an unmatched extra author regardless
  * of which argument it sits in.
+ *
+ * Prefix rule (0.3.0): a list that is a prefix of the other (a reference that names
+ * only the first author or two, with or without "et al.") scores the mean of the
+ * positional pairs when every positional pair scores at least 0.75; the result is the
+ * larger of that and the symmetric average. Still symmetric.
  */
 export function compareAuthors(
   authors1: string | readonly string[],
@@ -163,10 +223,30 @@ export function compareAuthors(
   }
 
   // Average both directions so the score is order-independent (commutative).
-  return (
+  const both = (
     authorListDirectionalSimilarity(authors1List, authors2List) +
     authorListDirectionalSimilarity(authors2List, authors1List)
   ) / 2;
+  return Math.max(both, prefixListSimilarity(authors1List, authors2List));
+}
+
+/**
+ * A shorter list that is the start of the longer one ("Smith, J." or "Smith, J., et al."
+ * against the full list): the reference listed only its first author(s). Scored as the
+ * shorter list against the same positions of the longer one, each name at least 0.75 (the
+ * first author must match); 0 otherwise. Owner default, round 11: the first author alone
+ * merges with the full list. Symmetric in its arguments.
+ */
+function prefixListSimilarity(a: AuthorEntry[], b: AuthorEntry[]): number {
+  if (a.length === b.length) return 0;
+  const [short, long] = a.length < b.length ? [a, b] : [b, a];
+  let total = 0;
+  for (let i = 0; i < short.length; i++) {
+    const s = authorSimilarity(short[i], long[i]);
+    if (s < 0.75) return 0;
+    total += s;
+  }
+  return total / short.length;
 }
 
 /**
@@ -281,21 +361,79 @@ export function scoreMetadataCompleteness(ref: ReferenceInput): number {
   return totalFields > 0 ? score / totalFields : 0;
 }
 
-/** A reference's DOI for comparison: cleaned, lower-cased; '' when it is not a DOI. */
+/**
+ * A reference's DOI for comparison: cleaned, lower-cased; '' when it is not a DOI. Round 11
+ * (owner default): what a link adds after the DOI is dropped ("/full", "/pdf", "/epdf",
+ * "/abstract", a query string or a fragment), and so is a preprint version ("v2" after a
+ * bioRxiv / medRxiv / openRxiv number, ".v1" figshare / Zenodo style): versions of one
+ * preprint are one work. A preprint and its published version carry different DOIs and
+ * stay different.
+ */
 function comparableDoi(ref: ReferenceInput): string {
-  const d = cleanDoiInput(ref.doi).toLowerCase();
+  let d = cleanDoiInput(ref.doi).toLowerCase();
+  if (!/^10\.\d{4,9}\/\S+$/.test(d)) return '';
+  d = d.replace(/[?#].*$/, '');
+  d = d.replace(/\/(?:full|pdf|epdf|abstract)\/?$/, '');
+  if (/^10\.(?:1101|64898)\//.test(d)) d = d.replace(/(\d)v\d+$/, '$1');
+  d = d.replace(/\.v\d+$/, '');
   return /^10\.\d{4,9}\/\S+$/.test(d) ? d : '';
 }
 
-/**
- * Internal (not exported from the package root): `same` when both references carry the
- * same DOI, `different` when both carry a DOI and they differ, `null` otherwise.
- */
-export function doiRelation(ref1: ReferenceInput, ref2: ReferenceInput): 'same' | 'different' | null {
+/** `same` / `different` by DOI alone, `null` unless both references carry one. */
+function doiIdentity(ref1: ReferenceInput, ref2: ReferenceInput): 'same' | 'different' | null {
   const d1 = comparableDoi(ref1);
   const d2 = comparableDoi(ref2);
   if (!d1 || !d2) return null;
   return d1 === d2 ? 'same' : 'different';
+}
+
+/**
+ * How two references' DOIs relate (see {@link calculateSimilarity}):
+ *  - `same`: both carry the same DOI (after `cleanDoiInput`, case, a link tail and a preprint
+ *    version are ignored), and their metadata does not contradict it;
+ *  - `same-contradicted`: the same DOI, but the author score AND the title-word share are below
+ *    {@link SAME_DOI_CONTRADICTION} (another work's metadata under one DOI: a DOI copied onto
+ *    the wrong reference). Not forced to 1; the weighted score decides;
+ *  - `different`: both carry a DOI and they differ;
+ *  - `null`: at least one carries no well-formed DOI.
+ */
+export type DoiRelation = 'same' | 'same-contradicted' | 'different' | null;
+
+/**
+ * Under this author score AND this title-word share, one DOI on two references is
+ * contradicted (owner default, round 11). The author score is `compareAuthors`. The title
+ * share is the share of the shorter title's words (3+ letters) found in the other title,
+ * not the edit-distance `compareTitle`: two unrelated titles of similar length score 0.3-0.4
+ * by edit distance (shared letters), but share no words, while a title shortened to its
+ * first words keeps a share of 1. Both sides must have authors and titles in one script;
+ * otherwise there is no contradiction to see.
+ */
+export const SAME_DOI_CONTRADICTION = 0.3;
+
+function titleWordShare(t1: string, t2: string): number {
+  const words = (t: string) => new Set(foldForMatch(t).split(' ').filter((w) => [...w].length >= 3));
+  const a = words(t1);
+  const b = words(t2);
+  const [s, l] = a.size <= b.size ? [a, b] : [b, a];
+  if (s.size === 0) return 1;
+  let n = 0;
+  for (const w of s) if (l.has(w)) n++;
+  return n / s.size;
+}
+
+function sameDoiContradicted(ref1: ReferenceInput, ref2: ReferenceInput, authorSim: number): boolean {
+  const t1 = ref1.normalized_title || '';
+  const t2 = ref2.normalized_title || '';
+  if (!(ref1.normalized_authors?.length) || !(ref2.normalized_authors?.length) || !t1 || !t2) return false;
+  if (!scriptsComparable(foldForMatch(t1), foldForMatch(t2)) || crossScript(foldForMatch(t1), foldForMatch(t2))) return false;
+  return authorSim < SAME_DOI_CONTRADICTION && titleWordShare(t1, t2) < SAME_DOI_CONTRADICTION;
+}
+
+export function doiRelation(ref1: ReferenceInput, ref2: ReferenceInput): DoiRelation {
+  const identity = doiIdentity(ref1, ref2);
+  if (identity !== 'same') return identity;
+  const authorSim = compareAuthors(ref1.normalized_authors ?? [], ref2.normalized_authors ?? []);
+  return sameDoiContradicted(ref1, ref2, authorSim) ? 'same-contradicted' : 'same';
 }
 
 /** Fallback merge threshold for the different-DOI cap when the config carries none. */
@@ -305,11 +443,15 @@ const DEFAULT_THRESHOLD = 0.85;
  * Calculate similarity between two references.
  *
  * Identifiers first: when both references carry a DOI (`doi`, read with `cleanDoiInput`,
- * case-insensitive), the same DOI is the same work (similarity 1.0) and two different DOIs
- * are two works, so the weighted score is capped strictly below `config.threshold` (below
- * 0.85 when the config has no numeric threshold): a preprint and its published version,
- * which carry different DOIs, are not merged however alike their metadata. Otherwise the
- * weighted author/title/year score.
+ * case-insensitive, a link tail such as "/full" and a preprint version such as "v2"
+ * ignored), the same DOI is the same work (similarity 1.0) and two different DOIs are two
+ * works, so the weighted score is capped strictly below `config.threshold` (below 0.85 when
+ * the config has no numeric threshold): a preprint and its published version, which carry
+ * different DOIs, are not scored as one however alike their metadata. One exception: the
+ * same DOI on two references whose authors AND titles both score below
+ * {@link SAME_DOI_CONTRADICTION} is not forced to 1 (`doiRelation` says
+ * `same-contradicted`); the weighted score decides. Otherwise the weighted
+ * author/title/year score.
  */
 export function calculateSimilarity(
   ref1: ReferenceInput,
@@ -325,12 +467,12 @@ export function calculateSimilarity(
   const year1 = ref1.normalized_year;
   const year2 = ref2.normalized_year;
 
-  const dois = doiRelation(ref1, ref2);
-  if (dois === 'same') return 1.0;
+  const dois = doiIdentity(ref1, ref2);
 
   // Calculate component similarities
   const authorSim = compareAuthors(authors1, authors2);
   const titleSim = compareTitle(title1, title2);
+  if (dois === 'same' && !sameDoiContradicted(ref1, ref2, authorSim)) return 1.0;
   const yearSim = compareYear(year1, year2);
 
   // Calculate year weighting (derived from other weights)

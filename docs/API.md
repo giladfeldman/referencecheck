@@ -126,11 +126,25 @@ rejected if any check is `mismatched`, in this order:
   neither `Liu` nor `Williams`, and `Smith` not `Goldsmith`; `ü` also matches `ue`. A Cyrillic
   or Greek surname is compared with a Latin one by first letter and consonant skeleton of a
   loose romanisation (`Достоевский` = `Dostoevsky` = `Dostoyevsky`, `Иванов` = `Ivanoff` =
-  `Ivanova`; `Иванов` ≠ `Ivashov`, `Ли` ≠ `Lu`). A pair in scripts that cannot be compared (Han
-  vs Latin) makes the check `not_comparable` unless another pair matches;
-- **title**: of the Crossref title's (plus subtitle's) words of four or more letters, stopwords
-  removed, at least 60% must occur in the reference text. Fewer than two such words, or a title
-  in another script than the reference, is `not_comparable`.
+  `Ivanova`; `Иванов` ≠ `Ivashov`, `Ли` ≠ `Lu`). When no surname matches, the check is
+  `not_comparable` if more of the Crossref authors cannot be compared with any reference surname
+  (Han vs Latin) than can, and `mismatched` otherwise (a record listing `Jones` and `李` against
+  a reference by `Smith` is `mismatched`). Given-first lists (`Michael J. LaCour, Donald P.
+  Green`, with or without `and`) are read by their last word. A Vancouver list is used alone
+  when one is read; one entry of a surname and one initial is not Vancouver when the text after
+  it continues a name (`Michael J. LaCour`). No surname is read from a reference that starts
+  with its title or names a group author (a word such as `Organization`,
+  `Institute`, `Group`, `Collaboration`): the check is then `not_comparable`;
+- **title**: of the Crossref title's words of four or more letters, stopwords removed, at least
+  60% must occur in the reference text, compared by stem (`organisation` = `organization`,
+  `behaviour` = `behavior`, `modelling` = `modeling`, plurals). The main title and the full title
+  (with subtitle) are each tried and either may pass, so the subtitle is never required. A
+  reference that cuts the title with `...` or `…` is compared on the title words before the
+  cut. Fewer than two such words, or a title in another script than the reference, is
+  `not_comparable`; so is a one-word main title that occurs in the reference, and a title of
+  three such words or fewer that shares at least one word but not 60% when author and year are
+  both `matched` (`Neural nets` for `Neural networks`); with no shared word, or without both
+  other checks matched, it is `mismatched`.
 
 A `not_comparable` check does not reject; the returned result carries all three checks.
 Theses, dissertations, unpublished manuscripts, personal communications, and works "in
@@ -532,13 +546,15 @@ All local; no network.
 
 | Export | Returns |
 |---|---|
-| `calculateSimilarity(ref1, ref2, config)` | 1 when both references carry the same well-formed DOI (any written form); otherwise `authorWeighting × authors + titleWeighting × title + (1 − both) × year`, from `normalized_authors`, `normalized_title`, `normalized_year`, capped just under `config.threshold` (0.85 when not set) when both carry different well-formed DOIs, so a preprint and its published version, or Part I and Part II with their own DOIs, are not merged |
-| `compareAuthors(authors1, authors2)` | 0–1, symmetric; each argument a string or a string array, split with `splitAuthorList`, each name read by `parseName`; the best-scoring match per author, averaged both ways; 0.5 when both are empty, 0 when one is. Two names score by level: **1** identical after folding, or the same surname with compatible given names (initials agreeing with each other or with full names: `Smith, J. A.` = `J. A. Smith` = `Smith JA` = `Smith, John A.`) or none on either side; **0.75** the same surname with a given name on one side only (`Smith` vs `Smith, K.`), a name in no shown order of which one reading is compatible (`Wang Wei` vs `Wei, W.`; `John Smith` vs `Smith, J.`), or a near surname (both at least five letters, similarity at least 0.85, given names not conflicting: `Papadopoulos`/`Papadopoulou`); **0.5** the same surname with conflicting given names (`Smith, J.` vs `Smith, K.`; `John Smith` vs `Jane Smith`), never merged at the README weights; **0** otherwise (`Li` vs `Lu`). Surnames compare with spaces removed and also without leading particles (`van der Berg` = `Berg`); a Cyrillic or Greek surname and a Latin one compare by loose romanisation, a feminine ending not counted (`Иванов` = `Ivanova`) |
+| `calculateSimilarity(ref1, ref2, config)` | 1 when both references carry the same well-formed DOI (`doiRelation` is `'same'`); otherwise `authorWeighting × authors + titleWeighting × title + (1 − both) × year`, from `normalized_authors`, `normalized_title`, `normalized_year`, capped just under `config.threshold` (0.85 when not set) when both carry different well-formed DOIs (`'different'`), so the pair alone does not merge a preprint and its published version, or Part I and Part II with their own DOIs. A caller that compares with a lower threshold than the config's, or transitive closure in `findDuplicateGroups` through a third reference, can still join them. DOIs compare after `cleanDoiInput`, lower-cased, without a query or fragment, a link tail (`/full`, `/pdf`, `/epdf`, `/abstract`), a bioRxiv/medRxiv/openRxiv version (`10.1101/…v2`, `10.64898/…v2`) or a `.v1`-style version (figshare, Zenodo). **Owner decision (round 11): versions of one preprint are one work**; a preprint and its published version (different DOIs) stay two. **Owner decision (round 11): the same DOI on contradicting metadata is not forced to 1** (`'same-contradicted'`, below): the weighted score decides |
+| `compareAuthors(authors1, authors2)` | 0–1, symmetric; each argument a string or a string array, split with `splitAuthorList`, each name read by `parseName`; the best-scoring match per author, averaged both ways; 0.5 when both are empty, 0 when one is. Two names score by level: **1** identical after folding, or the same surname with compatible given names (initials agreeing with each other or with full names: `Smith, J. A.` = `J. A. Smith` = `Smith JA` = `Smith, John A.`) or none on either side; **0.75** the same surname with a given name on one side only (`Smith` vs `Smith, K.`), a name in no shown order of which one reading is compatible (`Wang Wei` vs `Wei, W.`; `John Smith` vs `Smith, J.`), or a near surname (both at least five letters, similarity at least 0.85, given names not conflicting: `Papadopoulos`/`Papadopoulou`); **0.5** the same surname with conflicting given names (`Smith, J.` vs `Smith, K.`; `John Smith` vs `Jane Smith`), never merged at the README weights; **0** otherwise (`Li` vs `Lu`). Surnames compare with spaces removed and also without leading particles (`van der Berg` = `Berg`); a Cyrillic or Greek surname and a Latin one compare by loose romanisation, a feminine ending not counted (`Иванов` = `Ivanova`). Two keys that differ only by one letter added at the end (`obrien` / `obrienz`, `wangli` / `wanglin`) are not near surnames, and a reading with equal surnames wins over a near-surname reading, so given names one letter apart (`Maria Garcia` / `Mario Garcia`, `Wang Li` / `Wang Lin`, `John Smith` / `Jon Smith`) are the same surname with conflicting given names, 0.5. Name particles include `d`, so `d angelo n` is surname `d angelo` (an apostrophe folded to a space). `Smith John A.` (capitalised given words before period-marked initials) is surname Smith, initials JA. A known two-word surname with initials and no comma (`Garcia Marquez G`) also has a reading with the first word as surname, scored at most 0.75. **Owner decision (round 11): a list that names only the first author or authors merges with the full list.** When one list is a prefix of the other (after dropping `et al.`) and every positional pair scores at least 0.75, the score is the mean of those pairs, and `compareAuthors` returns the larger of that and the symmetric average (`["Parkevich, E. V.", "et al."]` vs the three-author list: 1; `["Medvedev, M. A."]`, the third author alone: 0.67) |
 | `compareTitle(title1, title2)` | `1 − Levenshtein distance / longer length` after `foldForMatch` (non-Latin titles compared, not emptied); 0.5 when both are empty; two titles made only of symbols (`???`) score 1 when identical, else 0 |
 | `compareYear(year1, year2)` | `parseInt` of each value (the 0.2.x rule): 1 same year, 0.5 one year apart, 0 otherwise; 0.5 when both are empty, 0 when one is or when either does not start with a number (`"(2019)"`, `"in press"`) |
 | `normalizeAuthorName(name)` | `foldForMatch(name)`: `"Smith, J."` → `"smith j"`, `"Müller"` → `"muller"` |
 | `scoreMetadataCompleteness(ref)` | 0–1 weighted presence of title, authors, year, DOI, source, volume, pages |
-| `findDuplicateGroups(pairs)` | `DuplicateGroup[]` by transitive closure (A=B and B=C gives one group); a pair whose references carry two different well-formed DOIs is dropped first. Two such references can still end in one group through a third reference, without a DOI, that is close to both |
+| `findDuplicateGroups(pairs, diagnostics?)` | `DuplicateGroup[]` by transitive closure (A=B and B=C gives one group); a pair whose references carry two different well-formed DOIs (`doiRelation` `'different'`) is dropped first, and when a `DuplicateGroupingDiagnostics` object is passed its `droppedDifferentDoi` is set to the number dropped. Two such references can still end in one group through a third reference, without a DOI, that is close to both |
+| `doiRelation(ref1, ref2)` | `DoiRelation`: `'same'` both carry the same DOI (compared as in `calculateSimilarity`) and their metadata does not contradict it; `'same-contradicted'` the same DOI, both references carry authors and titles in one script, and the author score (`compareAuthors`) and the title-word share (the share of the shorter title's words of three or more letters found in the other title) are both below `SAME_DOI_CONTRADICTION`; `'different'` both carry a DOI and they differ; `null` at least one carries no well-formed DOI. The title side is the word share, not `compareTitle`: on the labelled set two unrelated titles scored 0.31 and 0.37 by edit distance. A same-DOI pair with another title but matching authors stays `'same'` |
+| `SAME_DOI_CONTRADICTION` | 0.3, the cut-off `doiRelation` uses (owner default, round 11) |
 | `selectBestReference(refs)` | the most complete reference; throws on an empty array |
 
 ```ts
@@ -551,6 +567,10 @@ interface DeduplicationConfig {
 interface DuplicatePair { ref1: ReferenceInput; ref2: ReferenceInput; similarity: number }
 
 interface DuplicateGroup { references: ReferenceInput[]; bestReference: ReferenceInput; averageSimilarity: number }
+
+interface DuplicateGroupingDiagnostics { droppedDifferentDoi: number } // filled by findDuplicateGroups
+
+type DoiRelation = 'same' | 'same-contradicted' | 'different' | null;
 
 // Report shapes for a caller that builds its own duplicate report; no function returns them.
 interface DeduplicationIssue {

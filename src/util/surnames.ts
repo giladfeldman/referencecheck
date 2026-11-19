@@ -16,7 +16,7 @@ import { foldForMatch } from './normalize.js';
 /** Name particles, written as separate lower- or title-case words before a surname. */
 export const NAME_PARTICLES = [
   'van', 'von', 'der', 'den', 'de', 'del', 'della', 'di', 'da', 'du', 'la', 'le', 'dos', 'das',
-  'ter', 'ten', 'af', 'al', 'el', 'bin', 'ibn', 'ben', 'st', 'mac', 'mc', 'o',
+  'ter', 'ten', 'af', 'al', 'el', 'bin', 'ibn', 'ben', 'st', 'mac', 'mc', 'o', 'd',
 ] as const;
 const PARTICLE_SET = new Set<string>(NAME_PARTICLES);
 

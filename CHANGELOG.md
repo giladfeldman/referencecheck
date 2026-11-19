@@ -97,36 +97,87 @@ so it can never fire and reports clean**: the expression-of-concern check, below
 - **Review 2026-11-19: names are read once, by one parser, and decided on evidence.** Eight
   review rounds each fixed a name shape and broke another, because deduplication, the author
   splitter and the DOI matcher each had their own reading of a name. They now share one parser
-  (`parseName`), and the release is gated on a labelled set of 545 decisions built from the
-  Crossref fixtures (`tests/labelled/`: 314 deduplication pairs, 231 DOI candidates, labels by
+  (`parseName`), and the release is gated on a labelled set of 1,263 decisions built from the
+  Crossref fixtures (`tests/labelled/`: 565 deduplication pairs, 698 DOI candidates, labels by
   construction), per shape class, against the same set scored on 0.2.x: no class has more
-  errors, and the total falls from 250 to 67.
+  errors, and the total falls from 529 to 75. Each row also carries a fixed half (`fit` /
+  `gate`); no threshold was fitted on the rows that gate it, and the errors fall on both
+  halves alike (fit 255 to 43, gate 274 to 32).
   - *Deduplication* scores each pair of names by level instead of a share of letters: same
-    surname with compatible given names 1; given name on one side only, or a name in no shown
-    order (`Wang Wei`) of which one reading fits, 0.75; same surname with a conflicting initial
-    or given name 0.5 (0.2.x scored `Smith, J.` / `Smith, K.` high enough to merge); different
-    surnames 0 (0.2.x gave `smith j` / `jones j` 2/7). Vancouver, given-first and folded forms
-    of one name, Cyrillic and Latin spellings of one name (`Иванов` = `Ivanova`), names with
-    particles, and two references with the same DOI and a short title, which 0.2.x missed,
-    now merge. Two references with different well-formed DOIs are never merged (a preprint
-    and its published version, Part I and Part II); the same DOI scores 1.
+    surname with compatible given names 1; given name on one side only, a name in no shown
+    order (`Wang Wei`) of which one reading fits, or a near surname (`Papadopoulos` /
+    `Papadopoulou`), 0.75; same surname with a conflicting initial or given name, or with given
+    names one letter apart (`Maria` / `Mario`), 0.5 (0.2.x scored `Smith, J.` / `Smith, K.` high
+    enough to merge); otherwise 0 (0.2.x gave `smith j` / `jones j` 2/7). Vancouver,
+    given-first and folded forms of one name, Cyrillic and Latin spellings of one name
+    (`Иванов` = `Ivanova`), names with particles, and two references with the same DOI and a
+    short title, which 0.2.x missed, now merge. Two references with different well-formed DOIs
+    score just under the caller's threshold (a preprint and its published version, Part I and
+    Part II), so the pair alone does not merge them; they can still end in one group through
+    transitive closure (a third reference without a DOI close to both), and a caller comparing
+    with a lower threshold than the one in the config merges them. The same DOI scores 1,
+    unless the metadata contradicts it (below).
   - *The DOI matcher* reports each check (author, year, title) as `matched`, `mismatched` or
     `not_comparable`, and rejects on `mismatched` only. It now also checks the title: at least
     60% of the Crossref title's distinctive words must occur in the reference (measured on the
-    labelled set: every right candidate shares 100%; wrong candidates by other authors or of
-    another year 0-25%, one 67%; Part II, correction notices and preprints 76-100%, which the
-    title cannot separate).
+    first 231 candidates of the labelled set: every right candidate shares 100%; wrong
+    candidates by other authors or of another year 0-25%, one 67%; Part II, correction notices
+    and preprints 76-100%, which the title cannot separate).
     Cyrillic and Greek surnames are compared with Latin ones by a loose romanisation
     (`Достоевский` = `Dostoevsky` = `Dostoyevsky`, `Иванов` ≠ `Ivashov`); a name in a script
-    that cannot be compared (Han, Arabic, ...) no longer rejects the right DOI, it is
-    `not_comparable`. Surnames match as whole words or with spaces removed (`Van Dyke` =
-    `VanDyke`), so `Li` matches neither `Liu` nor `Williams`. A Vancouver list (`Hoddy KK`,
-    `Lee J-H`) is read as surnames; only name particles may stand before the surname.
+    that cannot be compared (Han, Arabic, ...) no longer rejects the right DOI: the author
+    check is `not_comparable` when more of the record's authors cannot be compared than can,
+    and is decided on the comparable ones otherwise. Surnames match as whole words or with
+    spaces removed (`Van Dyke` = `VanDyke`), so `Li` matches neither `Liu` nor `Williams`. A
+    Vancouver list (`Hoddy KK`, `Lee J-H`) is read as surnames; only name particles may stand
+    before the surname.
   - Still wrong, and listed in the labelled test: Part I vs Part II and correction notices
     without DOIs merge; the matcher accepts Part II, a correction notice or a preprint for the
     published work (it does not read the record type), a one-word title (`Editorial`) when
     author and year fit, and a candidate whose title words occur in the journal name;
-    one-letter surnames written Vancouver (`R SK`) are read as surname `SK`.
+    one-letter surnames (`R SK`, `S. R.`) are not read, so the matcher accepts another work
+    with the same title by such authors; a Vancouver list in capitals (`IWAMOTO J`) is not
+    read as surnames.
+- **Review 2026-11-19, round 11: reference shapes a reader meets in the wild.** The labelled
+  set grew by the shapes below; at a53764f these classes were worse than 0.2.x, and all are
+  now no worse.
+  - *DOI matcher, authors.* A reference whose author list is given-first with full names
+    (`Michael J. LaCour, Donald P. Green`, with or without `and`), a string `et al.`, no
+    authors, or a corporate author (`World Health Organization`, `... Research Group`) is read
+    without inventing a surname from the title or from the corporate name: the author check is
+    `not_comparable` when no surname is read, so the title and year decide. A Vancouver entry
+    of one surname and one initial is not read as Vancouver when the text after it continues a
+    name (`Michael J. LaCour` was read as surname `Michael`; `Hoddy K. Obesity, ...` is still
+    Vancouver).
+  - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
+    `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
+    the full title (with subtitle) are each tried, either may pass, so a reference that drops
+    the subtitle is accepted; a title cut with `...` or `…` is compared on the words before the
+    cut; a one-word main title that occurs in the reference is `not_comparable`; a title of
+    three words or fewer that shares at least one word but not 60% is `not_comparable` when
+    author and year both match (`Neural nets` for `Neural networks`), and still rejects
+    otherwise.
+  - *Deduplication.* `Maria Garcia` / `Mario Garcia`, `Wang Li` / `Wang Lin`, `John Smith` /
+    `Jon Smith` score 0.5 (were 0.75 as near names), and a reading with an equal surname wins
+    over a near-surname reading. `O'Brien, K.` and `o brien z` (an apostrophe written as a
+    space, `d` added to the name particles) are the same surname with conflicting initials,
+    0.5. `Smith John A.` is surname Smith with initials JA.
+- **Owner decisions in round 11** (also in docs/API.md):
+  - *A first-author-only list merges with the full list.* A list that names only the first
+    author or authors (with or without `et al.`) and agrees at every position, each pair at
+    least 0.75, scores the mean of those pairs (`compareAuthors`), not the symmetric average,
+    which counted every unnamed author as a miss.
+  - *One preprint, one work.* The DOI comparison ignores a link tail (`/full`, `/pdf`, `/epdf`,
+    `/abstract`), a query or fragment, a bioRxiv/medRxiv/openRxiv version (`v2`) and a
+    `.v1`-style version (figshare, Zenodo). A preprint and its published version, which carry
+    different DOIs, stay two works.
+  - *The same DOI with contradicting metadata is not forced to 1.* When the author score and
+    the title-word share of two references with one DOI are both below 0.3
+    (`SAME_DOI_CONTRADICTION`), the weighted score decides and `doiRelation` returns
+    `'same-contradicted'`. The title side is the share of the shorter title's words (three or
+    more letters) found in the other title, not the edit-distance `compareTitle`: on the
+    labelled set, two unrelated titles scored 0.31 and 0.37 by edit distance. A same-DOI pair
+    with a different title but matching authors still scores 1.
 
 ### Added
 - `JournalMetadata.issnRejected`: ISSNs Crossref listed that fail the check digit.
@@ -143,9 +194,15 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   and `titleCheck` on a `CrossrefResult` found by the DOI search and on each
   `RejectedDoiCandidate`; `DoiSearchOutcome.notComparable` counts candidates per check that
   was `not_comparable`. New rejection reason `Title mismatch: ...`.
+- `doiRelation(ref1, ref2)` and `DoiRelation` (`'same'`, `'same-contradicted'`, `'different'`,
+  `null`), and `SAME_DOI_CONTRADICTION` (0.3): how two references' DOIs relate, as
+  `calculateSimilarity` uses it.
+- `findDuplicateGroups(pairs, diagnostics?)` and `DuplicateGroupingDiagnostics`: pass an object
+  and `droppedDifferentDoi` is set to the number of pairs dropped because their references carry
+  different DOIs (they were dropped silently).
 - `tests/labelled/` (the labelled release set and its 0.2.x baseline counts) and
   `scripts/labelled-report.mjs` (scores any build on the set; `--compare` fails when a class
-  is worse than a baseline).
+  is worse than a baseline; `--halves` prints the totals on each fixed half of the set).
 
 ### Changed
 - `CORRECTION_NOTICE` is gone: it read a field Crossref does not serve and never fired, and a
@@ -162,12 +219,17 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   found by both sources is two issues (one per source). Nothing else is required. A consumer that rendered `publishedDate` sees zero-padded dates. A
   consumer that wants to say "DOI search failed" rather than "no DOI found" switches to
   `findDOIFromReferenceDetailed`. Author scores in deduplication change for most inputs (by
-  level, not by letters: different surnames now score 0, the same surname with another
-  initial 0.5), and two references with different DOIs no longer reach the threshold; year
-  scores are unchanged. A found DOI whose `authorCheck`, `yearCheck` or `titleCheck` is
+  level, not by letters: different surnames score 0 and near surnames 0.75, the same surname
+  with another initial 0.5, a first-author-only list the score of the authors it names), two
+  references with different DOIs score just under the threshold in the config (a caller that
+  compares with a lower threshold, or transitive closure through a third reference, can still
+  join them), and the same DOI scores 1 unless `doiRelation` says `'same-contradicted'`; year
+  scores are unchanged. `findDuplicateGroups(pairs, diagnostics)` counts the different-DOI
+  pairs it drops. A found DOI whose `authorCheck`, `yearCheck` or `titleCheck` is
   `not_comparable` was accepted on less evidence: show it as such. The DOI search now rejects
-  candidates whose title does not fit, so some DOIs 0.2.x found are no longer found (on the
-  labelled set, only wrong ones).
+  candidates whose title does not fit, so some DOIs 0.2.x found are no longer found. On the
+  labelled set (1,263 rows) every candidate 0.2.x accepted and 0.3.0 rejects is a wrong one;
+  0.3.0 rejects one right candidate (one-letter surnames, `R SK`), which 0.2.x rejected too.
 
 ## 0.2.0 — 2026-10-14
 

@@ -292,7 +292,185 @@ function buildRows() {
     const published = { ...pre, journal: 'Nature' };
     addDoi('owner:preprint-for-published', 'reject', TEXT_SHAPES.apa(published), pre.record, 'preprint-biorxiv.json');
   }
+  addRound11Rows(addDedup, addDoi);
+  dedup.forEach((r, i) => { r.half = halfOf(`${r.kind}/${r.cls}/${r.note}/${i}`); });
+  doi.forEach((r, i) => { r.half = halfOf(`${r.kind}/${r.cls}/${r.note}/${i}`); });
   return { dedup, doi };
+}
+
+/**
+ * Each row's half, fixed by a hash of its class, note and position (seed below): `fit` and
+ * `gate`. A rule tuned while looking at rows must be judged on the half it was not tuned on;
+ * `scripts/labelled-report.mjs --halves` prints both.
+ */
+const HALF_SEED = 0x2f11;
+function halfOf(key) {
+  let h = HALF_SEED;
+  for (const c of key) h = Math.imul(h ^ c.codePointAt(0), 0x01000193) >>> 0;
+  return h % 2 === 0 ? 'fit' : 'gate';
+}
+
+// ------------------------------------------------------------------ shapes added in review round 11
+// Classes the first version of the set never rendered (review 2026-11-19 found the build worse
+// than 0.2.x on them). Labels by construction, as above; the owner's defaults are marked owner:.
+
+/** Given names as Crossref writes them, first: "Michael J. LaCour" (initials when no given name). */
+const givenFullFirstName = (a) => (a.given ? `${a.given} ${a.family}` : givenFirstName(a));
+/** The other works' authors, none sharing a surname with `w`. */
+function otherAuthorsWork(w, offset) {
+  const fams = new Set(w.authors.map((a) => fold(a.family)));
+  for (let k = 1; k < WORKS.length; k++) {
+    const o = WORKS[(WORKS.findIndex((x) => x.w === w) + offset + k) % WORKS.length].w;
+    if (o.authors.every((a) => !fams.has(fold(a.family)))) return o;
+  }
+  throw new Error('no work with other authors');
+}
+
+/** One word of a title written another accepted way: UK spelling, -ise, plural. Null when no word fits. */
+const UK = { behavior: 'behaviour', color: 'colour', labor: 'labour', favor: 'favour', modeling: 'modelling', judgment: 'judgement', center: 'centre', analyze: 'analyse' };
+function oneWordVariant(title) {
+  const words = title.split(' ');
+  const rules = [
+    (x) => (/ization/i.test(x) ? x.replace(/ization/i, 'isation') : null),
+    (x) => (/ize/i.test(x) ? x.replace(/ize/i, 'ise') : null),
+    (x) => { const k = Object.keys(UK).find((u) => x.toLowerCase().startsWith(u)); return k ? x.replace(new RegExp(k, 'i'), UK[k]) : null; },
+    (x) => (/^\p{L}{5,}$/u.test(x) ? (/[^s]s$/.test(x) ? x.slice(0, -1) : `${x}s`) : null),
+  ];
+  for (const rule of rules) {
+    for (let i = words.length - 1; i >= 0; i--) {
+      const v = rule(words[i]);
+      if (v && v !== words[i]) return [...words.slice(0, i), v, ...words.slice(i + 1)].join(' ');
+    }
+  }
+  return null;
+}
+
+/** Short titles (two or three distinctive words) and a variant a reference writes for each. */
+const SHORT_TITLES = [
+  ['Behavior change', 'Behaviour change'],
+  ['Moral judgment', 'Moral judgement'],
+  ['Social norm', 'Social norms'],
+  ['Organization theory', 'Organisation theory'],
+  ['Climate modeling', 'Climate modelling'],
+  ['Neural networks', 'Neural network'],
+  ['Prospect theory revisited', 'Prospect theories revisited'],
+  ['Randomized controlled trials', 'Randomised controlled trials'],
+];
+
+function addRound11Rows(addDedup, addDoi) {
+  const LONG_SUB = 'A long descriptive subtitle that adds many distinctive words to the record';
+  WORKS.forEach(({ file, w }, i) => {
+    const apa = AUTHOR_SHAPES.apa(w);
+    const authorsApa = apaList(apa);
+    // ---- right DOI, more author shapes
+    const gf = w.authors.map(givenFullFirstName);
+    addDoi('right:given-first-full', 'accept', `${gf.join(', ')} (${w.year}). ${w.title}. ${w.journal}.`, w.record, file);
+    const gfAnd = gf.length > 1 ? `${gf.slice(0, -1).join(', ')} and ${gf[gf.length - 1]}` : gf[0];
+    addDoi('right:given-first-full-and', 'accept', `${gfAnd} (${w.year}). ${w.title}. ${w.journal}.`, w.record, file);
+    addDoi('right:et-al-string', 'accept', `${apa[0]}, et al. (${w.year}). ${w.title}. ${w.journal}.`, w.record, file);
+    addDoi('right:et-al-string', 'accept', `${vancouverName(w.authors[0])}, et al. ${w.title}. ${w.journal}. ${w.year}.`, w.record, file);
+    // ---- right DOI, title shapes
+    addDoi('right:subtitle-dropped-short', 'accept', TEXT_SHAPES.apa(w), { ...w.record, subtitle: ['Evidence from fieldwork'] }, file);
+    addDoi('right:subtitle-dropped-long', 'accept', TEXT_SHAPES.apa(w), { ...w.record, subtitle: [LONG_SUB] }, file);
+    const variant = oneWordVariant(w.title);
+    if (variant) addDoi('right:title-one-word-variant', 'accept', TEXT_SHAPES.apa({ ...w, title: variant }), w.record, `${file} "${variant}"`);
+    const tw = w.title.split(' ');
+    if (tw.length >= 4) {
+      const cut = tw.slice(0, Math.max(2, Math.ceil(tw.length * 0.55))).join(' ');
+      addDoi('right:title-truncated', 'accept', `${authorsApa} (${w.year}). ${cut}... ${w.journal}.`, w.record, file);
+    }
+    // ---- right DOI, no authors (the reference starts with the title); the author check has nothing to compare
+    addDoi('right:no-authors', 'accept', `${w.title}. (${w.year}). ${w.journal}.`, w.record, file);
+    // ---- right DOI, a corporate author on both sides
+    addDoi('right:corporate-author', 'accept', `World Health Organization. (${w.year}). ${w.title}. ${w.journal}.`, { ...w.record, author: [{ name: 'World Health Organization' }] }, file);
+    // ... and a group author written where Crossref lists the persons (same work by construction)
+    addDoi('right:corporate-reference-person-record', 'accept', `Research Group. (${w.year}). ${w.title}. ${w.journal}.`, w.record, file);
+
+    // ---- wrong DOI, decided ONLY by the author check: same title, same year, other authors
+    const o = otherAuthorsWork(w, i % 3);
+    const sameTitleOther = { ...w.record, DOI: `${w.doi}.same-title`, author: o.record.author };
+    addDoi('wrong:same-title-other-authors', 'reject', TEXT_SHAPES.apa(w), sameTitleOther, file);
+    addDoi('wrong:same-title-other-authors~vancouver', 'reject', TEXT_SHAPES.vancouver(w), sameTitleOther, file);
+    addDoi('wrong:same-title-other-authors~given-first', 'reject', TEXT_SHAPES['given-first'](w), sameTitleOther, file);
+    addDoi('wrong:same-title-other-authors~given-first-full', 'reject', `${gf.join(', ')} (${w.year}). ${w.title}. ${w.journal}.`, sameTitleOther, file);
+    // ... also when the record lists one author in a script that cannot be compared (Han)
+    const han = { family: '王', given: '伟' };
+    addDoi('wrong:same-title-other-authors~mixed-script-record', 'reject', TEXT_SHAPES.apa(w), { ...sameTitleOther, author: [...(o.record.author ?? []).slice(0, 3), han] }, file);
+    addDoi('right:mixed-script-record', 'accept', TEXT_SHAPES.apa(w), { ...w.record, author: [...(w.record.author ?? []), han] }, file);
+    // ---- wrong DOI, the earlier negatives in other text shapes
+    const other = WORKS[(i + 1) % WORKS.length].w;
+    const otherWork = { ...w.record, DOI: `${w.doi}.other`, title: [other.title], subtitle: [], published: { 'date-parts': [[w.year + 1]] } };
+    addDoi('wrong:same-author-adjacent-year~vancouver', 'reject', TEXT_SHAPES.vancouver(w), otherWork, file);
+    addDoi('wrong:same-author-adjacent-year~given-first-full', 'reject', `${gf.join(', ')} (${w.year}). ${w.title}. ${w.journal}.`, otherWork, file);
+    addDoi('wrong:other-authors~vancouver', 'reject', TEXT_SHAPES.vancouver(w), { ...other.record, published: { 'date-parts': [[w.year]] } }, file);
+    addDoi('wrong:other-authors~given-first', 'reject', TEXT_SHAPES['given-first'](w), { ...other.record, published: { 'date-parts': [[w.year]] } }, file);
+    addDoi('wrong:no-authors-other-work', 'reject', `${w.title}. (${w.year}). ${w.journal}.`, { ...other.record, published: { 'date-parts': [[w.year]] } }, file);
+    addDoi('wrong:corporate-reference-person-record', 'reject', `Research Group. (${w.year}). ${w.title}. ${w.journal}.`, { ...other.record, published: { 'date-parts': [[w.year]] } }, file);
+    addDoi('wrong:corporate-other-work', 'reject', `World Health Organization. (${w.year}). ${w.title}. ${w.journal}.`, { ...other.record, published: { 'date-parts': [[w.year]] }, author: [{ name: 'World Health Organization' }] }, file);
+
+    // ---- dedup: shorter author lists of the same work
+    if (w.authors.length >= 2) {
+      addDedup('same:first-author-only', 'same', dedupRef('a', w, apa), dedupRef('b', w, apa.slice(0, 1)), file);
+      addDedup('same:et-al-string', 'same', dedupRef('a', w, apa), dedupRef('b', w, [`${apa[0]}, et al.`]), file);
+      addDedup('same:et-al-string', 'same', dedupRef('a', w, AUTHOR_SHAPES.vancouver(w)), dedupRef('b', w, [`${w.authors.slice(0, 2).map(vancouverName).join(', ')}, et al.`]), file);
+      addDedup('same:et-al-element', 'same', dedupRef('a', w, apa), dedupRef('b', w, [apa[0], 'et al.']), file);
+    }
+    // ---- dedup: surname first, full given name and initial, no comma ("Smith John A.")
+    if (w.authors.some((a) => /\p{Ll}/u.test(a.given))) {
+      const sg = w.authors.map((a) => (a.given ? `${a.family} ${a.given}` : a.family));
+      addDedup('same:surname-full-given', 'same', dedupRef('a', w, sg), dedupRef('b', w, AUTHOR_SHAPES.vancouver(w)), file);
+      addDedup('same:surname-full-given', 'same', dedupRef('a', w, sg), dedupRef('b', w, AUTHOR_SHAPES['folded-initials'](w)), file);
+    }
+    // ---- dedup: DOI written with a landing-page tail or a query, the title shortened (the DOI decides)
+    const short = w.title.split(' ').slice(0, 3).join(' ');
+    for (const tail of ['/full', '/pdf', '/abstract', '?download=true']) {
+      addDedup('same:doi-tail', 'same', dedupRef('a', w, apa, { doi: w.doi }), dedupRef('b', w, AUTHOR_SHAPES.vancouver(w), { normalized_title: short, doi: `https://doi.org/${w.doi}${tail}` }), `${file} ${tail}`);
+    }
+    // ---- dedup: same DOI, metadata of another work (authors AND title differ): owner default, not merged
+    const contra = otherAuthorsWork(w, 1 + (i % 3));
+    addDedup('owner:same-doi-contradicted', 'different', dedupRef('a', w, apa, { doi: w.doi }), dedupRef('b', contra, AUTHOR_SHAPES.apa(contra), { doi: w.doi, normalized_year: String(w.year) }), file);
+    // ... while the same DOI with only the title written differently stays one work
+    addDedup('same:same-doi-other-title', 'same', dedupRef('a', w, apa, { doi: w.doi }), dedupRef('b', w, apa, { doi: w.doi, normalized_title: other.title }), file);
+  });
+
+  // ---- dedup: preprint versions (owner default: versions of one preprint are one work)
+  WORKS.slice(0, 10).forEach(({ file, w }, i) => {
+    const apa = AUTHOR_SHAPES.apa(w);
+    addDedup('owner:preprint-versions', 'same', dedupRef('a', w, apa, { doi: `10.1101/12345${i}` }), dedupRef('b', w, apa, { doi: `10.1101/12345${i}v2` }), `${file} bioRxiv`);
+    addDedup('owner:preprint-versions', 'same', dedupRef('a', w, apa, { doi: `10.6084/m9.figshare.98765${i}.v1` }), dedupRef('b', w, apa, { doi: `10.6084/m9.figshare.98765${i}.v2` }), `${file} figshare`);
+  });
+
+  // ---- dedup: corporate author, mixed-script list
+  WORKS.slice(0, 8).forEach(({ file, w }) => {
+    addDedup('same:corporate-author', 'same', dedupRef('a', w, ['World Health Organization']), dedupRef('b', w, ['world health organization']), file);
+  });
+  for (const file of Object.keys(CYRILLIC)) {
+    const { latin, cyr } = cyrillicWork(file);
+    const mixed = latin.authors.map((a, k) => (k % 2 === 0 ? cyr.authors[k] : a));
+    addDedup('same:mixed-script-list', 'same', dedupRef('a', latin, AUTHOR_SHAPES.apa(latin)), dedupRef('b', latin, mixed.map(apaName)), file);
+    addDoi('right:mixed-script-list', 'accept', TEXT_SHAPES.apa({ ...latin, authors: mixed }), latin.record, file);
+  }
+
+  // ---- dedup: names one letter apart (owner rule: a conflicting initial or given name is another author)
+  const w0 = WORKS[0].w;
+  const one = (cls, label, a, b) => addDedup(cls, label, dedupRef('a', w0, [a]), dedupRef('b', w0, [b]), `${a} / ${b}`);
+  for (const [a, b] of [["O'Brien, K.", 'o brien z'], ["O'Connor, J.", 'o connor k'], ["D'Angelo, M.", 'd angelo n'], ["O'Brien, K.", "O'Brien, Z."]]) one('owner:apostrophe-conflict', 'different', a, b);
+  for (const [a, b] of [["O'Brien, K.", 'o brien k'], ["O'Connor, J.", 'oconnor j'], ["D'Angelo, M.", 'd angelo m'], ["O'Brien, K.", 'OBrien K']]) one('same:apostrophe-written-two-ways', 'same', a, b);
+  for (const [a, b] of [['Maria Garcia', 'Mario Garcia'], ['Wang Li', 'Wang Lin'], ['John Smith', 'Jon Smith'], ['Anna Mueller', 'Anne Mueller']]) one('owner:given-first-one-letter', 'different', a, b);
+  for (const [a, b] of [['Maria Garcia', 'Garcia, M.'], ['John Smith', 'Smith, J.'], ['Smith JA', 'Smith John A.'], ['smith j a', 'Smith John A.'], ['Smith, John A.', 'Smith John A.']]) one('same:full-given-forms', 'same', a, b);
+
+  // ---- right DOI: short titles written another accepted way
+  WORKS.slice(0, 8).forEach(({ file, w }, i) => {
+    const [title, written] = SHORT_TITLES[i % SHORT_TITLES.length];
+    addDoi('right:short-title-variant', 'accept', TEXT_SHAPES.apa({ ...w, title: written }), { ...w.record, title: [title], subtitle: [] }, `${file} "${written}"`);
+  });
+
+  // ---- right DOI: the given-first full names of one record with a middle initial (the reviewer's case)
+  {
+    const w = WORKS.find((x) => x.file === 'retracted-plain-title.json').w;
+    addDoi('right:given-first-full', 'accept', `Michael J. LaCour, Donald P. Green (${w.year}). ${w.title}. ${w.journal}.`, w.record, 'retracted-plain-title.json written out');
+    addDoi('right:given-first-full-and', 'accept', `LaCour, Michael J., and Donald P. Green. ${w.year}. ${w.title}. ${w.journal}.`, w.record, 'retracted-plain-title.json Chicago');
+  }
 }
 
 export const ROWS = buildRows();

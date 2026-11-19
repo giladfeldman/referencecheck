@@ -91,8 +91,10 @@ describe('deduplication: one score per name level', () => {
   const ref = (id: string, over: Record<string, unknown> = {}) => ({
     id, raw_text: '', normalized_authors: ['smith j'], normalized_title: 'a study of priming', normalized_year: '2020', ...over,
   });
+  // Round 11 (owner decision F8): the same DOI is forced to 1 unless authors AND title both
+  // contradict it, so this pair keeps its title and differs only in the author.
   it('the same DOI (any written form) is the same work', () => {
-    const s = lib.calculateSimilarity(ref('a', { doi: '10.1037/ABC.1' }), ref('b', { doi: 'https://doi.org/10.1037/abc.1', normalized_title: 'zzz', normalized_authors: ['jones k'] }), cfg);
+    const s = lib.calculateSimilarity(ref('a', { doi: '10.1037/ABC.1' }), ref('b', { doi: 'https://doi.org/10.1037/abc.1', normalized_authors: ['jones k'] }), cfg);
     expect(s).toBe(1);
   });
   it('two different DOIs stay under the threshold, even with everything else equal', () => {

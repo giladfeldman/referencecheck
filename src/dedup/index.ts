@@ -11,5 +11,8 @@ export {
   compareYear,
   scoreMetadataCompleteness,
   calculateSimilarity,
+  doiRelation,
+  SAME_DOI_CONTRADICTION,
 } from './similarity.js';
+export type { DoiRelation } from './similarity.js';
 export { findDuplicateGroups, selectBestReference } from './grouping.js';

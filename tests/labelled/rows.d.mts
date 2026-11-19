@@ -8,6 +8,8 @@ export interface LabelledRow {
   b?: any;
   text?: string;
   candidate?: any;
+  /** `fit` or `gate`: a fixed hash split (see rows.mjs); `labelled-report.mjs --halves` prints both. */
+  half: 'fit' | 'gate';
 }
 export interface ScoredRow {
   row: LabelledRow;

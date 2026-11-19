@@ -218,10 +218,20 @@ export function parseName(raw: string): ParsedName {
 
   const flags = tokens.map((t) => isInitialsToken(t, caseless));
   const n = tokens.length;
-  if (!flags[0] && flags[n - 1]) {
-    // Vancouver: "Smith JA", "van der Berg JH", "lee j h".
+  // Leading particles are part of the surname, even a one-letter one ("o brien z" is
+  // O'Brien Z. folded, not three unknown words: round 11).
+  if (!flags[p] && flags[n - 1]) {
+    // Vancouver: "Smith JA", "van der Berg JH", "lee j h", "o brien z".
     let r = n - 1;
-    while (r > 0 && flags[r - 1]) r--;
+    while (r > p && flags[r - 1]) r--;
+    // Surname first, then a full given name and an initial with a period ("Smith John A."):
+    // the surname is the first word (with its particles), the rest are given names. A
+    // Vancouver list writes its initials without periods, so "Garcia Marquez G" keeps its
+    // two-word surname (round 11).
+    const periodInitial = tokens.slice(r).some((t) => t.includes('.'));
+    if (periodInitial && !caseless && r - p >= 2 && tokens.slice(p + 1, r).every((t) => /^\p{Lu}\p{Ll}+(?:-\p{Lu}\p{Ll}+)?$/u.test(t))) {
+      return known(tokens.slice(0, p + 1).join(' '), tokens.slice(p + 1));
+    }
     return known(tokens.slice(0, r).join(' '), tokens.slice(r));
   }
   if (!flags[n - 1] && flags.some(Boolean)) {
