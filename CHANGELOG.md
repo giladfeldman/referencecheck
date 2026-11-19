@@ -175,6 +175,16 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     are a given-first list, and their surnames count even when they are title words. A name
     that runs on into the title with no period (`Smith J Sleep and memory`) is a second
     reading only, so a record by an author named like a title word is not taken for the work.
+  - *DOI matcher, authors (round 16).* Every surname 0.2.x read is kept: the new readers add
+    readings and never take one away, so no author section is read with fewer names than in
+    0.2.x (each review round from 11 on had found a shape the new readers missed, and a list
+    read as empty skips the author check). A 0.2.x name the new readers did not read does not
+    count against a record whose title has that word (a reference that starts with its title,
+    or `Diabetes, Obesity and ...`), except a first word followed by initials (`Smith J:
+    Smith and Jones revisited`). A group author still reads no person. In a given-first list
+    (`Hope A. Nakamura, Will D. Long`) the first given name is not read as a surname, and an
+    entry followed by a piece that is not a name ran on into the title (`Young K Smith and
+    Jones revisited`), so its surname is a second reading only.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

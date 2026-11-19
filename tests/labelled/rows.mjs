@@ -538,6 +538,7 @@ function addRound12Rows(addDoi) {
   }
   addRound13Rows(addDoi);
   addRound14Rows(addDoi);
+  addRound15Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -661,6 +662,62 @@ function addRound14Rows(addDoi) {
   addDoi('right:entry-runs-into-title', 'accept', run, rec('r0', ['Smith']), 'Smith J');
   addDoi('wrong:entry-runs-into-title', 'reject', run, rec('r0s', ['Sleep']), 'Smith J');
   addDoi('wrong:entry-runs-into-title', 'reject', run, rec('r0w', ['Okafor']), 'Smith J');
+}
+
+/**
+ * Review round 15: author entries that run into the title with no period (read as no author),
+ * the first given name of a given-first list read as a Vancouver surname, a family-first
+ * surname repeated in the title, and given-first entries that run into a title starting with
+ * a surname-like word.
+ */
+function addRound15Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const rec = (doi, fams, title) => ({ ...base, title: [title], DOI: `${WORKS[0].w.doi}.r15-${doi}`, author: fams.map((f) => ({ family: f, given: 'X.' })) });
+  const SD = 'Sleep deprivation affects memory';
+  const runIn = [
+    `Smith J ${SD} (2014). J Sleep Res 1:1-9.`,
+    `Smith J: ${SD} (2014). J Sleep Res 1:1-9.`,
+    `Smith J "${SD}" (2014). J Sleep Res 1:1-9.`,
+    `Smith JA ${SD}. J Sleep Res. 2014;1:1-9.`,
+    `Smith JA Jr ${SD}. J Sleep Res. 2014;1:1-9.`,
+  ];
+  runIn.forEach((text, k) => {
+    addDoi('right:vancouver-runs-into-title', 'accept', text, rec(`a${k}`, ['Smith'], SD), text.slice(0, 16));
+    addDoi('wrong:vancouver-runs-into-title', 'reject', text, rec(`a${k}w`, ['Jones'], SD), text.slice(0, 16));
+  });
+  const SM = 'Sleep and memory in older adults';
+  const lists = [
+    [`Hope A. Nakamura, Will D. Long. ${SM} (2014). J Sleep Res 1:1-9.`, ['Nakamura', 'Long'], 'Hope'],
+    [`Mark A. Baker, Craig B. Smith, Mary C. Jones. ${SM}. J Sleep Res. 2014;1:1-9.`, ['Baker', 'Smith', 'Jones'], 'Mark'],
+    [`Grace B. Okafor, Dean C. Ross. ${SM}. J Sleep Res. 2014;1:1-9.`, ['Okafor', 'Ross'], 'Grace'],
+  ];
+  lists.forEach(([text, fams, given], k) => {
+    addDoi('right:given-first-list-given-name', 'accept', text, rec(`g${k}`, fams, SM), text.slice(0, 16));
+    addDoi('wrong:given-first-list-given-name', 'reject', text, rec(`g${k}w`, [given], SM), text.slice(0, 16));
+  });
+  const familyFirst = [
+    ['Wang Xiaoming and Li Hua. Wang and the new methods of sampling. J Sleep Res. 2014;1:1-9.', 'Wang and the new methods of sampling', ['Wang', 'Li']],
+    ['Kim Minjun and Park Jiho. Kim effects in memory research. J Sleep Res. 2014.', 'Kim effects in memory research', ['Kim', 'Park']],
+  ];
+  familyFirst.forEach(([text, title, fams], k) => {
+    addDoi('right:family-first-name-in-title', 'accept', text, rec(`f${k}`, fams, title), text.slice(0, 16));
+    addDoi('wrong:family-first-name-in-title', 'reject', text, rec(`f${k}w`, ['Okafor'], title), text.slice(0, 16));
+  });
+  const SJ = 'Smith and Jones revisited: a replication';
+  const YO = 'Young and old adults in the lab';
+  const titleRepeats = [
+    [`Young K ${SJ}. J Sleep Res. 2014;1:1-9.`, SJ, ['Young'], 'Smith'],
+    [`Smith J: ${SJ}. J Sleep Res. 2014.`, SJ, ['Smith'], 'Okafor'],
+    [`Smith JA Jr ${SJ}. J Sleep Res. 2014;1:1-9.`, SJ, ['Smith'], 'Okafor'],
+    [`J. A. Smith, ${SJ}. J Sleep Res. 2014.`, SJ, ['Smith'], 'Okafor'],
+    [`Wang Xiaoming ${SJ}. J Sleep Res. 2014;1:1-9.`, SJ, ['Wang'], 'Smith'],
+    [`Michael J. Young, Donald P. Long ${YO}. J Sleep Res. 2014;1:1-9.`, YO, ['Young', 'Long'], 'Okafor'],
+    [`Michael J. Young, Donald P. Long: ${YO}. J Sleep Res. 2014.`, YO, ['Young', 'Long'], 'Okafor'],
+  ];
+  titleRepeats.forEach(([text, title, fams, other], k) => {
+    addDoi('right:entry-runs-into-name-title', 'accept', text, rec(`t${k}`, fams, title), text.slice(0, 16));
+    addDoi('wrong:entry-runs-into-name-title', 'reject', text, rec(`t${k}w`, [other], title), text.slice(0, 16));
+  });
 }
 
 export const ROWS = buildRows();

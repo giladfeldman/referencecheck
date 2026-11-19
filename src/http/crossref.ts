@@ -334,24 +334,42 @@ interface GivenFirstReading {
 }
 function givenFirstSurnames(section: string): GivenFirstReading {
   const out: GivenFirstReading = { names: [], withInitial: 0, runOn: new Set() };
-  const pieces = section.split(/\s*(?:,|;|&|\band\b)\s*/u).map((p) => p.trim()).filter(Boolean);
+  const parts = section.split(/(\s*(?:,|;|&|\band\b)\s*)/u);
+  const pieces: string[] = [];
+  const before: string[] = [];
+  for (let k = 0; k < parts.length; k += 2) {
+    const p = parts[k].trim();
+    if (p) { pieces.push(p); before.push((parts[k - 1] ?? '').trim()); }
+  }
+  const entries: Array<{ name: string; runOn: boolean }> = [];
   for (const [i, piece] of pieces.entries()) {
     if (/^et\.?\s+al\.?$/i.test(piece)) continue;
     const m = piece.match(GIVEN_FIRST_ENTRY);
     if (!m || CORPORATE_WORD.test(piece)) {
       // The last entry runs on into the title ("..., Donald P. Green. Brown and the ..."): read
       // its surname up to the period (round 13), once an earlier entry was read given-first.
-      const last = out.names.length > 0 ? piece.match(GIVEN_FIRST_LAST) : null;
+      const last = entries.length > 0 ? piece.match(GIVEN_FIRST_LAST) : null;
       if (last && !CORPORATE_WORD.test(last[0])) {
-        out.names.push(last[1]);
+        entries.push({ name: last[1], runOn: false });
         if (/\p{Lu}\.\s/u.test(last[0])) out.withInitial++;
+      } else {
+        // The piece after the previous entry is not a name: that entry ran on into the title
+        // ("Young K Smith and Jones revisited", "Wang Xiaoming Smith and ...") and its surname
+        // may be a title word (round 15). A piece that starts as a given-first entry with a
+        // dotted initial still counts towards a given-first list ("Donald P. Long: Title").
+        // After a comma the entry ended there ("J. A. Smith, Smith and Jones revisited").
+        if (entries.length > 0 && before[i] !== ',') entries[entries.length - 1].runOn = true;
+        if (/^\p{Lu}\p{Ll}+\s+\p{Lu}\.\s+\p{Lu}/u.test(piece)) out.withInitial++;
       }
       break;
     }
-    out.names.push(m[1]);
     if (/\p{Lu}\.\s/u.test(piece)) out.withInitial++;
-    if (pieces[i + 1] !== undefined && /^\p{Ll}/u.test(pieces[i + 1])) out.runOn.add(m[1]);
+    entries.push({ name: m[1], runOn: pieces[i + 1] !== undefined && /^\p{Ll}/u.test(pieces[i + 1]) });
   }
+  for (const e of entries) if (!out.names.includes(e.name)) out.names.push(e.name);
+  // A name is a second reading only when every entry that read it ran on into the title
+  // ("Michael J. Young, Donald P. Long Young and ...": the first Young is an author).
+  for (const e of entries) if (e.runOn && !entries.some((o) => o.name === e.name && !o.runOn)) out.runOn.add(e.name);
   return out;
 }
 const GIVEN_FIRST_LAST = new RegExp(`^(?:${GIVEN_PART}\\s+)+((?:${PARTICLE_ANY_CASE}\\s+)*\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*)(?=\\.\\s)`, 'u');
@@ -396,6 +414,51 @@ interface ReferenceAuthors { names: string[]; uncertain: Set<string> }
  * reading as `uncertain` (round 12).
  */
 function extractAuthorsFromReference(referenceText: string): ReferenceAuthors {
+  const read = readAuthors(referenceText);
+  // Every surname 0.2.x read is kept (round 15): the readers above add readings, they never
+  // take one away, so no author section is read with fewer names than 0.2.x read (rounds 11 to
+  // 15 each found a shape the new readers did not recognise, and an empty list skips the
+  // author check). A 0.2.x name the new readers did not read is uncertain: it may be a title
+  // word (a reference that starts with its title, "Sleep and memory ...", or 0.2.x's comma
+  // pattern on "Diabetes, Obesity and ..."), so it does not count for a record whose title has
+  // that word. A name both read, where the new readers had it as a second reading only (the
+  // family-first first word, "Wang Xiaoming and Li Hua. Wang and ..."), counts. A group author
+  // ("Research Group.") reads no person, as before.
+  const authorSection = (referenceText.split(/\(\d{4}/)[0] || '').trim();
+  if (read.names.length === 0 && CORPORATE_WORD.test(authorSection.split(/[.,;(]/)[0])) return read;
+  const legacy = legacySurnames(referenceText);
+  // A first word followed by initials ("Smith J: Smith and Jones revisited", "Smith JA Jr ...")
+  // is an author even when the title repeats it.
+  const withInitials = legacy.firstWord && FIRST_WORD_INITIALS.test(authorSection);
+  for (const name of legacy.names) {
+    const known = read.names.find((n) => foldForMatch(n) === foldForMatch(name));
+    if (known !== undefined) {
+      if (legacy.firstWord) read.uncertain.delete(known);
+      continue;
+    }
+    read.names.push(name);
+    if (!withInitials) read.uncertain.add(name);
+  }
+  return read;
+}
+
+const FIRST_WORD_INITIALS = /^\p{Lu}[\p{L}'’-]*\p{Ll}[\p{L}'’-]*\s+\p{Lu}(?:\.?-?\p{Lu}){0,2}\.?(?=[\s:,;.]|$)/u;
+
+/** The 0.2.x author reader, unchanged (33278cf); `firstWord` when it read the first word only. */
+function legacySurnames(referenceText: string): { names: string[]; firstWord: boolean } {
+  const authorSection = (referenceText.split(/\(\d{4}/)[0] || '').trim();
+  const lastNames: string[] = [];
+  const authorPattern = /([A-Z][a-zA-Z'-]+)(?:\s*,\s*[A-Z]\.?)+/g;
+  let match;
+  while ((match = authorPattern.exec(authorSection)) !== null) lastNames.push(match[1]);
+  if (lastNames.length === 0) {
+    const simpleMatch = authorSection.match(/^([A-Z][a-zA-Z'-]+)/);
+    if (simpleMatch) return { names: [simpleMatch[1]], firstWord: true };
+  }
+  return { names: lastNames, firstWord: false };
+}
+
+function readAuthors(referenceText: string): ReferenceAuthors {
   // Common patterns for authors at start of reference
   // e.g., "Smith, J. A., & Jones, B. C. (2019)" or "Smith, J.A. (2019)"
   const beforeYear = referenceText.split(/\(\d{4}/)[0] || '';
@@ -415,7 +478,10 @@ function extractAuthorsFromReference(referenceText: string): ReferenceAuthors {
     // Only the second reading is uncertain: the Vancouver surname stays (round 13: "Darwin C.
     // Darwin and ..." lost its certain "Darwin" with the uncertain one).
     const uncertain = new Set(lastNames.filter((s) => !vancouver.surnames.includes(s) && (givenFirst.runOn.has(s) || !(listIsGivenFirst && givenFirst.names.includes(s)))));
-    return { names: [...vancouver.surnames, ...lastNames.filter((s) => !vancouver.surnames.includes(s))], uncertain };
+    // In a given-first list the Vancouver "surname" is the first given name ("Hope A. Nakamura,
+    // Will D. Long": Hope), so it is not read (round 15).
+    const vancouverNames = listIsGivenFirst ? [] : vancouver.surnames;
+    return { names: [...vancouverNames, ...lastNames.filter((s) => !vancouver.surnames.includes(s))], uncertain };
   }
   const uncertain = new Set<string>(givenFirst.runOn);
   // Read given-first only, the first word may still be the surname, written family first
