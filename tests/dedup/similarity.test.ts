@@ -42,13 +42,10 @@ describe('compareYear', () => {
     expect(compareYear('2020', '2025')).toBe(0.0);
   });
 
-  it('both missing neutral, one missing 0; a value with no year counts as missing', () => {
+  it('both missing neutral, one missing 0, non-numeric 0', () => {
     expect(compareYear(null, null)).toBe(0.5);
     expect(compareYear('2020', null)).toBe(0.0);
-    // Changed in 0.3.0: two "in press" references used to score as a year MISMATCH
-    // (0.0) while two empty years scored 0.5. A value with no year in it is missing.
-    expect(compareYear('abcd', 'efgh')).toBe(0.5);
-    expect(compareYear('abcd', '2020')).toBe(0.0);
+    expect(compareYear('abcd', 'efgh')).toBe(0.0);
   });
 });
 

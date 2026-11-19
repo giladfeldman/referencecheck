@@ -2,7 +2,7 @@ import type { ReferenceInput } from '../types.js';
 import type { JournalMetadata } from './types.js';
 import type { MetadataCredentials } from '../http/credentials.js';
 import { searchOpenAlexByJournalName, resolveOpenAlexByDOI, journalKey } from './openAlex.js';
-import { findParentheticalYear, normalizeIssn } from '../util/normalize.js';
+import { normalizeIssn } from '../util/normalize.js';
 
 /**
  * Validate if a reference looks like an actual reference entry
@@ -52,7 +52,7 @@ export function isValidReference(reference: ReferenceInput): boolean {
     /^\p{Lu}[\p{Ll}'-]+,\s*\p{Lu}/u.test(text);
 
   const hasYear = !!reference.parsed_data?.year ||
-    findParentheticalYear(text) !== null || /\(n\.d\.\)/.test(text);
+    /\((\d{4}[a-z]?|n\.d\.)\)/.test(text);
 
   const hasTitle = !!reference.parsed_data?.title;
 
@@ -150,13 +150,12 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
     // Format: "Author (Year). Title. Journal Name, Volume(Issue), Pages"
     // Or: "Author (Year). Title. Journal Name, Volume, Pages"
     if (!metadata.journal) {
-      // The year anchor is the shared parenthetical-year reader: "(2019, March 3)" and
-      // "(1781/1998)" anchor too; "(2019)" alone missed every APA reference with a date.
-      const yearMatch = findParentheticalYear(rawText);
+      // The 0.2.x year anchor, kept as it was (2026-11-19); see extractYearFromReference.
+      const yearMatch = rawText.match(/\((\d{4}[a-z]?)\)/);
 
-      if (yearMatch) {
+      if (yearMatch && yearMatch.index !== undefined) {
         // Find the title (usually ends with a period after the year)
-        const afterYear = rawText.slice(yearMatch.index + yearMatch.length);
+        const afterYear = rawText.slice(yearMatch.index + yearMatch[0].length);
 
         // Look for volume pattern: "Journal Name, Volume(Issue)" or "Journal Name, Volume"
         const volumePattern = /,\s*(\d+)(?:\((\d+)\))?/;

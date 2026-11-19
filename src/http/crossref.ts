@@ -7,7 +7,7 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { formatError } from '../util/formatError.js';
 import type { MetadataCredentials } from './credentials.js';
 import { DEFAULT_POLITE_EMAIL } from './credentials.js';
-import { YEAR, cleanDoiInput, findReferenceYear, foldForMatch, formatDateParts } from '../util/normalize.js';
+import { cleanDoiInput, foldForMatch, formatDateParts } from '../util/normalize.js';
 
 export interface CrossrefResult {
   found: boolean;
@@ -223,10 +223,23 @@ function isUnpublishableWork(referenceText: string): boolean {
  * Extract year from reference text
  */
 function extractYearFromReference(referenceText: string): number | null {
-  // The shared reference-year reader: "(2019, March 3)" is 2019; "arXiv:1706.03762", a page
-  // range, "(N = 1648)" or a bare 1500-1899 count/volume is not a year (a wrong year rejects
-  // the right DOI).
-  return findReferenceYear(referenceText);
+  // The 0.2.x rule, kept as it was (2026-11-19). A new shared reader was tried in this
+  // release and read a wrong year where this rule read the right one (dates with a later
+  // access year, numbers glued to letters, dated parentheticals in titles), and a wrong
+  // year rejects the right DOI. The redesign waits for a release of its own.
+  // Common patterns: (2019), 2019., (2019a), etc.
+  const yearPatterns = [
+    /\((\d{4})[a-z]?\)/,  // (2019) or (2019a)
+    /\b(19\d{2}|20\d{2})\b/,  // standalone year
+  ];
+
+  for (const pattern of yearPatterns) {
+    const match = referenceText.match(pattern);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+  }
+  return null;
 }
 
 /**
@@ -235,7 +248,7 @@ function extractYearFromReference(referenceText: string): number | null {
 function extractAuthorsFromReference(referenceText: string): string[] {
   // Common patterns for authors at start of reference
   // e.g., "Smith, J. A., & Jones, B. C. (2019)" or "Smith, J.A. (2019)"
-  const beforeYear = referenceText.split(new RegExp(`\\(\\s*${YEAR}`))[0] || '';
+  const beforeYear = referenceText.split(/\(\d{4}/)[0] || '';
 
   // Extract last names (capitalized words before commas or &)
   const authorSection = beforeYear.trim();

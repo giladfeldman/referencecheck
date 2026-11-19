@@ -2,11 +2,14 @@
  * The one place each input shape is read.
  *
  * Class fixed 2026-11-18 ("one shape read differently in different code paths"): before
- * this module the library cleaned a DOI in eleven places with four different rules, parsed
- * a year two ways (one of them read "(2019)" as no year), and folded names and titles with
+ * this module the library cleaned a DOI in eleven places with four different rules and folded names and titles with
  * an ASCII-only rule that deleted every non-Latin letter — so two identical Cyrillic or
  * Chinese titles scored 0.0 similarity, and "Müller" became "m ller". Every reader now goes
  * through these functions, and `tests/parity/` binds them with variant matrices.
+ *
+ * Years are NOT read here in this release: a shared year reader was tried and regressed
+ * against the 0.2.x rules in review, so the 0.2.x year code stays where it was (DOI
+ * matcher, deduplication, journal metadata) until a redesign ships on its own.
  */
 
 /** Wrappers a DOI arrives in: resolver URLs (any scheme, dx./www.), bare host, `doi:` labels. */
@@ -57,51 +60,6 @@ export function foldForMatch(text: string | null | undefined): string {
     .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-}
-
-/**
- * The one definition of a year, shared by every year reader in the library (2026-11-19):
- * YEAR is the range a year may take, 1500-2099. A BARE number in running text counts
- * only from 1900 (BARE_YEAR): a bare 1500-1899 number is far more often a count, volume
- * or page ("1650 participants", "vol. 1521") than a year. Year context (a parenthetical
- * that is only a year, or a year field) allows the whole range.
- */
-export const YEAR = '(?:1[5-9]|20)\\d{2}';
-export const BARE_YEAR = '(?:19|20)\\d{2}';
-// The letter after a year that disambiguates two works of one author-year ("2019a"):
-// one letter, never the "s" of a decade ("1990s" is not 1990), never the start of a word.
-export const YEAR_SUFFIX = '(?:(?!s\\b)[a-z](?![a-z]))?';
-// A bare year not inside an identifier ("arXiv:1706.03762"), a range ("1648-1655",
-// "1648 – 1655") or a volume:issue run.
-const BARE_YEAR_IN_TEXT = new RegExp(`(?<![\\d.:/\\u2013-])(${BARE_YEAR})${YEAR_SUFFIX}(?![a-z\\d]|\\s*[\\u2013-]\\s*\\d|\\.\\d|:\\d)`);
-const PARENTHETICAL_YEAR = new RegExp(
-  `\\(\\s*(?:${YEAR}${YEAR_SUFFIX}\\s*\\/\\s*)?(${YEAR})${YEAR_SUFFIX}\\s*(?:,[^()]*)?\\)`,
-);
-
-/**
- * The first parenthetical that is only a year: "(2019)", "(2019a)", "(2019, March 3)",
- * "(1859)"; "(1781/1998)" (original/reprint) is the reprint year, the one Crossref holds.
- * Returns the year and where the parenthetical sits, or null.
- */
-export function findParentheticalYear(text: string | null | undefined): { year: number; index: number; length: number } | null {
-  if (typeof text !== 'string') return null;
-  const m = text.match(PARENTHETICAL_YEAR);
-  return m && m.index !== undefined ? { year: parseInt(m[1], 10), index: m.index, length: m[0].length } : null;
-}
-
-/**
- * The publication year in a value: the first stand-alone four-digit year 1500-2099,
- * whatever surrounds it ("2019", "2019a", "(2019)", "(2019, March 3)", "c. 1984", 2019).
- * Null when there is none ("in press", "n.d.", "", "12345").
- */
-export function parseYear(value: string | number | null | undefined): number | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value === 'number') {
-    return Number.isInteger(value) && value >= 1500 && value <= 2099 ? value : null;
-  }
-  // "1781/1998" (original/reprint) is the reprint year, as in findParentheticalYear.
-  const m = String(value).match(new RegExp(`(?<!\\d)(?:${YEAR}${YEAR_SUFFIX}\\s*\\/\\s*)?(${YEAR})(?!\\d|s\\b)`));
-  return m ? parseInt(m[1], 10) : null;
 }
 
 /**
@@ -170,21 +128,4 @@ export function normalizeIssn(issn: string | null | undefined): string | null {
   return `${s.slice(0, 4)}-${s.slice(4)}`;
 }
 
-/**
- * The publication year of a whole reference string (not of a year field: that is
- * `parseYear`). A parenthetical that is only a year wins, 1500-2099 (the range parseYear
- * accepts): "(2019)", "(2019a)", "(2019, March 3)", "(1859)"; "(1781/1998)" (original/
- * reprint) is the reprint year, the one Crossref holds. Otherwise the first BARE 1900-2099
- * number that is not part of an identifier, page range or volume(issue) run, as in 0.2.x:
- * a bare 1500-1899 number is far more often a count, volume or page than a year, and a
- * wrong year rejects the right DOI. "arXiv:1706.03762", "1648-1655" and "(N = 1648)" are
- * not years. Null when there is none (the DOI matcher then skips its year check).
- */
-export function findReferenceYear(text: string | null | undefined): number | null {
-  if (typeof text !== 'string') return null;
-  const p = findParentheticalYear(text);
-  if (p) return p.year;
-  const m = text.match(BARE_YEAR_IN_TEXT);
-  return m ? parseInt(m[1], 10) : null;
-}
 

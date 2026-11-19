@@ -33,16 +33,15 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   into the request URL without encoding (a `#` in a DOI cut the request short). Every DOI
   reader now uses `cleanDoiInput`, and every request URL encodes the DOI. Matrix: 9 consumers
   × 49 written forms, plus the pure readers.
-- **Years.** `compareYear` (deduplication) read `"(2019)"` and `"c. 1984"` as no year, and
-  scored two `"in press"` references as a mismatch (0.0) while two missing years scored 0.5.
-  The DOI matcher's year rule missed `"(2019, March 3)"` and fell through to the first number
-  in the text. Deduplication now uses `parseYear` (a value with no year counts as missing);
-  the DOI matcher uses `findReferenceYear`, which reads a parenthetical only when it is a
-  year and skips numbers inside identifiers and page ranges (`arXiv:1706.03762`,
-  `1648-1655`, `(N = 1648)`), so a wrong "year" no longer rejects the right DOI. A parenthetical year reads 1500-2099,
-  the range `parseYear` accepts, so "Darwin, C. (1859)" keeps its year check, and "(1781/1998)" is
-  the reprint year; a bare number must be 1900-2099, as in 0.2.x, so a count or volume such as
-  "1650 participants" or "vol. 1521" is not the year, and a decade ("the 1990s") is never a year.
+- **Years keep their 0.2.x rules.** A shared year reader was built for this release and
+  withdrawn before it shipped: six review rounds each found reference shapes that 0.2.x read
+  correctly and the new reader did not (an ISO date followed by a later access year, a number
+  glued to letters such as `NCI-H1975`, a dated parenthetical in a title, `1781/1998` in
+  deduplication), and a wrong year rejects the right DOI. The DOI matcher, deduplication's
+  `compareYear`, journal metadata and `isValidReference` read years exactly as in 0.2.x;
+  `tests/parity/yearRules02.test.ts` pins them to the 0.2.x rules. Known 0.2.x gaps
+  (`compareYear("(2019)", "2019")` is 0, two `"in press"` values score 0) stay until a
+  redesign ships on its own.
 - **Author lists.** `calculateSimilarity` joined `normalized_authors` with ", " and
   `compareAuthors` split on every comma, so `["Smith, J.", "Jones, K."]` was compared as four
   people while `["J. Smith", "K. Jones"]` was two. Arrays are now passed through; strings go
@@ -53,8 +52,7 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   surname in "Müller, K." (the author check was silently skipped) and rejected Crossref
   "Müller" against a reference "Muller". All now use the Unicode-aware `foldForMatch`.
 - **Journal names.** OpenAlex journal matching compared lower-cased text only, so "Revista de
-  Psicologia" did not match "Revista de Psicología", nor "&" match "and"; the APA journal
-  extractor's year anchor missed "(2019, March 3)". Both fixed (`journalKey`).
+  Psicologia" did not match "Revista de Psicología", nor "&" match "and". Fixed (`journalKey`).
 - **Preprints.** The EarthArXiv URL pattern was misspelled (`earharxiv.org`) and never matched.
 - **Errata and responses were never detected.** `checkReferenceForReplies` read the relations
   `is-corrected-by` (HAS_ERRATA) and `is-response-to` (IS_RESPONSE); Crossref serves neither
@@ -89,10 +87,8 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   (`found`, `no_match`, `skipped_unpublishable`, `lookup_failed`), every rejected candidate
   with its reason, and the count dropped under the relevance threshold. `findDOIFromReference`
   returned `null` for all four, and rejected candidates were only logged.
-- Shared readers, exported: `cleanDoiInput`, `doiForUrl`, `parseYear`, `foldForMatch`,
-  `splitAuthorList`, `formatDateParts`, `journalKey`, `normalizeIssn`, `findReferenceYear`,
-  `findParentheticalYear`, and the one year definition every year reader uses: `YEAR`
-  (1500-2099) and `BARE_YEAR` (1900-2099, a bare number in running text).
+- Shared readers, exported: `cleanDoiInput`, `doiForUrl`, `foldForMatch`, `splitAuthorList`,
+  `formatDateParts`, `journalKey`, `normalizeIssn`.
 - `compareAuthors` accepts a string array as well as a string.
 
 ### Changed
@@ -107,8 +103,8 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   found by both sources is two issues (one per source). Nothing else is required. A consumer that rendered `publishedDate` sees zero-padded dates. A
   consumer that wants to say "DOI search failed" rather than "no DOI found" switches to
   `findDOIFromReferenceDetailed`. Deduplication scores change only for inputs the old rules
-  misread (non-Latin or accented names and titles, "Surname, Initials" lists, years with
-  parentheses or no digits).
+  misread (non-Latin or accented names and titles, "Surname, Initials" lists); year scores
+  are unchanged.
 
 ## 0.2.0 — 2026-10-14
 

@@ -108,10 +108,6 @@ describe('shared readers (src/util/normalize.ts)', () => {
     expect(lib.formatDateParts([])).toBeUndefined();
     expect(lib.formatDateParts(undefined)).toBeUndefined();
   });
-  it('parseYear finds the year in every written form and nothing in a non-year', () => {
-    for (const v of ['2019', '(2019a)', '(2019, March 3)', 'c. 2019', 2019]) expect(lib.parseYear(v)).toBe(2019);
-    for (const v of ['in press', 'n.d.', '', '12345', '201', 3000, null, undefined]) expect(lib.parseYear(v)).toBeNull();
-  });
   it('cleanDoiInput keeps case and leaves a non-DOI recognisably non-DOI', () => {
     expect(lib.cleanDoiInput(' https://doi.org/10.1037/ABC ')).toBe('10.1037/ABC');
     expect(lib.cleanDoiInput('doi:not-a-doi')).toBe('not-a-doi');

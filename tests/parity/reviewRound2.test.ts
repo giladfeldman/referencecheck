@@ -2,8 +2,6 @@
  * v0.3.0 review, attempt 2 (2026-11-18). Each block is a defect the second review
  * reproduced; the first three were introduced by this release's own shared readers.
  *  - splitAuthorList read an all-caps surname ("LI", "SMITH") as initials and merged authors.
- *  - The DOI matcher's year fell through to parseYear (1500-2099, any parenthetical), so
- *    "arXiv:1706.03762" or "(N = 1648)" became the year and the right DOI was rejected.
  *  - normalizeIssn accepted page and year ranges ("1648-1655", "2019-2020") as ISSNs.
  *  - The anchored 10.1101 rule rejected "...002386.v1", "...v1.full" and a trailing "."; the
  *    new openRxiv prefix 10.64898 was not listed.
@@ -48,21 +46,6 @@ describe('splitAuthorList: an all-caps surname is not initials', () => {
     ['King, M. L., Jr.; Anderson, B.', ['King, M. L., Jr.', 'Anderson, B.']],
   ])('%j', (input, want) => {
     expect(norm.splitAuthorList(input)).toEqual(want);
-  });
-});
-
-describe('findReferenceYear: identifiers, page ranges and counts are not years', () => {
-  it.each([
-    ['Vaswani A. Attention is all you need. arXiv:1706.03762. 2017', 2017],
-    ['Smith J. Brain. 2019;12(3):1648-1655 (N = 1648).', 2019],
-    ['Smith J. J Foo 1650-1660. 2019', 2019],
-    ['Smith, J. (2019, March 3). Title. Journal, 1(2), 3-4.', 2019],
-    ['Smith, J. (2019a). Title.', 2019],
-    ['Smith J. Title. Nature. 2013;500:54-58.', 2013],
-    ['Smith, J. (in press). Title.', null],
-    ['Smith J. Pages 1999-2003 only.', null],
-  ])('%j', (text, want) => {
-    expect(norm.findReferenceYear(text)).toBe(want);
   });
 });
 

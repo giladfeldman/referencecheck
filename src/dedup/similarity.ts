@@ -1,7 +1,7 @@
 import { distance } from 'fastest-levenshtein';
 import type { ReferenceInput } from '../types.js';
 import type { DeduplicationConfig } from './types.js';
-import { foldForMatch, parseYear, splitAuthorList } from '../util/normalize.js';
+import { foldForMatch, splitAuthorList } from '../util/normalize.js';
 
 /**
  * Normalize author name for comparison
@@ -104,15 +104,22 @@ export function compareYear(
   year1: string | number | null | undefined,
   year2: string | number | null | undefined
 ): number {
-  // One shared year reader (2026-11-18). parseInt read "(2019)" as no year and "c. 1984"
-  // as no year, while the DOI matcher found both. A value with no year in it ("in press",
-  // "n.d.") is treated as missing, not as a mismatch.
-  const y1 = parseYear(year1);
-  const y2 = parseYear(year2);
+  // The 0.2.x year rule, kept as it was (2026-11-19): a shared year reader regressed against
+  // it in review (e.g. "1781/1998" no longer matched "1781"); the redesign waits for a
+  // release of its own.
+  if (!year1 || !year2) {
+    // If both are missing, neutral match
+    if (!year1 && !year2) return 0.5;
+    // If only one is missing, low similarity
+    return 0.0;
+  }
 
-  if (y1 === null || y2 === null) {
-    // If both are missing, neutral match; if only one is, low similarity.
-    return y1 === null && y2 === null ? 0.5 : 0.0;
+  // Extract year numbers
+  const y1 = parseInt(year1.toString(), 10);
+  const y2 = parseInt(year2.toString(), 10);
+
+  if (isNaN(y1) || isNaN(y2)) {
+    return 0.0;
   }
 
   // Exact match = 1.0, off by 1 = 0.5, off by 2+ = 0.0

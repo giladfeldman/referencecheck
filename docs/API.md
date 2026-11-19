@@ -105,8 +105,9 @@ Finds the DOI of a free-text reference, or `null`. Tries Crossref's Simple Text 
 the bibliographic search (top 5, relevance score of at least 50). A candidate is accepted only
 if its year is within one year of the reference's and at least one author surname matches.
 Theses, dissertations, unpublished manuscripts, personal communications, and works "in
-preparation", "submitted" or "under review" are skipped without a request. Surnames and years
-are read with the shared readers (accents folded on both sides, `(2019, March 3)` read as 2019).
+preparation", "submitted" or "under review" are skipped without a request. Surnames are folded
+with `foldForMatch` on both sides. The reference's year is the first `(dddd)` or `(dddda)`,
+else the first bare 1900–2099 number (the 0.2.x rule).
 
 ### `findDOIFromReferenceDetailed(referenceText, creds?)` — preferred
 
@@ -133,21 +134,18 @@ interface RejectedDoiCandidate {
 
 ## Shared input readers
 
-Every function that reads a DOI, a year, an author list or a name/title goes through these,
-so one input is read the same way everywhere (bound by `tests/parity/`).
+Every function that reads a DOI, an author list or a name/title goes through these, so one
+input is read the same way everywhere (bound by `tests/parity/`). Years are not read here in
+this release: each year reader keeps its 0.2.x rule (`tests/parity/yearRules02.test.ts`).
 
 | Export | Returns |
 |---|---|
 | `cleanDoiInput(doi)` | the DOI with surrounding whitespace, a resolver URL (`http(s)://`, `dx.`/`www.`, or bare `doi.org/`) or a `doi:` label removed and percent-encoding decoded; case kept; `''` for a non-string |
 | `doiForUrl(doi)` | `encodeURIComponent(cleanDoiInput(doi))`, the only form a DOI takes inside a request URL |
-| `parseYear(value)` | the first stand-alone year 1500–2099 in a string or number (`"(2019, March 3)"` → 2019; `"1781/1998"` → 1998, the reprint), or `null` (`"in press"`, `"n.d."`) |
 | `foldForMatch(text)` | lower-cased, accents removed (`Müller` → `muller`; also ø ł ß đ ı æ œ þ: `Østergaard` → `ostergaard`), letters and digits of every script kept, everything else one space |
 | `splitAuthorList(authors)` | one entry per author from an array or a string; `;`, `&` and "and" always separate; a comma separates unless what follows is only initials (each capital followed by a period, space, hyphen or the end) or a suffix (`Smith, J., Jones, K.` and `LI, X., WU, Y.` → 2 authors) |
 | `formatDateParts(parts)` | Crossref `date-parts` as ISO at the given precision: `[2019, 3, 5]` → `"2019-03-05"`, `[2019]` → `"2019"`, else `undefined` |
 | `normalizeIssn(issn)` | an ISSN as `NNNN-NNNC` with the check digit upper-cased, from any spacing, dash or `ISSN`/`eISSN` label; `null` unless it has eight ISSN characters and a correct mod-11 check digit (`1648-1655` is a page range) |
-| `findReferenceYear(text)` | the year of a whole reference string: a parenthetical that is only a year, 1500–2099 (`(2019)`, `(2019a)`, `(2019, March 3)`, `(1859)`; `(1781/1998)` is the reprint year), else the first bare 1900–2099 number not inside an identifier or a range (`arXiv:1706.03762`, `1648-1655`); `null` when none. Used by the DOI matcher |
-| `findParentheticalYear(text)` | the first parenthetical that is only a year (same forms as above), as `{ year, index, length }`, or `null`. The year anchor for journal metadata and `isValidReference` |
-| `YEAR`, `BARE_YEAR`, `YEAR_SUFFIX` | regex sources: the one year definition. `YEAR_SUFFIX` is the optional letter of `2019a`, never the `s` of a decade (`1990s` is not a year). `YEAR` is 1500–2099 (year context: a parenthetical or a year field); `BARE_YEAR` is 1900–2099 (a bare number in running text, where 1500–1899 is more often a count, volume or page) |
 | `journalKey(name)` | `foldForMatch(name)` with the words "and" and "the" dropped: the key both sides of a journal-name comparison use (`Journal of Personality & Social Psychology` = `Journal of Personality and Social Psychology`) |
 
 ## DOI shape and shortDOIs
@@ -503,7 +501,7 @@ All local; no network.
 | `calculateSimilarity(ref1, ref2, config)` | `authorWeighting × authors + titleWeighting × title + (1 − both) × year`, from `normalized_authors`, `normalized_title`, `normalized_year` |
 | `compareAuthors(authors1, authors2)` | 0–1, symmetric; each argument a string or a string array, split with `splitAuthorList` and folded with `foldForMatch`; best Levenshtein match per author, averaged both ways; 0.5 when both are empty |
 | `compareTitle(title1, title2)` | `1 − Levenshtein distance / longer length` after `foldForMatch` (non-Latin titles compared, not emptied); 0.5 when both are empty |
-| `compareYear(year1, year2)` | years read with `parseYear`: 1 same year, 0.5 one year apart, 0 otherwise; a value with no year (`"in press"`) counts as missing: 0.5 when both are, 0 when one is |
+| `compareYear(year1, year2)` | `parseInt` of each value (the 0.2.x rule): 1 same year, 0.5 one year apart, 0 otherwise; 0.5 when both are empty, 0 when one is or when either does not start with a number (`"(2019)"`, `"in press"`) |
 | `normalizeAuthorName(name)` | `foldForMatch(name)`: `"Smith, J."` → `"smith j"`, `"Müller"` → `"muller"` |
 | `scoreMetadataCompleteness(ref)` | 0–1 weighted presence of title, authors, year, DOI, source, volume, pages |
 | `findDuplicateGroups(pairs)` | `DuplicateGroup[]` by transitive closure (A=B and B=C gives one group) |

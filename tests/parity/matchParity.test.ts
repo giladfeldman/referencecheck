@@ -1,10 +1,8 @@
 /**
- * Parity matrices for the year, author-list and name/title readers (2026-11-18 sweep).
+ * Parity matrices for the author-list and name/title readers (2026-11-18 sweep). Years keep
+ * their 0.2.x rules in this release (see tests/parity/yearRules02.test.ts).
  *
  * Class: "one input shape is read differently in different code paths". Members found:
- *  - Year: dedup's compareYear used parseInt, so "(2019)" and "c. 1984" were no year while
- *    the DOI matcher found both; "in press" vs "in press" scored as a MISMATCH (0.0) while
- *    two absent years scored neutral (0.5).
  *  - Author list: calculateSimilarity joined normalized_authors with ", " and compareAuthors
  *    split on every comma, so ["Smith, J.", "Jones, K."] became four people while
  *    ["J. Smith", "K. Jones"] stayed two.
@@ -25,25 +23,6 @@ jest.unstable_mockModule('axios', () => {
 });
 
 const lib: any = await import('../../src/index.js');
-
-describe('year parity: one year, every way it is written', () => {
-  const FORMS = ['2019', '2019a', '(2019)', '(2019a)', ' 2019 ', '2019.', '(2019, March 3)', 'c. 2019', 2019];
-  it('compareYear reads every form as the same year as "2019"', () => {
-    const bad = FORMS.filter((f) => lib.compareYear(f, '2019') !== 1.0 || lib.compareYear('2019', f) !== 1.0);
-    expect(bad).toEqual([]);
-  });
-  it('compareYear: a value with no year in it counts as missing, never as a mismatch', () => {
-    for (const none of ['in press', 'n.d.', '', 'forthcoming']) {
-      expect(lib.compareYear(none, none)).toBe(0.5);
-      expect(lib.compareYear(none, undefined)).toBe(0.5);
-      expect(lib.compareYear(none, '2019')).toBe(0.0);
-    }
-  });
-  it('compareYear still separates real differences (control)', () => {
-    expect(lib.compareYear('(2019)', '2020')).toBe(0.5);
-    expect(lib.compareYear('(2019)', '2021')).toBe(0.0);
-  });
-});
 
 describe('author-list parity: one list, every way it is written', () => {
   const ONE_LIST: Array<string | string[]> = [
