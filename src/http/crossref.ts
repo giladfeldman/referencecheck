@@ -543,7 +543,7 @@ function isWholeWordOf(single: string, multi: string): boolean {
  * "Van Dyke" = "VanDyke", "O'Brien" = "OBrien"), equal once one side's leading particles
  * are dropped ("van der Berg" / "Berg"), or one is a whole word of the other ("Smith" /
  * "Smith-Jones"), also once initials written on to the reference surname or particles joined
- * to the Crossref one are dropped ("SmithJA" / "Smith", "Jong" / "DeJong"); never a substring
+ * to either surname are dropped ("SmithJA" / "Smith", "Jong" / "DeJong"); never a substring
  * ("Li" / "Williams", "Smith" / "Goldsmith"). The German
  * digraph spelling counts as the same name. Latin, Cyrillic and Greek against each other:
  * the loose romanisation ("Иванов" / "Ivanov" / "Ivanova", "Чайковский" / "Tchaikovsky").
@@ -558,8 +558,9 @@ function withoutGluedInitials(name: string): string[] {
  *  "Mc", "O" or "D": those belong to the surname ("MacDonald" is not "Donald"). */
 const GLUED_PARTICLES = new Set<string>(NAME_PARTICLES.filter((p) => !['mac', 'mc', 'o', 'd'].includes(p)));
 
-/** A Crossref family with its particles joined on ("DeJong", "VanDerBerg"): the surname after
- *  them ("Jong", "Berg"), which 0.2.x matched as a part of the name (round 19). */
+/** A surname with its particles joined on ("DeJong", "VanDerBerg"), in the reference or the
+ *  Crossref record: the surname after them ("Jong", "Berg"), which 0.2.x matched as a part of
+ *  the name (round 19; the reference side, round 21). */
 function withoutGluedParticles(name: string): string[] {
   const out: string[] = [];
   let rest = name;
@@ -573,7 +574,7 @@ function withoutGluedParticles(name: string): string[] {
 function surnamesMatch(ref: string, crossref: string): boolean | null {
   if (!scriptsComparable(ref, crossref)) return null;
   if (crossScript(ref, crossref)) return looseSurnameMatch(ref, crossref);
-  for (const r of [ref, ...withoutGluedInitials(ref)].flatMap(spellings)) {
+  for (const r of [ref, ...withoutGluedInitials(ref), ...withoutGluedParticles(ref)].flatMap(spellings)) {
     for (const c of [crossref, ...withoutGluedParticles(crossref)].flatMap(spellings)) {
       if (sameSurname(r, c) || isWholeWordOf(r, c) || isWholeWordOf(c, r) || leadsWith(r, c)) return true;
     }

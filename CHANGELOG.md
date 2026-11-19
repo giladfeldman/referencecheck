@@ -219,7 +219,9 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     open a different author entry (`Hernandez Ruiz and Lopez Garcia (2014)` and a record by
     Hernandez and Lopez), the reference lists them family name first and the given-name check
     does not apply. A given name written as one word is a spelling of the same name written in
-    parts (`Hsiao-Ming` / `Xiaoming`).
+    parts (`Hsiao-Ming` / `Xiaoming`). Particles joined to the reference's surname are dropped
+    too (`DeJong, P.` / a record by Jong). Known limit: a romanisation more than two edits away
+    (`Zongdao` / `Tsung-Dao`) is taken for another given name, like a nickname.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

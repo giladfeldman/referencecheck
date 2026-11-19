@@ -47,6 +47,10 @@ describe('the right record is accepted', () => {
     [`Hernandez Ruiz and others (2014). ${SD}. J Sleep Res.`, [['Hernandez', 'Maria']]],
     [`Hernandez Ruiz and Lopez Garcia (2014). ${SD}. J Sleep Res.`, [['Hernandez', 'Maria'], ['Lopez', 'Ana']]],
     [`Wang Hsiao-Ming and Li Hua (2014). ${SD}. J Sleep Res.`, [['Wang', 'Xiaoming'], ['Li', 'Hua']]],
+    // review 20: particles joined on the reference side
+    [`DeJong, P. (2014). ${SD}. J Sleep Res.`, [['Jong', 'P.']]],
+    [`VanDyke, J. (2014). ${SD}. J Sleep Res.`, [['Dyke', 'J.']]],
+    [`VanDerBerg, J. (2014). ${SD}. J Sleep Res.`, [['Berg', 'J.']]],
   ] as Array<[string, Array<[string, string]>]>)('%j', async (text, people) => {
     expect(await accepts(text, people)).toBe(true);
     expect(await accepts(text, [['Okafor', 'Zoe']])).toBe(false);
@@ -56,6 +60,7 @@ describe('the right record is accepted', () => {
 describe('records by other authors are still rejected', () => {
   it.each([
     [`Donald, A. (2014). ${SD}. J Sleep Res.`, 'MacDonald', 'A'],
+    [`MacDonald, A. (2014). ${SD}. J Sleep Res.`, 'Donald', 'A'],
     [`Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, 'Mark', 'Zoe'],
     [`Little Mark & Collins Grace 2014. ${SD}. J Sleep Res.`, 'Mark', 'Zoe'],
     [`Mark Little and Grace Collins (2014). ${SD}. J Sleep Res.`, 'Mark', 'Zoe'],
