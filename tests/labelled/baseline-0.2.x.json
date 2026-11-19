@@ -567,13 +567,41 @@
       "missedMerges": 0,
       "wrongAccepts": 0,
       "rightRejects": 0
+    },
+    "doi/right:vancouver-one-author-name-like-title": {
+      "rows": 10,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 4
+    },
+    "doi/wrong:vancouver-one-author-name-like-title": {
+      "rows": 10,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:given-first-one-author": {
+      "rows": 10,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 10
+    },
+    "doi/wrong:given-first-one-author": {
+      "rows": 10,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
     }
   },
   "total": {
     "falseMerges": 60,
     "missedMerges": 246,
     "wrongAccepts": 171,
-    "rightRejects": 52,
-    "rows": 1263
+    "rightRejects": 66,
+    "rows": 1303
   }
 }

@@ -293,6 +293,7 @@ function buildRows() {
     addDoi('owner:preprint-for-published', 'reject', TEXT_SHAPES.apa(published), pre.record, 'preprint-biorxiv.json');
   }
   addRound11Rows(addDedup, addDoi);
+  addRound12Rows(addDoi);
   dedup.forEach((r, i) => { r.half = halfOf(`${r.kind}/${r.cls}/${r.note}/${i}`); });
   doi.forEach((r, i) => { r.half = halfOf(`${r.kind}/${r.cls}/${r.note}/${i}`); });
   return { dedup, doi };
@@ -471,6 +472,41 @@ function addRound11Rows(addDedup, addDoi) {
     addDoi('right:given-first-full', 'accept', `Michael J. LaCour, Donald P. Green (${w.year}). ${w.title}. ${w.journal}.`, w.record, 'retracted-plain-title.json written out');
     addDoi('right:given-first-full-and', 'accept', `LaCour, Michael J., and Donald P. Green. ${w.year}. ${w.title}. ${w.journal}.`, w.record, 'retracted-plain-title.json Chicago');
   }
+}
+
+// ------------------------------------------------------------------ shapes added in review round 12
+// One author, written so the author section can be read two ways: Vancouver with one initial
+// whose title starts like a name ("Hoddy K. Sleep and memory ...", "Hoddy K. Diabetes, Obesity
+// and ..."), and given-first with a middle initial and nothing after the surname ("Michael J.
+// LaCour. Title."). The record is the reference's own author, title and year, so the right
+// label is accept; the same text against a record with another author is reject.
+
+/** Titles whose first word is capitalised and followed by "and", "&" or ", Capital". */
+const NAME_LIKE_TITLES = [
+  'Sleep and memory in older adults',
+  'Diabetes, Obesity and cardiovascular risk in midlife',
+  'Cancer, Heart disease and sleep quality',
+  'Anxiety & attention in the classroom',
+  'Trust and cooperation in repeated games',
+];
+
+function addRound12Rows(addDoi) {
+  WORKS.slice(0, 10).forEach(({ file, w }, i) => {
+    const first = w.authors[0];
+    if (!first?.initials.length || !/\p{Ll}/u.test(first.family)) return;
+    const title = NAME_LIKE_TITLES[i % NAME_LIKE_TITLES.length];
+    const ini = first.initials[0];
+    const record = { ...w.record, title: [title], subtitle: [], author: [{ family: first.family, given: `${ini}.` }] };
+    const other = otherAuthorsWork(w, 0).authors[0];
+    const otherRecord = { ...record, DOI: `${w.doi}.other-author`, author: [{ family: other.family, given: `${ini}.` }] };
+    const vancouver = `${first.family} ${ini}. ${title}. ${w.journal}. ${w.year};1:1-9.`;
+    addDoi('right:vancouver-one-author-name-like-title', 'accept', vancouver, record, `${file} "${title}"`);
+    addDoi('wrong:vancouver-one-author-name-like-title', 'reject', vancouver, otherRecord, `${file} "${title}"`);
+    const given = `Alex ${ini}. ${first.family}. ${title}. ${w.journal}. ${w.year}.`;
+    const givenRecord = { ...record, author: [{ family: first.family, given: `Alex ${ini}.` }] };
+    addDoi('right:given-first-one-author', 'accept', given, givenRecord, file);
+    addDoi('wrong:given-first-one-author', 'reject', given, { ...givenRecord, DOI: `${w.doi}.other-author`, author: [{ family: other.family, given: `Alex ${ini}.` }] }, file);
+  });
 }
 
 export const ROWS = buildRows();
