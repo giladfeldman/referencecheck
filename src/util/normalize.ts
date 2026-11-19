@@ -68,11 +68,14 @@ export function foldForMatch(text: string | null | undefined): string {
  */
 export const YEAR = '(?:1[5-9]|20)\\d{2}';
 export const BARE_YEAR = '(?:19|20)\\d{2}';
+// The letter after a year that disambiguates two works of one author-year ("2019a"):
+// one letter, never the "s" of a decade ("1990s" is not 1990), never the start of a word.
+export const YEAR_SUFFIX = '(?:(?!s\\b)[a-z](?![a-z]))?';
 // A bare year not inside an identifier ("arXiv:1706.03762"), a range ("1648-1655",
 // "1648 – 1655") or a volume:issue run.
-const BARE_YEAR_IN_TEXT = new RegExp(`(?<![\\d.:/\\u2013-])(${BARE_YEAR})[a-z]?(?![\\d]|\\s*[\\u2013-]\\s*\\d|\\.\\d|:\\d)`);
+const BARE_YEAR_IN_TEXT = new RegExp(`(?<![\\d.:/\\u2013-])(${BARE_YEAR})${YEAR_SUFFIX}(?![a-z\\d]|\\s*[\\u2013-]\\s*\\d|\\.\\d|:\\d)`);
 const PARENTHETICAL_YEAR = new RegExp(
-  `\\(\\s*(?:${YEAR}[a-z]?\\s*\\/\\s*)?(${YEAR})[a-z]?\\s*(?:,[^()]*)?\\)`,
+  `\\(\\s*(?:${YEAR}${YEAR_SUFFIX}\\s*\\/\\s*)?(${YEAR})${YEAR_SUFFIX}\\s*(?:,[^()]*)?\\)`,
 );
 
 /**
@@ -97,7 +100,7 @@ export function parseYear(value: string | number | null | undefined): number | n
     return Number.isInteger(value) && value >= 1500 && value <= 2099 ? value : null;
   }
   // "1781/1998" (original/reprint) is the reprint year, as in findParentheticalYear.
-  const m = String(value).match(new RegExp(`(?<!\\d)(?:${YEAR}[a-z]?\\s*\\/\\s*)?(${YEAR})(?!\\d)`));
+  const m = String(value).match(new RegExp(`(?<!\\d)(?:${YEAR}${YEAR_SUFFIX}\\s*\\/\\s*)?(${YEAR})(?!\\d|s\\b)`));
   return m ? parseInt(m[1], 10) : null;
 }
 

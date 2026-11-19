@@ -147,7 +147,7 @@ so one input is read the same way everywhere (bound by `tests/parity/`).
 | `normalizeIssn(issn)` | an ISSN as `NNNN-NNNC` with the check digit upper-cased, from any spacing, dash or `ISSN`/`eISSN` label; `null` unless it has eight ISSN characters and a correct mod-11 check digit (`1648-1655` is a page range) |
 | `findReferenceYear(text)` | the year of a whole reference string: a parenthetical that is only a year, 1500–2099 (`(2019)`, `(2019a)`, `(2019, March 3)`, `(1859)`; `(1781/1998)` is the reprint year), else the first bare 1900–2099 number not inside an identifier or a range (`arXiv:1706.03762`, `1648-1655`); `null` when none. Used by the DOI matcher |
 | `findParentheticalYear(text)` | the first parenthetical that is only a year (same forms as above), as `{ year, index, length }`, or `null`. The year anchor for journal metadata and `isValidReference` |
-| `YEAR`, `BARE_YEAR` | regex sources: the one year definition. `YEAR` is 1500–2099 (year context: a parenthetical or a year field); `BARE_YEAR` is 1900–2099 (a bare number in running text, where 1500–1899 is more often a count, volume or page) |
+| `YEAR`, `BARE_YEAR`, `YEAR_SUFFIX` | regex sources: the one year definition. `YEAR_SUFFIX` is the optional letter of `2019a`, never the `s` of a decade (`1990s` is not a year). `YEAR` is 1500–2099 (year context: a parenthetical or a year field); `BARE_YEAR` is 1900–2099 (a bare number in running text, where 1500–1899 is more often a count, volume or page) |
 | `journalKey(name)` | `foldForMatch(name)` with the words "and" and "the" dropped: the key both sides of a journal-name comparison use (`Journal of Personality & Social Psychology` = `Journal of Personality and Social Psychology`) |
 
 ## DOI shape and shortDOIs

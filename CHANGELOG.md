@@ -42,7 +42,7 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   `1648-1655`, `(N = 1648)`), so a wrong "year" no longer rejects the right DOI. A parenthetical year reads 1500-2099,
   the range `parseYear` accepts, so "Darwin, C. (1859)" keeps its year check, and "(1781/1998)" is
   the reprint year; a bare number must be 1900-2099, as in 0.2.x, so a count or volume such as
-  "1650 participants" or "vol. 1521" is not the year.
+  "1650 participants" or "vol. 1521" is not the year, and a decade ("the 1990s") is never a year.
 - **Author lists.** `calculateSimilarity` joined `normalized_authors` with ", " and
   `compareAuthors` split on every comma, so `["Smith, J.", "Jones, K."]` was compared as four
   people while `["J. Smith", "K. Jones"]` was two. Arrays are now passed through; strings go
