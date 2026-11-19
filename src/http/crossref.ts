@@ -810,10 +810,34 @@ function entriesOf(words: readonly SectionWord[], family: string, firstWordRead:
     const ambiguous = given.some((w) => !IS_INITIAL.test(w) && /^\p{Lu}/u.test(w));
     // The sole author entry, first in a section with no "Surname, I." in it, is read family
     // first, as 0.2.x read it ("Hernandez Ruiz (2014)": a second surname, not a given name;
-    // round 19). A list of entries ("Mark Little and Grace Collins") keeps the check.
-    const sole = i === words.length - 1 || /[.:;]/.test(words[i].after);
-    const readFirst = firstWordRead && at === 0 && sole;
+    // round 19; "et al." / "and others" after it, round 20). An entry with an initial ("Hua H.
+    // Li et al.") or a list of entries ("Mark Little and Grace Collins") keeps the check.
+    const next = words[i + 1]?.word ?? '';
+    const sole = i === words.length - 1 || /[.:;]/.test(words[i].after)
+      || (/^et$/i.test(next) && /^al$/i.test(words[i + 2]?.word ?? ''))
+      || (/^and$/i.test(next) && /^others$/i.test(words[i + 2]?.word ?? ''));
+    const readFirst = firstWordRead && at === 0 && sole && !given.some((w) => IS_INITIAL.test(w));
     out.push(ambiguous && !cutAfter && !cutBefore && !readFirst ? given : null);
+  }
+  return out;
+}
+
+/**
+ * Where a record's family name opens an author entry that goes on after it ("Hernandez" in
+ * "Hernandez Ruiz and Lopez Garcia"): the index of its first word, for each such entry.
+ */
+function entryLeads(words: readonly SectionWord[], family: string): number[] {
+  const fam = foldForMatch(family);
+  const out: number[] = [];
+  if (!fam) return out;
+  for (let at = 0; at < words.length; at++) {
+    if (at > 0 && sameEntry(words, at - 1)) continue;
+    for (let j = at; j < Math.min(words.length, at + 4); j++) {
+      if (words.slice(at, j + 1).map((w) => foldForMatch(w.word)).join(' ') === fam) {
+        if (sameEntry(words, j)) out.push(at);
+        break;
+      }
+    }
   }
   return out;
 }
@@ -833,7 +857,8 @@ function editDistance(a: string, b: string): number {
  * A record's given name that does not fit the words written next to its family name in an
  * entry of ambiguous order: it shares no initial with them, and no word of it is a spelling
  * variant of one of them (two edits or fewer, four letters or more: "Yulia" / "Julia", "George" /
- * "Jorge", round 18). Then the record's author is not that person ("Mark Little" and a record by
+ * "Jorge", round 18; the whole name written as one word, "Hsiao-Ming" / "Xiaoming", round
+ * 20). Then the record's author is not that person ("Mark Little" and a record by
  * "Mark, Zoe": "Mark" was a given name). No given name in the record, or one in another script,
  * decides nothing.
  */
@@ -843,8 +868,12 @@ function givenConflicts(others: readonly string[], given: string | null): boolea
   const recorded = initialsOf(given);
   if (recorded.size === 0 || [...recorded].some((l) => !/^[a-z]$/.test(l))) return false;
   if ([...recorded].some((l) => cited.has(l))) return false;
-  const long = (text: string) => foldForMatch(text).split(' ').filter((w) => w.length >= 4);
-  const written = long(others.join(' '));
+  // Each word, and the name written as one word ("Hsiao-Ming" / "Xiaoming", round 20).
+  const long = (text: string) => {
+    const parts = foldForMatch(text).split(' ');
+    return [...parts, parts.join('')].filter((w) => w.length >= 4);
+  };
+  const written = long(others.filter((w) => !IS_INITIAL.test(w)).join(' '));
   return !long(given).some((g) => written.some((w) => editDistance(g, w) <= 2));
 }
 
@@ -897,11 +926,18 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
     let incomparable = 0;
     let compared = 0;
     authorCheck = 'mismatched';
-    for (const { family: c, given } of crossrefPeople) {
+    // Two or more of the record's authors each open a different author entry: the reference
+    // lists them family name first ("Hernandez Ruiz and Lopez Garcia" and a record by Hernandez
+    // and Lopez), so their given names are not in it and decide nothing (round 20). A record by
+    // one person named like a cited given name ("Mark Little and Grace Collins" and Zoe Mark)
+    // opens one entry only.
+    const leads = crossrefPeople.map((p) => entryLeads(words, p.family));
+    const familyFirst = new Set(leads.flat()).size >= 2 && leads.filter((l) => l.length > 0).length >= 2;
+    for (const [n, { family: c, given }] of crossrefPeople.entries()) {
       let comparable = false;
       // A family name read where the order is ambiguous matches only when the record's given
       // name agrees with the words written after it (round 17).
-      const vetoed = givenVetoes(words, c, given, firstWordRead);
+      const vetoed = !(familyFirst && leads[n].length > 0) && givenVetoes(words, c, given, firstWordRead);
       for (const r of refAuthors) {
         const m = surnamesMatch(r, c);
         if (m === true && !vetoed) authorCheck = 'matched';

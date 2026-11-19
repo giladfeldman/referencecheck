@@ -213,6 +213,13 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     `MacDonald` is not `Donald`). Known limit, the same as 0.2.x: a sole author written given
     name first (`Ana Muñoz (2014)`) is accepted against a record whose family name is the cited
     given name (`Ana`) and that has the cited title and year.
+  - *DOI matcher, authors (round 21).* The sole-entry reading above also holds before `et al.`
+    or `and others` (`Hernandez Ruiz et al. (2014)`), for an entry with no initials; the same
+    known limit then covers `Mark Little et al.`. When two or more of a record's authors each
+    open a different author entry (`Hernandez Ruiz and Lopez Garcia (2014)` and a record by
+    Hernandez and Lopez), the reference lists them family name first and the given-name check
+    does not apply. A given name written as one word is a spelling of the same name written in
+    parts (`Hsiao-Ming` / `Xiaoming`).
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

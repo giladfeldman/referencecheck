@@ -550,6 +550,7 @@ function addRound12Rows(addDoi) {
   addRound17Rows(addDoi);
   addRound18Rows(addDoi);
   addRound19Rows(addDoi);
+  addRound20Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -839,6 +840,29 @@ function addRound19Rows(addDoi) {
   });
   // "Mac" belongs to the surname: a record by MacDonald is not one by Donald.
   addDoi('wrong:glued-particle', 'reject', `Donald, A. (2014). ${SD}. J Sleep Res.`, rec('mac', [['MacDonald', 'A']]), 'Donald, A.');
+}
+
+// ------------------------------------------------------------------ shapes added in review round 20
+// A sole double surname followed by "et al." / "and others", a list of double surnames with no
+// given names, and a given name in an older romanisation. Labels by construction: the record
+// lists the cited authors (accept) or only another author (reject).
+function addRound20Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const SD = 'Sleep deprivation affects memory';
+  const rec = (doi, people) => ({ ...base, title: [SD], DOI: `${WORKS[0].w.doi}.r20-${doi}`, author: people.map(([family, given]) => ({ family, given })) });
+  const rows = [
+    ['second-surname-et-al', `Hernandez Ruiz et al. (2014). ${SD}. J Sleep Res.`, [['Hernandez', 'Maria'], ['Lopez', 'Juan']]],
+    ['second-surname-et-al', `Hernandez Ruiz and others (2014). ${SD}. J Sleep Res.`, [['Hernandez', 'Maria']]],
+    ['family-first-surname-list', `Hernandez Ruiz and Lopez Garcia (2014). ${SD}. J Sleep Res.`, [['Hernandez', 'Maria'], ['Lopez', 'Ana']]],
+    ['family-first-surname-list', `Hernandez Ruiz & Lopez Garcia (2014). ${SD}. J Sleep Res.`, [['Hernandez', 'Maria'], ['Lopez', 'Ana']]],
+    ['older-romanisation', `Wang Hsiao-Ming and Li Hua (2014). ${SD}. J Sleep Res.`, [['Wang', 'Xiaoming'], ['Li', 'Hua']]],
+  ];
+  rows.forEach(([shape, text, people], k) => {
+    addDoi(`right:${shape}`, 'accept', text, rec(`s${k}`, people), text.slice(0, 16));
+    addDoi(`wrong:${shape}`, 'reject', text, rec(`s${k}w`, [['Okafor', 'Zoe']]), text.slice(0, 16));
+  });
+  // The collision the given-name check is for, in a list: still rejected.
+  addDoi('wrong:given-name-collision-list', 'reject', `Mark Little and Grace Collins (2014). ${SD}. J Sleep Res.`, rec('c', [['Mark', 'Zoe']]), 'Mark Little and');
 }
 
 export const ROWS = buildRows();

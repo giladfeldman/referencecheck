@@ -1086,6 +1086,55 @@
       "wrongAccepts": 1,
       "rightRejects": 0
     },
+    "doi/right:second-surname-et-al": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:second-surname-et-al": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:family-first-surname-list": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:family-first-surname-list": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:older-romanisation": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:older-romanisation": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:given-name-collision-list": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 1,
+      "rightRejects": 0
+    },
     "doi/right:given-first-one-initial-bare-year": {
       "rows": 1,
       "falseMerges": 0,
@@ -1104,8 +1153,8 @@
   "total": {
     "falseMerges": 60,
     "missedMerges": 246,
-    "wrongAccepts": 188,
+    "wrongAccepts": 189,
     "rightRejects": 89,
-    "rows": 1581
+    "rows": 1592
   }
 }
