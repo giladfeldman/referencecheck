@@ -595,13 +595,104 @@
       "missedMerges": 0,
       "wrongAccepts": 0,
       "rightRejects": 0
+    },
+    "doi/wrong:vancouver-one-author-title-word-author": {
+      "rows": 10,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 4,
+      "rightRejects": 0
+    },
+    "doi/wrong:vancouver-et-al-title-word-author": {
+      "rows": 10,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 4,
+      "rightRejects": 0
+    },
+    "doi/right:vancouver-et-al-name-like-title": {
+      "rows": 10,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 4
+    },
+    "doi/right:given-first-one-initial-particle": {
+      "rows": 8,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 4
+    },
+    "doi/wrong:given-first-one-initial-particle": {
+      "rows": 8,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:given-first-one-initial-two-word-surname": {
+      "rows": 4,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 2
+    },
+    "doi/wrong:given-first-one-initial-two-word-surname": {
+      "rows": 4,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:given-first-one-initial-more-initials": {
+      "rows": 4,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 4
+    },
+    "doi/wrong:given-first-one-initial-more-initials": {
+      "rows": 4,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:given-first-one-initial-suffix": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 2
+    },
+    "doi/wrong:given-first-one-initial-suffix": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:given-first-one-initial-bare-year": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 1
+    },
+    "doi/wrong:given-first-one-initial-bare-year": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
     }
   },
   "total": {
     "falseMerges": 60,
     "missedMerges": 246,
-    "wrongAccepts": 171,
-    "rightRejects": 66,
-    "rows": 1303
+    "wrongAccepts": 179,
+    "rightRejects": 83,
+    "rows": 1371
   }
 }

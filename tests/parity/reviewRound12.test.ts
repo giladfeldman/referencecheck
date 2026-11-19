@@ -58,4 +58,32 @@ describe('given-first names with a middle initial', () => {
   it('a record by another author is rejected', async () => {
     expect(await accepts('Michael J. LaCour. When contact changes minds. Science. 2014;346:1366-9', 'When contact changes minds', ['Broockman'], 2014)).toBe(false);
   });
+  // review attempt 12: a surname of another shape after the middle initial
+  it.each([
+    ['Michael J. van der Berg, Donald P. Green (2014). When contact changes minds. Science.', ['van der Berg', 'Green']],
+    ['Michael J. de Rooij, Donald P. Green (2014). When contact changes minds. Science.', ['de Rooij', 'Green']],
+    ['Michael J. de Rooij (2014). When contact changes minds. Science.', ['de Rooij']],
+    ['Michael J. Van Dyke and Donald P. Green (2014). When contact changes minds. Science.', ['Van Dyke', 'Green']],
+    ['Maria J. Garcia Marquez, Ana B. Lopez (2014). When contact changes minds. Science.', ['Garcia Marquez', 'Lopez']],
+    ['Alex J. K. Smith. When contact changes minds. Science. 2014.', ['Smith']],
+    ['Jordan B. K. Fishman and Eric A. Berg. When contact changes minds. Science. 2014.', ['Fishman', 'Berg']],
+    ['Michael J. LaCour Jr. When contact changes minds. Science. 2014.', ['LaCour']],
+    ['Michael J. LaCour 2014. When contact changes minds. Science.', ['LaCour']],
+  ])('%j: the right DOI is accepted', async (text, families) => {
+    expect(await accepts(text, 'When contact changes minds', families, 2014)).toBe(true);
+  });
+});
+
+describe('a record by an author named like the title is not the cited work', () => {
+  it.each([
+    // the second reading of an ambiguous section ("Sleep") may be a title word
+    'Hoddy K. Sleep and memory in adults. Lancet. 2019;393:1-9',
+    // after "et al." the section is a Vancouver list, never a given-first name
+    'Hoddy K, et al. Sleep and memory in adults. Lancet. 2019;393:1-9',
+  ])('%j vs a record by Sleep: rejected', async (text) => {
+    expect(await accepts(text, 'Sleep and memory in adults', ['Sleep'], 2019)).toBe(false);
+  });
+  it('the right record of the et al. reference is accepted', async () => {
+    expect(await accepts('Hoddy K, et al. Sleep and memory in adults. Lancet. 2019;393:1-9', 'Sleep and memory in adults', ['Hoddy', 'Brown'], 2019)).toBe(true);
+  });
 });

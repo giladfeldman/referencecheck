@@ -272,43 +272,33 @@ const PARTICLE_ANY_CASE = `(?:${NAME_PARTICLES.map((w) => `[${w[0]}${w[0].toUppe
 const VANCOUVER_ENTRY = new RegExp(`^((?:${PARTICLE}\\s+)*\\p{Lu}[\\p{L}'’-]*\\p{Ll}[\\p{L}'’-]*)\\s+(\\p{Lu}(?:-?\\p{Lu}){0,2})$`, 'u');
 
 /**
- * What follows the cut when the cut may have been a given-first middle initial: "Michael J. |
- * LaCour, Donald P. Green", "Michael J. | LaCour (2014)", "Michael J. | LaCour. Title". A
- * capitalised word, then a comma before a capital, "and", "&", a year in brackets, a period or
- * the end of the author section. A title can start the same way ("Hoddy K. | Sleep and memory
- * ...", "Hoddy K. | Diabetes, Obesity and ..."), so this marks the reading as AMBIGUOUS, never
- * as given-first: both readings are kept (round 12).
+ * The Vancouver reading of an author section: its surnames, and, when the text can also be read
+ * given-first, the surname of that other reading (`alternative`).
+ *
+ * One entry ending in ONE initial, cut at its period, then a surname-like run ("Michael J. |
+ * LaCour", "Michael J. | van der Berg", "Alex J. | K. Smith", "Michael J. | LaCour Jr"): either
+ * a name written given-first ("Michael" a given name) or a one-author Vancouver reference whose
+ * title starts with that word ("Hoddy K. | Sleep and memory"). The text cannot tell them apart,
+ * so both readings are kept (round 12: round 11 read every such section given-first and
+ * rejected the right DOI of one-author Vancouver references). An entry followed by "et al." is
+ * a Vancouver list, never a given name.
  */
-const NAME_CONTINUES = /^\p{Lu}[\p{L}'’-]*\p{Ll}[\p{L}'’-]*\s*(?:,\s*\p{Lu}|&|\band\b|\(\d{4}|\.(?:\s|$)|$)/u;
-
-/**
- * The Vancouver reading of an author section: its surnames, and whether the text can also be
- * read given-first (one entry with one initial, then a capitalised word that may be a surname
- * or the first word of the title).
- */
-function vancouverReading(section: string): { surnames: string[]; ambiguous: boolean } {
+function vancouverReading(section: string): { surnames: string[]; alternative: string | null } {
   const cut = section.search(/\.\s/);
   const list = cut >= 0 ? section.slice(0, cut) : section;
   const out: string[] = [];
   let lastInitials = '';
+  let etAl = false;
   for (const piece of list.split(/\s*,\s*/).filter(Boolean)) {
-    if (/^et al\.?$/i.test(piece)) continue;
+    if (/^et al\.?$/i.test(piece)) { etAl = true; continue; }
     const m = piece.match(VANCOUVER_ENTRY);
     if (!m) break;
     out.push(m[1]);
     lastInitials = m[2];
   }
-  // One entry ending in ONE initial, and the text after the cut goes on with a capitalised
-  // word: either a name written given-first ("Michael J. LaCour", where "Michael" is a given
-  // name) or a one-author Vancouver reference whose title starts with that word ("Hoddy K.
-  // Sleep and memory"). The text cannot tell them apart (round 12: round 11 dropped the
-  // Vancouver reading here and rejected the right DOI of every such reference).
-  const after = cut >= 0 ? section.slice(cut + 2).trim() : '';
-  const ambiguous = out.length === 1 && lastInitials.length === 1 && cut >= 0 && NAME_CONTINUES.test(after);
-  // The given-first reading's surname: the word after the initial ("Michael J. LaCour. Title"
-  // has no comma or "and" to end the name, so the given-first reader alone does not read it).
-  if (ambiguous) out.push(after.match(/^[\p{L}'’-]+/u)![0]);
-  return { surnames: out, ambiguous };
+  if (out.length !== 1 || lastInitials.length !== 1 || cut < 0 || etAl) return { surnames: out, alternative: null };
+  const tail = section.slice(cut + 2).trim().match(GIVEN_FIRST_TAIL);
+  return { surnames: out, alternative: tail ? tail[1] : null };
 }
 
 /**
@@ -349,6 +339,16 @@ const APA_AUTHOR = new RegExp(`(?<![\\p{L}'’-])(${SURNAME})(?:\\s*,\\s*\\p{Lu}
  * as a surname and rejected the right DOI).
  */
 const LEADING_SURNAME = new RegExp(`^(${SURNAME})(?=\\s*(?:[,.;&(]|\\band\\b|\\bet al\\b|$))`, 'u');
+/** After a cut middle initial: more initials ("K. "), then a surname with its particles and words. */
+const GIVEN_FIRST_TAIL = new RegExp(`^(?:\\p{Lu}\\.\\s*)*(${SURNAME})`, 'u');
+
+/**
+ * Surnames read from a reference. `uncertain` holds the ones read by a second reading of an
+ * ambiguous author section ("Hoddy K. Sleep and memory": "Sleep" may be a title word): such a
+ * surname does not match a record whose title starts with it, so a record by an author named
+ * like the title's first word is not taken for the cited work (round 12).
+ */
+interface ReferenceAuthors { names: string[]; uncertain: Set<string> }
 
 /**
  * Extract author last names from reference text (simplified extraction), as written
@@ -358,24 +358,30 @@ const LEADING_SURNAME = new RegExp(`^(${SURNAME})(?=\\s*(?:[,.;&(]|\\band\\b|\\b
  * other reading are kept: the APA "Surname, I." pattern and the given-first reader
  * ("Michael J. LaCour, Donald P. Green"); a surname from either counts (round 11). When the
  * text reads both as one Vancouver author and given-first ("Hoddy K. Sleep and memory",
- * "Michael J. LaCour. Title"), the surnames of both readings are kept (round 12).
+ * "Michael J. LaCour. Title"), the surnames of both readings are kept, those of the second
+ * reading as `uncertain` (round 12).
  */
-function extractAuthorsFromReference(referenceText: string): string[] {
+function extractAuthorsFromReference(referenceText: string): ReferenceAuthors {
   // Common patterns for authors at start of reference
   // e.g., "Smith, J. A., & Jones, B. C. (2019)" or "Smith, J.A. (2019)"
   const beforeYear = referenceText.split(/\(\d{4}/)[0] || '';
   const authorSection = beforeYear.trim();
   const vancouver = vancouverReading(authorSection);
-  if (vancouver.surnames.length > 0 && !vancouver.ambiguous) return vancouver.surnames;
+  if (vancouver.surnames.length > 0 && vancouver.alternative === null) return { names: vancouver.surnames, uncertain: new Set() };
 
-  const lastNames = [...vancouver.surnames, ...[...authorSection.matchAll(APA_AUTHOR)].map((m) => m[1])];
+  const lastNames = [...authorSection.matchAll(APA_AUTHOR)].map((m) => m[1]);
   for (const s of givenFirstSurnames(authorSection)) if (!lastNames.includes(s)) lastNames.push(s);
+  if (vancouver.alternative !== null) {
+    if (!lastNames.includes(vancouver.alternative)) lastNames.push(vancouver.alternative);
+    const uncertain = new Set(lastNames);
+    return { names: [...vancouver.surnames, ...lastNames], uncertain };
+  }
   // Also try simpler pattern for single author or non-standard format
   if (lastNames.length === 0) {
     const simpleMatch = authorSection.match(LEADING_SURNAME);
     if (simpleMatch && !CORPORATE_WORD.test(simpleMatch[1])) lastNames.push(simpleMatch[1]);
   }
-  return lastNames;
+  return { names: lastNames, uncertain: new Set() };
 }
 
 /**
@@ -594,7 +600,15 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
     ? 'not_comparable'
     : Math.abs(refYear - crossrefYear) > 1 ? 'mismatched' : 'matched';
 
-  const refAuthors = extractAuthorsFromReference(referenceText);
+  const read = extractAuthorsFromReference(referenceText);
+  // A surname of the uncertain reading that is the first word(s) of this record's title says
+  // nothing about the author: drop it for this record.
+  const recordTitle = foldForMatch(crossrefTitle(crossrefResult));
+  const refAuthors = read.names.filter((r) => {
+    if (!read.uncertain.has(r)) return true;
+    const f = foldForMatch(r);
+    return !(recordTitle === f || recordTitle.startsWith(`${f} `));
+  });
   const crossrefAuthors: string[] = (crossrefResult.author || [])
     .map((a: any) => a?.family)
     .filter((f: unknown): f is string => typeof f === 'string' && f.trim().length > 0);

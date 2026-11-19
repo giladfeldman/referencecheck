@@ -506,7 +506,42 @@ function addRound12Rows(addDoi) {
     const givenRecord = { ...record, author: [{ family: first.family, given: `Alex ${ini}.` }] };
     addDoi('right:given-first-one-author', 'accept', given, givenRecord, file);
     addDoi('wrong:given-first-one-author', 'reject', given, { ...givenRecord, DOI: `${w.doi}.other-author`, author: [{ family: other.family, given: `Alex ${ini}.` }] }, file);
+    // ---- the cited author is Hoddy-like; the candidate record is by an author named like the
+    // title's first word (same title and year): not the cited work, by construction
+    const titleWordAuthor = { ...record, DOI: `${w.doi}.title-word-author`, author: [{ family: title.split(/[ ,&]/)[0], given: `${ini}.` }] };
+    addDoi('wrong:vancouver-one-author-title-word-author', 'reject', vancouver, titleWordAuthor, `${file} "${title}"`);
+    addDoi('wrong:vancouver-et-al-title-word-author', 'reject', `${first.family} ${ini}, et al. ${title}. ${w.journal}. ${w.year};1:1-9.`, titleWordAuthor, `${file} "${title}"`);
+    addDoi('right:vancouver-et-al-name-like-title', 'accept', `${first.family} ${ini}, et al. ${title}. ${w.journal}. ${w.year};1:1-9.`, { ...record, author: [{ family: first.family, given: `${ini}.` }, { family: other.family, given: 'A.' }] }, `${file} "${title}"`);
   });
+
+  // ---- given-first, one middle initial, then a surname of another shape: particles, two
+  // words, more initials, a suffix, a bare year after it. The record is the written authors.
+  const w = WORKS[0].w;
+  const SHAPES = [
+    ['particle', 'Michael J. van der Berg, Donald P. Green', ['van der Berg', 'Green']],
+    ['particle', 'Michael J. de Rooij, Donald P. Green', ['de Rooij', 'Green']],
+    ['particle', 'Michael J. de Rooij', ['de Rooij']],
+    ['particle', 'Michael J. Van Dyke and Donald P. Green', ['Van Dyke', 'Green']],
+    ['two-word-surname', 'Maria J. Garcia Marquez, Ana B. Lopez', ['Garcia Marquez', 'Lopez']],
+    ['two-word-surname', 'Maria J. Garcia Marquez', ['Garcia Marquez']],
+    ['more-initials', 'Alex J. K. Smith', ['Smith']],
+    ['more-initials', 'Jordan B. K. Fishman and Eric A. Berg', ['Fishman', 'Berg']],
+    ['suffix', 'Michael J. LaCour Jr', ['LaCour']],
+  ];
+  for (const [shape, names, families] of SHAPES) {
+    const record = { ...w.record, title: [w.title], subtitle: [], author: families.map((f) => ({ family: f, given: 'X.' })) };
+    const wrong = { ...record, DOI: `${w.doi}.other-author`, author: [{ family: 'Broockman', given: 'D.' }] };
+    for (const text of [`${names} (${w.year}). ${w.title}. ${w.journal}.`, `${names}. ${w.title}. ${w.journal}. ${w.year}.`]) {
+      addDoi(`right:given-first-one-initial-${shape}`, 'accept', text, record, names);
+      addDoi(`wrong:given-first-one-initial-${shape}`, 'reject', text, wrong, names);
+    }
+  }
+  {
+    const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
+    const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
+    addDoi('right:given-first-one-initial-bare-year', 'accept', text, record, 'bare year');
+    addDoi('wrong:given-first-one-initial-bare-year', 'reject', text, { ...record, DOI: `${w.doi}.other-author`, author: [{ family: 'Broockman', given: 'D.' }] }, 'bare year');
+  }
 }
 
 export const ROWS = buildRows();

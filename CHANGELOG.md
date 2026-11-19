@@ -146,12 +146,16 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     authors, or a corporate author (`World Health Organization`, `... Research Group`) is read
     without inventing a surname from the title or from the corporate name: the author check is
     `not_comparable` when no surname is read, so the title and year decide. A single entry
-    of one surname and one initial followed by a capitalised word (`Michael J. LaCour`,
-    `Hoddy K. Sleep and memory ...`) can be read either as one Vancouver author or as a
-    given-first name; both readings' surnames are kept and either may match the record (round
-    12: round 11 dropped the Vancouver reading there and rejected the right DOI of one-author
-    Vancouver references whose title starts like a name, which 0.2.x accepted in most cases;
-    `Michael J. LaCour. Title.` with one author is now read too).
+    of one surname and one initial followed by a surname-like run (`Michael J. LaCour`,
+    `Michael J. van der Berg`, `Maria J. Garcia Marquez`, `Alex J. K. Smith`, `Michael J.
+    LaCour Jr`, `Hoddy K. Sleep and memory ...`) can be read either as one Vancouver author or
+    as a given-first name; both readings' surnames are kept and either may match the record.
+    A surname of the second reading does not match a record whose title starts with that word,
+    so a record by an author named like the title (`Sleep`) is not taken for `Hoddy K. Sleep
+    and memory`. After `et al.` the section is a Vancouver list only. (Rounds 12 and 13: round
+    11 dropped the Vancouver reading and rejected the right DOI of one-author Vancouver
+    references whose title starts like a name, and read `Michael` for given-first names with a
+    particle or two-word surname, both of which 0.2.x accepted.)
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops
