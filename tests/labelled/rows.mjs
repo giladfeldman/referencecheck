@@ -19,6 +19,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { givenNameFor } from './givenName.mjs';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'crossref');
 
@@ -167,11 +168,17 @@ function dedupRef(id, w, authors, overrides = {}) {
   return { id, raw_text: '', normalized_authors: authors, normalized_title: w.title, normalized_year: String(w.year), ...overrides };
 }
 
+/** Synthetic records carry the given name the cited author's record would hold (see ./givenName.mjs). */
+function withGivenNames(text, candidate) {
+  if (!Array.isArray(candidate?.author) || !candidate.author.some((a) => a?.given === 'X.')) return candidate;
+  return { ...candidate, author: candidate.author.map((a) => (a?.given === 'X.' ? { family: a.family, ...(givenNameFor(text, a.family) ? { given: givenNameFor(text, a.family) } : {}) } : a)) };
+}
+
 function buildRows() {
   const dedup = [];
   const doi = [];
   const addDedup = (cls, label, a, b, note) => dedup.push({ kind: 'dedup', cls, label, a, b, note });
-  const addDoi = (cls, label, text, candidate, note) => doi.push({ kind: 'doi', cls, label, text, candidate, note });
+  const addDoi = (cls, label, text, candidate, note) => doi.push({ kind: 'doi', cls, label, text, candidate: withGivenNames(text, candidate), note });
 
   WORKS.forEach(({ file, w }, i) => {
     const other = WORKS[(i + 1) % WORKS.length].w;
@@ -540,6 +547,7 @@ function addRound12Rows(addDoi) {
   addRound14Rows(addDoi);
   addRound15Rows(addDoi);
   addRound16Rows(addDoi);
+  addRound17Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -747,6 +755,40 @@ function addRound16Rows(addDoi) {
     addDoi(`right:${shape}`, 'accept', text, rec(`a${k}`, fams, SD), text.slice(0, 16));
     addDoi(`wrong:${shape}`, 'reject', text, rec(`a${k}w`, ['Okafor'], SD), text.slice(0, 16));
   });
+}
+
+/**
+ * Review round 17: a wrong record whose author's family name is a given name of a cited author
+ * ("Mark Little, Grace Collins" and a record by Zoe Mark), with the cited title and year, was
+ * accepted: the entry reads family first or given first. The record's given name now decides
+ * where the order is ambiguous; records of the cited authors carry their real given names.
+ */
+function addRound17Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const SD = 'Sleep deprivation affects memory';
+  const rec = (doi, people) => ({ ...base, title: [SD], DOI: `${WORKS[0].w.doi}.r17-${doi}`, author: people.map(([family, given]) => ({ family, given })) });
+  const collisions = [
+    [`Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, [['Little', 'Mark'], ['Collins', 'Grace']], 'Mark'],
+    [`Little Mark & Collins Grace 2014. ${SD}. J Sleep Res.`, [['Little', 'Mark'], ['Collins', 'Grace']], 'Mark'],
+    [`Michael J. Young, Donald Long (2014). ${SD}. J Sleep Res.`, [['Young', 'Michael J.'], ['Long', 'Donald']], 'Michael'],
+    [`Wells Kate, Rowe Hope (2014). ${SD}. J Sleep Res.`, [['Wells', 'Kate'], ['Rowe', 'Hope']], 'Hope'],
+    [`Min-jun Kim, Dean Martin: ${SD}. J Sleep Res. 2014.`, [['Kim', 'Min-jun'], ['Martin', 'Dean']], 'Min-jun'],
+    [`Sean O'Brien, Daisy Hoddy (2014). ${SD}. J Sleep Res.`, [["O'Brien", 'Sean'], ['Hoddy', 'Daisy']], 'Sean'],
+    [`Hoddy Daisy and Little Mark (2014). ${SD}. J Sleep Res.`, [['Hoddy', 'Daisy'], ['Little', 'Mark']], 'Mark'],
+  ];
+  collisions.forEach(([text, people, given], k) => {
+    addDoi('right:given-name-collision', 'accept', text, rec(`c${k}`, people), text.slice(0, 16));
+    addDoi('wrong:given-name-collision', 'reject', text, rec(`c${k}w`, [[given, 'Zoe']]), text.slice(0, 16));
+  });
+  // The order is ambiguous, and the record's given name agrees with the citation: accepted.
+  const agrees = [
+    [`Hoddy K. ${SD}. J Sleep Res. 2014;1:1-9.`, [['Hoddy', 'Karen']]],
+    [`Smith J ${SD} (2014). J Sleep Res 1:1-9.`, [['Smith', 'John A.']]],
+    [`Wang Xiaoming and Li Hua (2014). ${SD}. J Sleep Res.`, [['Wang', 'Xiao-Ming'], ['Li', 'Hua']]],
+    [`J. Michael Smith (2014). ${SD}. J Sleep Res.`, [['Smith', 'John Michael']]],
+    [`Michael Smith (2014). ${SD}. J Sleep Res.`, [['Smith', 'J. Michael']]],
+  ];
+  agrees.forEach(([text, people], k) => addDoi('right:ambiguous-order-given-agrees', 'accept', text, rec(`g${k}`, people), text.slice(0, 16)));
 }
 
 export const ROWS = buildRows();

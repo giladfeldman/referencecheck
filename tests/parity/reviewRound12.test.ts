@@ -16,6 +16,8 @@ jest.unstable_mockModule('axios', () => {
   return { default: api, ...api };
 });
 const lib: any = await import('../../src/index.js');
+// A record of a cited author carries that author's given name, as Crossref records do (round 17).
+const { givenNameFor } = await import('../labelled/givenName.mjs');
 
 beforeEach(() => {
   axiosGetMock.mockReset();
@@ -25,7 +27,7 @@ beforeEach(() => {
 
 const accepts = async (text: string, title: string, families: string[], year: number) => {
   axiosGetMock.mockResolvedValue({ status: 200, data: { message: { items: [{
-    DOI: '10.1/found', score: 90, title: [title], author: families.map((f) => ({ family: f, given: 'K.' })),
+    DOI: '10.1/found', score: 90, title: [title], author: families.map((f) => ({ family: f, given: givenNameFor(text, f) })),
     published: { 'date-parts': [[year, 1, 1]] },
   }] } } });
   return (await lib.findDOIFromReference(text))?.doi === '10.1/found';

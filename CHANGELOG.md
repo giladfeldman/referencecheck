@@ -189,6 +189,14 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     `Dvořák P`) is read whole; it was cut at the accent (`Garc`), so the right record was
     rejected. A family-first name with a lower-case particle (`de Vries Jan`) matches a record
     whose family name is `de Vries`.
+  - *DOI matcher, authors (round 18).* An author entry of written-out names (`Mark Little`,
+    `Little Mark`, `Michael J. Young`, `Wang Xiaoming`) reads family first or given first, so
+    its given name also counted as a surname: a record by another author whose family name is
+    that given name (`Zoe Mark`), with the cited title and year, was accepted (0.2.x rejected
+    it). Where the order is ambiguous, the record's given name must now share an initial with
+    the other words of the entry; a record with no given name is compared as before. A
+    citation that writes a nickname (`Bill`) for a record's formal given name (`William`) in
+    such an entry is now rejected.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

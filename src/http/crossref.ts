@@ -718,6 +718,76 @@ function crossrefYearOf(item: any): number | null {
   return null;
 }
 
+/** Initials of written names: "J. A." and "JA" give j, a; "Jean-Paul" gives j, p. */
+function initialsOf(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const token of text.split(/[\s.,;:'’"()]+/u).filter(Boolean)) {
+    const letters = /^\p{Lu}{2,3}$/u.test(token) ? [...token] : token.split('-').filter(Boolean).map((p) => [...p][0]);
+    for (const l of letters) {
+      const f = foldForMatch(l);
+      if (/^\p{L}$/u.test(f)) out.add(f);
+    }
+  }
+  return out;
+}
+
+/** Words of an author section with the text between them: "Smith, J. A." gives Smith ", " J ". " A ".". */
+interface SectionWord { word: string; after: string }
+function sectionWords(section: string): SectionWord[] {
+  return [...section.matchAll(/([\p{L}'’-]+)([^\p{L}'’-]*)/gu)].map((m) => ({ word: m[1], after: m[2] }));
+}
+const IS_INITIAL = /^\p{Lu}(?:-?\p{Lu}){0,2}$/u;
+
+/** Two neighbouring words are one author entry: no separator, a period after an initial ("J.
+ *  Smith"), or a comma before initials ("Little, M."); "and" / "et al." and a period after a
+ *  written-out word ("Alex E. Parkevich. Diabetes") end the entry. */
+function sameEntry(words: readonly SectionWord[], i: number): boolean {
+  const next = words[i + 1]?.word;
+  if (next === undefined || /^(?:and|et)$/i.test(next) || /^(?:and|et)$/i.test(words[i].word)) return false;
+  const sep = words[i].after.trim();
+  return sep === '' || (sep === '.' && IS_INITIAL.test(words[i].word)) || (sep === ',' && IS_INITIAL.test(next));
+}
+
+/**
+ * The initials written next to a record's family name in the reference, when the name order there
+ * is ambiguous. A family name whose author entry also holds another written-out capitalised word
+ * ("Mark Little", "Little Mark", "Rowe Hope", "Michael J. Young", "Wang Xiaoming", "Hoddy K.
+ * Sleep") may be a given name: the entry reads family first or given first, and the text cannot
+ * tell which (round 17). The initials are those of the entry's other words (up to four on
+ * each side), its given part in either reading. `undefined` when the order is not ambiguous
+ * ("Smith, J. A.", "Smith JA") or the family name is not in the section.
+ */
+function citedGivenOf(words: readonly SectionWord[], family: string): Set<string> | undefined {
+  const fam = foldForMatch(family);
+  if (!fam) return undefined;
+  let at = -1;
+  let end = -1;
+  for (let i = 0; i < words.length && at < 0; i++) {
+    for (let j = i; j < Math.min(words.length, i + 4); j++) {
+      if (words.slice(i, j + 1).map((w) => foldForMatch(w.word)).join(' ') === fam) { at = i; end = j; break; }
+    }
+  }
+  if (at < 0) return undefined;
+  const others: string[] = [];
+  for (let i = end; i < words.length - 1 && others.length < 4 && sameEntry(words, i); i++) others.push(words[i + 1].word);
+  for (let i = at - 1, n = 0; i >= 0 && n < 4 && sameEntry(words, i); i--, n++) others.unshift(words[i].word);
+  const ambiguous = others.some((w) => !IS_INITIAL.test(w) && /^\p{Lu}/u.test(w));
+  return ambiguous ? initialsOf(others.join(' ')) : undefined;
+}
+
+/**
+ * A record's given name that shares no initial with the words written next to a surname of
+ * ambiguous order: the record's author is not that person ("Mark Little" and a record by
+ * "Mark, Zyxwv": "Mark" was a given name). No given name in the record, or one in another
+ * script, decides nothing.
+ */
+function givenConflicts(cited: Set<string> | undefined, given: string | null): boolean {
+  if (!cited || cited.size === 0 || !given) return false;
+  const recorded = initialsOf(given);
+  if (recorded.size === 0 || [...recorded].some((l) => !/^[a-z]$/.test(l))) return false;
+  return ![...recorded].some((l) => cited.has(l));
+}
+
 /**
  * Check a DOI candidate against the reference: year within one, at least one surname in
  * common, and the title's words present. A `mismatched` check rejects the candidate (year
@@ -739,10 +809,15 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
   const titleWords = new Set(foldForMatch(crossrefTitle(crossrefResult)).split(' '));
   const refAuthors = read.names.filter((r) => !read.uncertain.has(r) || !foldForMatch(r).split(' ').some((w) => titleWords.has(w)));
   // A family of one letter is an initial filed as the family ("R" with given "Shakthi Kiran",
-  // a common deposit of names written "Shakthi Kiran R"): the surname is then in `given`.
-  const crossrefAuthors: string[] = (crossrefResult.author || [])
-    .map((a: any) => (typeof a?.family === 'string' && foldForMatch(a.family).replace(/ /g, '').length === 1 && typeof a?.given === 'string' && /\p{Ll}/u.test(a.given) ? a.given : a?.family))
-    .filter((f: unknown): f is string => typeof f === 'string' && f.trim().length > 0);
+  // a common deposit of names written "Shakthi Kiran R"): the surname is then in `given`, and
+  // there is no given name to compare.
+  const crossrefPeople: Array<{ family: string; given: string | null }> = (crossrefResult.author || [])
+    .map((a: any) => (typeof a?.family === 'string' && foldForMatch(a.family).replace(/ /g, '').length === 1 && typeof a?.given === 'string' && /\p{Ll}/u.test(a.given)
+      ? { family: a.given, given: null }
+      : { family: a?.family, given: typeof a?.given === 'string' ? a.given : null }))
+    .filter((p: { family: unknown }) => typeof p.family === 'string' && p.family.trim().length > 0);
+  const crossrefAuthors = crossrefPeople.map((p) => p.family);
+  const words = sectionWords((referenceText.split(/\(\d{4}/)[0] || '').trim());
   let authorCheck: DoiMatchCheck = 'not_comparable';
   if (refAuthors.length > 0 && crossrefAuthors.length > 0) {
     // Crossref authors none of the reference's surnames can be compared with (Han against
@@ -750,11 +825,14 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
     let incomparable = 0;
     let compared = 0;
     authorCheck = 'mismatched';
-    for (const c of crossrefAuthors) {
+    for (const { family: c, given } of crossrefPeople) {
       let comparable = false;
+      // A family name read where the order is ambiguous matches only when the record's given
+      // name agrees with the words written after it (round 17).
+      const vetoed = givenConflicts(citedGivenOf(words, c), given);
       for (const r of refAuthors) {
         const m = surnamesMatch(r, c);
-        if (m === true) authorCheck = 'matched';
+        if (m === true && !vetoed) authorCheck = 'matched';
         if (m !== null) comparable = true;
       }
       if (comparable) compared += 1;

@@ -15,6 +15,8 @@ jest.unstable_mockModule('axios', () => {
   return { default: api, ...api };
 });
 const lib: any = await import('../../src/index.js');
+// A record of a cited author carries that author's given name, as Crossref records do (round 17).
+const { givenNameFor } = await import('../labelled/givenName.mjs');
 
 jest.spyOn(console, 'log').mockImplementation(() => {});
 beforeEach(() => {
@@ -164,7 +166,7 @@ describe('DOI matcher: surname extraction and whole-word matching', () => {
     ['Li, X. (2015). Priming effects on memory. J Things, 1, 2.', 'Liu', false],
     ['Li, X. (2015). Priming effects on memory. J Things, 1, 2.', 'Williams', false],
   ])('%j vs Crossref %j', async (text, family, want) => {
-    const out = await search(text, crossref({ author: [{ family, given: 'X.' }] }));
+    const out = await search(text, crossref({ author: [{ family, given: givenNameFor(text, family) }] }));
     expect(out.result?.doi === '10.1/found').toBe(want);
   });
 });

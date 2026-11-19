@@ -995,6 +995,27 @@
       "wrongAccepts": 4,
       "rightRejects": 0
     },
+    "doi/right:given-name-collision": {
+      "rows": 7,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 1
+    },
+    "doi/wrong:given-name-collision": {
+      "rows": 7,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:ambiguous-order-given-agrees": {
+      "rows": 5,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 1
+    },
     "doi/right:given-first-one-initial-bare-year": {
       "rows": 1,
       "falseMerges": 0,
@@ -1014,7 +1035,7 @@
     "falseMerges": 60,
     "missedMerges": 246,
     "wrongAccepts": 187,
-    "rightRejects": 85,
-    "rows": 1539
+    "rightRejects": 87,
+    "rows": 1558
   }
 }
