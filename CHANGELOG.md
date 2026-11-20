@@ -333,6 +333,8 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   `validateDOI` and the DOI search now share one record mapper. JavaScript's `new Date()` reads
   a date-only ISO string as UTC midnight, so west of UTC `new Date("2019-01").getFullYear()` is
   2018: read the year from the string (`Number(s.slice(0, 4))`).
+- The lockfile pins `follow-redirects` 1.16.3 (via `axios`), clearing three high advisories in
+  1.16.0. A consumer resolves its own copy from `axios`'s range; `npm audit fix` there does the same.
 
 ### What a consumer does differently
 - Expect new expression-of-concern findings: the check works for the first time. One concern
