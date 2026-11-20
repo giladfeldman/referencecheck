@@ -551,6 +551,7 @@ function addRound12Rows(addDoi) {
   addRound18Rows(addDoi);
   addRound19Rows(addDoi);
   addRound20Rows(addDoi);
+  addRound21Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -909,4 +910,28 @@ export function tally(results) {
     if (row.kind === 'doi' && row.label === 'accept' && decision === 'reject') t.rightRejects += 1;
   }
   return byClass;
+}
+
+// ------------------------------------------------------------------ shapes added in review round 21
+// Initials glued to a two-letter surname ("XuJ") or in front of it ("JSmith"), initials glued to
+// the Crossref family ("SmithJA"), and a record title that repeats the family name next to a
+// capitalised word with no parenthesised year. Labels by construction: same title and year, the
+// family differs only by the glued initials. The wrong row is a record by authors whose family
+// is only the first half of each cited double surname, written "Garcia Lopez, M.".
+function addRound21Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const SD = 'Sleep deprivation affects memory';
+  const rec = (doi, people, title = SD) => ({ ...base, title: [title], DOI: `${WORKS[0].w.doi}.r21-${doi}`, author: people.map(([family, given]) => ({ family, given })) });
+  const rows = [
+    ['two-letter-glued-initials', `XuJ (2014). ${SD}. J Sleep Res.`, [['Xu', 'Jie']], SD],
+    ['two-letter-glued-initials', `LiJ, WuK (2014). ${SD}. J Sleep Res.`, [['Li', 'J'], ['Wu', 'K']], SD],
+    ['leading-glued-initials', `JSmith (2014). ${SD}. J Sleep Res.`, [['Smith', 'J.']], SD],
+    ['crossref-glued-initials', `Smith J. (2014). ${SD}. J Sleep Res.`, [['SmithJA', 'Jane']], SD],
+    ['title-word-next-to-family', 'WangL. 2014. Wang Group Studies. J Sleep Res.', [['Wang', 'Lei']], 'Wang Group Studies'],
+  ];
+  rows.forEach(([shape, text, people, title], k) => {
+    addDoi(`right:${shape}`, 'accept', text, rec(`s${k}`, people, title), text.slice(0, 16));
+    addDoi(`wrong:${shape}`, 'reject', text, rec(`s${k}w`, [['Okafor', 'Zoe']], title), text.slice(0, 16));
+  });
+  addDoi('wrong:comma-double-surname-collision', 'reject', `Garcia Lopez, M., Rosa Diaz, A. (2014). ${SD}. J Sleep Res.`, rec('gl', [['Garcia', 'Ana'], ['Rosa', 'Luis']]), 'Garcia Lopez, M.');
 }

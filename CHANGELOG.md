@@ -223,6 +223,13 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     too (`DeJong, P.` / a record by Jong), and initials glued to a surname with a capital or a
     hyphen inside it (`McDonaldJA`, `VanDerBergJ`, `Smith-JonesJA`). Known limit: a romanisation more than two edits away
     (`Zongdao` / `Tsung-Dao`) is taken for another given name, like a nickname.
+  - *DOI matcher, authors (round 22).* Initials glued to a two-letter surname (`XuJ`, `LiJ`) or
+    in front of a surname (`JSmith`) are dropped, and so are initials glued to a Crossref family
+    (`SmithJA`). A glued `O` or `D` stays part of the surname (`OBrien` is not `Brien`, as
+    `MacDonald` is not `Donald`; 0.2.x accepted both by substring). The given-name check reads only the words before the record's title, so a title word
+    next to the family name is not a given name (`WangL. 2014. Wang Group Studies`). The
+    family-first reading of round 21 applies only to entries with no initials: in
+    `Garcia Lopez, M., Rosa Diaz, A.` a record by Ana Garcia and Luis Rosa is rejected.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

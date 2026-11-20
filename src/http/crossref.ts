@@ -550,11 +550,19 @@ function isWholeWordOf(single: string, multi: string): boolean {
  */
 /** A surname with its initials written on ("SmithJA", a database export): the surname alone (round 19). */
 function withoutGluedInitials(name: string): string[] {
-  // Any surname ending in a lower-case letter, with capitals inside it too ("McDonaldJA",
-  // "Smith-JonesJA", round 22); three letters or more remain ("DeJON" is not "De").
-  const m = name.match(/^(\p{Lu}[\p{L}'’-]*\p{Ll})\p{Lu}{1,3}$/u);
-  return m && m[1].replace(/[^\p{L}]/gu, '').length >= 3 ? [m[1]] : [];
+  const out: string[] = [];
+  // After any surname ending in a lower-case letter, with capitals inside it too ("McDonaldJA",
+  // "Smith-JonesJA", round 22; "XuJ", round 23), unless what remains is a particle ("DeJON"
+  // is not "De").
+  const after = name.match(/^(\p{Lu}[\p{L}'’-]*\p{Ll})\p{Lu}{1,3}$/u);
+  if (after && after[1].replace(/[^\p{L}]/gu, '').length >= 2 && !PARTICLES.has(after[1].toLowerCase())) out.push(after[1]);
+  // Before it ("JSmith", round 23), unless the capitals are a particle ("OBrien", "DAngelo").
+  const before = name.match(/^(\p{Lu}{1,2})(\p{Lu}\p{Ll}[\p{L}'’-]*)$/u);
+  if (before && !PARTICLES.has(before[1].toLowerCase())) out.push(before[2]);
+  return out;
 }
+
+const PARTICLES = new Set<string>(NAME_PARTICLES);
 
 /** Particles written joined to the surname in some deposits ("DeJong", "VanDerBerg"). Not "Mac",
  *  "Mc", "O" or "D": those belong to the surname ("MacDonald" is not "Donald"). */
@@ -578,7 +586,9 @@ function surnamesMatch(ref: string, crossref: string): boolean | null {
   if (crossScript(ref, crossref)) return looseSurnameMatch(ref, crossref);
   const bare = [ref, ...withoutGluedInitials(ref)];
   for (const r of [...bare, ...bare.flatMap(withoutGluedParticles)].flatMap(spellings)) {
-    for (const c of [crossref, ...withoutGluedParticles(crossref)].flatMap(spellings)) {
+    // A Crossref family with initials glued on ("SmithJA", a dirty deposit; round 23).
+    const plain = [crossref, ...withoutGluedInitials(crossref)];
+    for (const c of [...plain, ...plain.flatMap(withoutGluedParticles)].flatMap(spellings)) {
       if (sameSurname(r, c) || isWholeWordOf(r, c) || isWholeWordOf(c, r) || leadsWith(r, c)) return true;
     }
   }
@@ -793,11 +803,11 @@ type EntryOthers = string[] | null;
 /** Generational suffixes, which are not given names ("Smith Jr", round 19). */
 const NAME_SUFFIX = /^(?:jr|sr|jnr|snr)$/i;
 
-function entriesOf(words: readonly SectionWord[], family: string, firstWordRead: boolean): EntryOthers[] {
+function entriesOf(words: readonly SectionWord[], family: string, firstWordRead: boolean, titleAt: number): EntryOthers[] {
   const fam = foldForMatch(family);
   const out: EntryOthers[] = [];
   if (!fam) return out;
-  for (let at = 0; at < words.length; at++) {
+  for (let at = 0; at < titleAt; at++) {
     let end = -1;
     for (let j = at; j < Math.min(words.length, at + 4); j++) {
       if (words.slice(at, j + 1).map((w) => foldForMatch(w.word)).join(' ') === fam) { end = j; break; }
@@ -827,23 +837,42 @@ function entriesOf(words: readonly SectionWord[], family: string, firstWordRead:
 }
 
 /**
- * Where a record's family name opens an author entry that goes on after it ("Hernandez" in
- * "Hernandez Ruiz and Lopez Garcia"): the index of its first word, for each such entry.
+ * Where a record's family name opens an author entry that goes on after it with no initial
+ * ("Hernandez" in "Hernandez Ruiz and Lopez Garcia"): the index of its first word, for each.
  */
-function entryLeads(words: readonly SectionWord[], family: string): number[] {
+function entryLeads(words: readonly SectionWord[], family: string, titleAt: number): number[] {
   const fam = foldForMatch(family);
   const out: number[] = [];
   if (!fam) return out;
-  for (let at = 0; at < words.length; at++) {
+  for (let at = 0; at < titleAt; at++) {
     if (at > 0 && sameEntry(words, at - 1)) continue;
     for (let j = at; j < Math.min(words.length, at + 4); j++) {
       if (words.slice(at, j + 1).map((w) => foldForMatch(w.word)).join(' ') === fam) {
-        if (sameEntry(words, j)) out.push(at);
+        // An entry with an initial ("Garcia Lopez, M.") is family first already: the given name
+        // is in it and the check applies (round 23).
+        let e = j;
+        let initial = false;
+        for (; e < words.length - 1 && sameEntry(words, e); e++) if (IS_INITIAL.test(words[e + 1].word)) initial = true;
+        if (e > j && !initial) out.push(at);
         break;
       }
     }
   }
   return out;
+}
+
+/**
+ * The index of the first word where the title's opening words (up to three) are written, or the
+ * number of words. A family name found from there on is a title word, not an author (round 23);
+ * the words themselves stay, so the entry before the title ends where it ends.
+ */
+function titleStart(words: readonly SectionWord[], title: string): number {
+  const head = foldForMatch(title).split(' ').filter(Boolean).slice(0, 3);
+  if (head.length === 0) return words.length;
+  for (let k = 0; k + head.length <= words.length; k++) {
+    if (head.every((h, n) => foldForMatch(words[k + n].word) === h)) return k;
+  }
+  return words.length;
 }
 
 /** Edit distance of two short strings. */
@@ -886,8 +915,8 @@ function givenConflicts(others: readonly string[], given: string | null): boolea
  * family name is of ambiguous order and the record's given name fits none of them (round 18: one
  * occurrence only was looked at, so "Mark Little and Zoe Mark" vetoed Zoe Mark's record).
  */
-function givenVetoes(words: readonly SectionWord[], family: string, given: string | null, firstWordRead: boolean): boolean {
-  const entries = entriesOf(words, family, firstWordRead);
+function givenVetoes(words: readonly SectionWord[], family: string, given: string | null, firstWordRead: boolean, titleAt: number): boolean {
+  const entries = entriesOf(words, family, firstWordRead, titleAt);
   return entries.length > 0 && entries.every((e) => e !== null && givenConflicts(e, given));
 }
 
@@ -922,6 +951,9 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
     .filter((p: { family: unknown }) => typeof p.family === 'string' && p.family.trim().length > 0);
   const crossrefAuthors = crossrefPeople.map((p) => p.family);
   const words = sectionWords((referenceText.split(/\(\d{4}/)[0] || '').trim());
+  // A family name written inside the record's title is not an author, and a title word next to
+  // it is not a given name ("WangL. 2014. Wang Group Studies", round 23).
+  const titleAt = titleStart(words, crossrefTitle(crossrefResult));
   const firstWordRead = legacySurnames(referenceText).firstWord;
   let authorCheck: DoiMatchCheck = 'not_comparable';
   if (refAuthors.length > 0 && crossrefAuthors.length > 0) {
@@ -935,13 +967,13 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
     // and Lopez), so their given names are not in it and decide nothing (round 20). A record by
     // one person named like a cited given name ("Mark Little and Grace Collins" and Zoe Mark)
     // opens one entry only.
-    const leads = crossrefPeople.map((p) => entryLeads(words, p.family));
+    const leads = crossrefPeople.map((p) => entryLeads(words, p.family, titleAt));
     const familyFirst = new Set(leads.flat()).size >= 2 && leads.filter((l) => l.length > 0).length >= 2;
     for (const [n, { family: c, given }] of crossrefPeople.entries()) {
       let comparable = false;
       // A family name read where the order is ambiguous matches only when the record's given
       // name agrees with the words written after it (round 17).
-      const vetoed = !(familyFirst && leads[n].length > 0) && givenVetoes(words, c, given, firstWordRead);
+      const vetoed = !(familyFirst && leads[n].length > 0) && givenVetoes(words, c, given, firstWordRead, titleAt);
       for (const r of refAuthors) {
         const m = surnamesMatch(r, c);
         if (m === true && !vetoed) authorCheck = 'matched';

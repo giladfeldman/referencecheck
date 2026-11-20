@@ -5,7 +5,9 @@
  * written on to the surname ("SmithJA") and particles joined to the Crossref family ("DeJong",
  * "VanDerBerg"). Review 19 then found the sole-entry rule missing "et al.", a list of double
  * surnames with no given names vetoed, and "Hsiao-Ming" taken for another person than
- * "Xiaoming". 0.2.x accepted every right record below.
+ * "Xiaoming". Review 22 found two-letter ("XuJ") and leading ("JSmith") glued initials, initials
+ * glued to the Crossref family, a title word taken for a given name, and the family-first lift
+ * applied to "Garcia Lopez, M.". 0.2.x accepted every right record below.
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
@@ -25,9 +27,9 @@ beforeEach(() => {
 });
 
 const SD = 'Sleep deprivation affects memory';
-const accepts = async (text: string, people: Array<[string, string]>) => {
+const accepts = async (text: string, people: Array<[string, string]>, title = SD) => {
   axiosGetMock.mockResolvedValue({ status: 200, data: { message: { items: [{
-    DOI: '10.1/found', score: 90, title: [SD],
+    DOI: '10.1/found', score: 90, title: [title],
     author: people.map(([family, given]) => ({ family, given })),
     published: { 'date-parts': [[2014, 1, 1]] },
   }] } } });
@@ -56,9 +58,22 @@ describe('the right record is accepted', () => {
     [`VanDerBergJ (2014). ${SD}. J Sleep Res.`, [['Berg', 'J.']]],
     [`OBrienJ (2014). ${SD}. J Sleep Res.`, [['OBrien', 'J.']]],
     [`Smith-JonesJA (2014). ${SD}. J Sleep Res.`, [['Smith-Jones', 'J. A.']]],
+    // review 22: two-letter and leading glued initials, initials glued to the Crossref family
+    [`XuJ (2014). ${SD}. J Sleep Res.`, [['Xu', 'Jie']]],
+    [`LiJ, WuK (2014). ${SD}. J Sleep Res.`, [['Li', 'J'], ['Wu', 'K']]],
+    [`JSmith (2014). ${SD}. J Sleep Res.`, [['Smith', 'J.']]],
+    [`Smith J. (2014). ${SD}. J Sleep Res.`, [['SmithJA', 'Jane']]],
   ] as Array<[string, Array<[string, string]>]>)('%j', async (text, people) => {
     expect(await accepts(text, people)).toBe(true);
     expect(await accepts(text, [['Okafor', 'Zoe']])).toBe(false);
+  });
+});
+
+describe('a title word next to the family name is not a given name (review 22)', () => {
+  it('accepts WangL against Wang/Lei when the title is "Wang Group Studies"', async () => {
+    const text = 'WangL. 2014. Wang Group Studies. J Sleep Res.';
+    expect(await accepts(text, [['Wang', 'Lei']], 'Wang Group Studies')).toBe(true);
+    expect(await accepts(text, [['Okafor', 'Zoe']], 'Wang Group Studies')).toBe(false);
   });
 });
 
@@ -69,7 +84,14 @@ describe('records by other authors are still rejected', () => {
     [`Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, 'Mark', 'Zoe'],
     [`Little Mark & Collins Grace 2014. ${SD}. J Sleep Res.`, 'Mark', 'Zoe'],
     [`Mark Little and Grace Collins (2014). ${SD}. J Sleep Res.`, 'Mark', 'Zoe'],
+    // review 22: a family that is only the first half of a cited "Garcia Lopez, M." entry
+    [`Garcia Lopez, M. (2014). ${SD}. J Sleep Res.`, 'Garcia', 'Ana'],
+    // "O" and "De" glued to the surname are part of it (as "Mac" is)
+    [`OBrien, J. (2014). ${SD}. J Sleep Res.`, 'Brien', 'J.'],
   ])('%j vs a record by %s', async (text, family, given) => {
     expect(await accepts(text, [[family, given]])).toBe(false);
+  });
+  it('rejects "Garcia Lopez, M., Rosa Diaz, A." vs a record by Ana Garcia and Luis Rosa', async () => {
+    expect(await accepts(`Garcia Lopez, M., Rosa Diaz, A. (2014). ${SD}. J Sleep Res.`, [['Garcia', 'Ana'], ['Rosa', 'Luis']])).toBe(false);
   });
 });
