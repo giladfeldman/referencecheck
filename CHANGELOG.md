@@ -230,6 +230,13 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     next to the family name is not a given name (`WangL. 2014. Wang Group Studies`). The
     family-first reading of round 21 applies only to entries with no initials: in
     `Garcia Lopez, M., Rosa Diaz, A.` a record by Ana Garcia and Luis Rosa is rejected.
+  - *DOI matcher, authors (round 23).* The record's title is looked for only where a sentence
+    starts (after a period, colon, question mark or year), so a title that opens with a cited
+    given name (`Hope Rowe, Anne Bell (2014). Hope.`) no longer switches the given-name check
+    off. The family-first reading of round 21 applies only where the reference has no
+    `Surname, I.` pair, as 0.2.x read it: `Mark Little, Grace Collins` against a record by Zoe
+    Mark and Quinn Grace is rejected. A year right after a sole author entry ends it like a
+    period (`Hernandez Ruiz, 2014, Diabetes in adults`).
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

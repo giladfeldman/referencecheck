@@ -1226,6 +1226,34 @@
       "wrongAccepts": 0,
       "rightRejects": 0
     },
+    "doi/right:sole-entry-bare-year": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:sole-entry-bare-year": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:title-opening-is-cited-given-name": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:comma-list-two-collisions": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
     "doi/right:given-first-one-initial-bare-year": {
       "rows": 1,
       "falseMerges": 0,
@@ -1246,6 +1274,6 @@
     "missedMerges": 246,
     "wrongAccepts": 189,
     "rightRejects": 89,
-    "rows": 1613
+    "rows": 1619
   }
 }

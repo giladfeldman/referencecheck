@@ -552,6 +552,7 @@ function addRound12Rows(addDoi) {
   addRound19Rows(addDoi);
   addRound20Rows(addDoi);
   addRound21Rows(addDoi);
+  addRound22Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -934,4 +935,26 @@ function addRound21Rows(addDoi) {
     addDoi(`wrong:${shape}`, 'reject', text, rec(`s${k}w`, [['Okafor', 'Zoe']], title), text.slice(0, 16));
   });
   addDoi('wrong:comma-double-surname-collision', 'reject', `Garcia Lopez, M., Rosa Diaz, A. (2014). ${SD}. J Sleep Res.`, rec('gl', [['Garcia', 'Ana'], ['Rosa', 'Luis']]), 'Garcia Lopez, M.');
+}
+
+// ------------------------------------------------------------------ shapes added in review round 22
+// A sole double surname followed by a year with no parentheses (right record by construction:
+// same title and year, the cited first surname is the record's family), a record title whose
+// opening word is also a cited given name, and a comma list where two record families are both
+// cited given names (wrong records: no cited surname is a record family).
+function addRound22Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const SD = 'Sleep deprivation affects memory';
+  const DA = 'Diabetes in adults';
+  const rec = (doi, people, title = SD) => ({ ...base, title: [title], DOI: `${WORKS[0].w.doi}.r22-${doi}`, author: people.map(([family, given]) => ({ family, given })) });
+  const rows = [
+    ['sole-entry-bare-year', `Hernandez Ruiz, 2014, ${DA}, Nature 12`, [['Hernandez', 'Maria']], DA],
+    ['sole-entry-bare-year', `Hernandez Ruiz 2014 ${DA}. Nature`, [['Hernandez', 'Maria']], DA],
+  ];
+  rows.forEach(([shape, text, people, title], k) => {
+    addDoi(`right:${shape}`, 'accept', text, rec(`s${k}`, people, title), text.slice(0, 16));
+    addDoi(`wrong:${shape}`, 'reject', text, rec(`s${k}w`, [['Okafor', 'Zoe']], title), text.slice(0, 16));
+  });
+  addDoi('wrong:title-opening-is-cited-given-name', 'reject', 'Hope Rowe, Anne Bell (2014). Hope. Nature.', rec('hope', [['Hope', 'Zoe']], 'Hope'), 'Hope Rowe, Anne');
+  addDoi('wrong:comma-list-two-collisions', 'reject', `Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, rec('mg', [['Mark', 'Zoe'], ['Grace', 'Quinn']]), 'Mark Little, Gra');
 }

@@ -7,7 +7,9 @@
  * surnames with no given names vetoed, and "Hsiao-Ming" taken for another person than
  * "Xiaoming". Review 22 found two-letter ("XuJ") and leading ("JSmith") glued initials, initials
  * glued to the Crossref family, a title word taken for a given name, and the family-first lift
- * applied to "Garcia Lopez, M.". 0.2.x accepted every right record below.
+ * applied to "Garcia Lopez, M.". Review 23 found the title search landing on an author's given
+ * name, the family-first lift on a comma list, and a sole entry before a bare year taken for
+ * part of a list. 0.2.x decided every case below correctly.
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
@@ -74,6 +76,23 @@ describe('a title word next to the family name is not a given name (review 22)',
     const text = 'WangL. 2014. Wang Group Studies. J Sleep Res.';
     expect(await accepts(text, [['Wang', 'Lei']], 'Wang Group Studies')).toBe(true);
     expect(await accepts(text, [['Okafor', 'Zoe']], 'Wang Group Studies')).toBe(false);
+  });
+});
+
+describe('review 23', () => {
+  const DA = 'Diabetes in adults';
+  it.each([
+    `Hernandez Ruiz, 2014, ${DA}, Nature 12`,
+    `Hernandez Ruiz 2014 ${DA}. Nature`,
+  ])('a sole double surname before a bare year is read family first: %j', async (text) => {
+    expect(await accepts(text, [['Hernandez', 'Maria']], DA)).toBe(true);
+    expect(await accepts(text, [['Okafor', 'Zoe']], DA)).toBe(false);
+  });
+  it('a title opening that is a cited given name does not switch the check off', async () => {
+    expect(await accepts('Hope Rowe, Anne Bell (2014). Hope. Nature.', [['Hope', 'Zoe']], 'Hope')).toBe(false);
+  });
+  it('a comma list whose given names are two record families stays rejected', async () => {
+    expect(await accepts(`Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, [['Mark', 'Zoe'], ['Grace', 'Quinn']])).toBe(false);
   });
 });
 

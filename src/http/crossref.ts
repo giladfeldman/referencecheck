@@ -827,7 +827,9 @@ function entriesOf(words: readonly SectionWord[], family: string, firstWordRead:
     // round 19; "et al." / "and others" after it, round 20). An entry with an initial ("Hua H.
     // Li et al.") or a list of entries ("Mark Little and Grace Collins") keeps the check.
     const next = words[i + 1]?.word ?? '';
-    const sole = i === words.length - 1 || /[.:;]/.test(words[i].after)
+    // A year after the entry ends it too ("Hernandez Ruiz, 2014, Diabetes", no parentheses;
+    // round 24).
+    const sole = i === words.length - 1 || /[.:;\d]/.test(words[i].after)
       || (/^et$/i.test(next) && /^al$/i.test(words[i + 2]?.word ?? ''))
       || (/^and$/i.test(next) && /^others$/i.test(words[i + 2]?.word ?? ''));
     const readFirst = firstWordRead && at === 0 && sole && !given.some((w) => IS_INITIAL.test(w));
@@ -869,8 +871,10 @@ function entryLeads(words: readonly SectionWord[], family: string, titleAt: numb
 function titleStart(words: readonly SectionWord[], title: string): number {
   const head = foldForMatch(title).split(' ').filter(Boolean).slice(0, 3);
   if (head.length === 0) return words.length;
-  for (let k = 0; k + head.length <= words.length; k++) {
-    if (head.every((h, n) => foldForMatch(words[k + n].word) === h)) return k;
+  // The title starts a sentence: after a period, colon, question mark or year, never inside an
+  // author entry ("Hope Rowe, Anne Bell (2014). Hope." is not titled at "Hope Rowe"; round 24).
+  for (let k = 1; k + head.length <= words.length; k++) {
+    if (/[.:?!\d]/.test(words[k - 1].after) && head.every((h, n) => foldForMatch(words[k + n].word) === h)) return k;
   }
   return words.length;
 }
@@ -968,7 +972,10 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
     // one person named like a cited given name ("Mark Little and Grace Collins" and Zoe Mark)
     // opens one entry only.
     const leads = crossrefPeople.map((p) => entryLeads(words, p.family, titleAt));
-    const familyFirst = new Set(leads.flat()).size >= 2 && leads.filter((l) => l.length > 0).length >= 2;
+    // Only where 0.2.x read the first word too, i.e. no "Surname, I." pair: "Mark Little, Grace
+    // Collins" against a record by Zoe Mark and Quinn Grace stays vetoed (0.2.x read Little;
+    // round 24).
+    const familyFirst = firstWordRead && new Set(leads.flat()).size >= 2 && leads.filter((l) => l.length > 0).length >= 2;
     for (const [n, { family: c, given }] of crossrefPeople.entries()) {
       let comparable = false;
       // A family name read where the order is ambiguous matches only when the record's given
