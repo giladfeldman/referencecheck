@@ -976,7 +976,13 @@ function givenVetoes(words: readonly SectionWord[], family: string, given: strin
  * common, and the title's words present. A `mismatched` check rejects the candidate (year
  * first, then author, then title, for the reason given); a `not_comparable` one does not.
  */
-function validateDOIMatch(referenceText: string, crossrefResult: any): MatchValidation {
+/** A list number before the first author: "15. ", "[3] ", "(4) ", "4) " (round 30). */
+const LIST_NUMBER = /^\s*(?:\[\d{1,3}\]|\(\d{1,3}\)|\d{1,3}[.)])\s+(?=\p{Lu})/u;
+
+function validateDOIMatch(rawReferenceText: string, crossrefResult: any): MatchValidation {
+  // The list number is not part of the reference: "15. Mansournia MA, Nazemipour M" read with
+  // it gave the authors "MA" and "AI" (round 30; a real reference list).
+  const referenceText = rawReferenceText.replace(LIST_NUMBER, '');
   const refYear = extractYearFromReference(referenceText);
   const crossrefYear = crossrefYearOf(crossrefResult);
   // Year validation: must match within ±1 year (to account for in-press/early access)
@@ -1007,7 +1013,8 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
   const titleAt = titleStart(words, crossrefTitle(crossrefResult));
   // 0.2.x read the first word only, judged by its own ASCII reading: an accent can hide a comma
   // pair from it ("Núñez, L"), and then it read the first word (round 28).
-  const read02 = readAs02(referenceText);
+  // 0.2.x read the raw text, list number included.
+  const read02 = readAs02(rawReferenceText);
   const firstWordRead = read02.firstWord;
   // A family name 0.2.x matched too (a read name and the family hold one another): a given name
   // sharing an initial with the entry agrees, so a spelling ("Mohamed" / "Muhammad", "Piotr" /

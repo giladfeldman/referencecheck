@@ -264,6 +264,11 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     words found do not end an author entry: in `Zoe A. Mark, Anna B. Hope (2014). Hope.` the
     `Hope` after `B.` is Anna's surname, so a record by Carl Hope titled "Hope" is rejected
     (0.2.x rejected it) and the record by Anna Hope is accepted.
+  - *DOI matcher, list numbers (found by the release corpus diff).* A list number
+    before the first author (`15. `, `[3] `, `(4) `, `4) `) is dropped before the reference is
+    read: with it, `15. Surname MA, Next M` was read as the authors `MA` and `AI`. On 54
+    numbered references from real reference lists, right records accepted went from 12 of 27 to
+    26 of 27 (0.2.x: 14 of 27).
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

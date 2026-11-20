@@ -558,6 +558,7 @@ function addRound12Rows(addDoi) {
   addRound25Rows(addDoi);
   addRound26Rows(addDoi);
   addRound27Rows(addDoi);
+  addRound29Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -1046,4 +1047,21 @@ function addRound27Rows(addDoi) {
   const text = 'Zoe A. Mark, Anna B. Hope (2014). Hope. Journal of Names.';
   addDoi('wrong:title-after-initial', 'reject', text, rec('h', [['Hope', 'Carl']], 'Hope'), 'Zoe A. Mark, Ann');
   addDoi('right:title-after-initial', 'accept', text, rec('ha', [['Hope', 'Anna']], 'Hope'), 'Zoe A. Mark, Ann');
+}
+
+function addRound29Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const SD = 'Sleep deprivation affects memory';
+  const rec = (doi, people) => ({ ...base, title: [SD], DOI: `${WORKS[0].w.doi}.r29-${doi}`, author: people.map(([family, given]) => ({ family, given })) });
+  // A list number before the first author is not part of the reference (found on a real
+  // reference list: read with it, "15. Surname MA, Next M" gave the authors "MA" and "AI").
+  [
+    `15. Okafor ZA, Little GM, Collins AB. ${SD}. J Sleep Res. 2014;5:1-9.`,
+    `[3] Okafor ZA, Little GM, Collins AB. ${SD}. J Sleep Res. 2014;5:1-9.`,
+    `(4) Okafor ZA, Little GM. ${SD}. J Sleep Res. 2014;5:1-9.`,
+    `4) Okafor, Z. A., & Little, G. M. (2014). ${SD}. J Sleep Res.`,
+  ].forEach((text, k) => {
+    addDoi('right:list-number', 'accept', text, rec(`n${k}`, [['Okafor', 'Zara'], ['Little', 'Grace']]), text.slice(0, 16));
+    addDoi('wrong:list-number', 'reject', text, rec(`n${k}w`, [['Mensah', 'Kofi']]), text.slice(0, 16));
+  });
 }

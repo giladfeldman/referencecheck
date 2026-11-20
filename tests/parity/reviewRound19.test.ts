@@ -14,7 +14,8 @@
  * ("Mohamed" / "Muhammad") and "Lu" read in order in "Louis"; review 26 found accented surnames
  * that 0.2.x read cut short, an initial of the next surname, and a title after a comma; review 27
  * found an accent hiding a comma pair from 0.2.x, which then read the first word only; review 28
- * found a one-word title taken from the surname after a middle initial. 0.2.x
+ * found a one-word title taken from the surname after a middle initial. The release corpus diff
+ * (round 30) found a list number read as part of the first author. 0.2.x
  * decided every case below correctly.
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
@@ -162,6 +163,18 @@ describe('review 28', () => {
   });
   it('a title after an initial is still found when it does not end the entry', async () => {
     expect(await accepts('Smith J. Hope. J Sleep Res 2014.', [['Smith', 'John']], 'Hope')).toBe(true);
+  });
+});
+
+describe('round 30 (release corpus diff): a list number before the first author', () => {
+  it.each([
+    [`15. Okafor ZA, Little GM, Collins AB. ${SD}. J Sleep Res. 2014;5:1-9.`],
+    [`[3] Okafor ZA, Little GM, Collins AB. ${SD}. J Sleep Res. 2014;5:1-9.`],
+    [`(4) Okafor ZA, Little GM. ${SD}. J Sleep Res. 2014;5:1-9.`],
+    [`4) Okafor, Z. A., & Little, G. M. (2014). ${SD}. J Sleep Res.`],
+  ])('%j: the right record is accepted, a record by another author is rejected', async (text) => {
+    expect(await accepts(text, [['Okafor', 'Zara'], ['Little', 'Grace']])).toBe(true);
+    expect(await accepts(text, [['Mensah', 'Kofi']])).toBe(false);
   });
 });
 
