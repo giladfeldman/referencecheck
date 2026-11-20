@@ -13,7 +13,8 @@
  * ("Larry" / "Little") taken for agreement; review 25 found the fix for it rejecting spellings
  * ("Mohamed" / "Muhammad") and "Lu" read in order in "Louis"; review 26 found accented surnames
  * that 0.2.x read cut short, an initial of the next surname, and a title after a comma; review 27
- * found an accent hiding a comma pair from 0.2.x, which then read the first word only. 0.2.x
+ * found an accent hiding a comma pair from 0.2.x, which then read the first word only; review 28
+ * found a one-word title taken from the surname after a middle initial. 0.2.x
  * decided every case below correctly.
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
@@ -150,6 +151,17 @@ describe('review 27', () => {
   ])('"%s" (an accent hides the comma pair from 0.2.x) vs the right record is accepted', async (cited, people) => {
     expect(await accepts(`${cited} (2014). ${SD}. J Sleep Res.`, people as [string, string][])).toBe(true);
     expect(await accepts(`${cited} (2014). ${SD}. J Sleep Res.`, [['Okafor', 'Zoe']])).toBe(false);
+  });
+});
+
+describe('review 28', () => {
+  const text = 'Zoe A. Mark, Anna B. Hope (2014). Hope. Journal of Names.';
+  it('a surname after a middle initial is not the title: "Anna B. Hope" vs a record by Hope, Carl titled "Hope"', async () => {
+    expect(await accepts(text, [['Hope', 'Carl']], 'Hope')).toBe(false);
+    expect(await accepts(text, [['Hope', 'Anna']], 'Hope')).toBe(true);
+  });
+  it('a title after an initial is still found when it does not end the entry', async () => {
+    expect(await accepts('Smith J. Hope. J Sleep Res 2014.', [['Smith', 'John']], 'Hope')).toBe(true);
   });
 });
 

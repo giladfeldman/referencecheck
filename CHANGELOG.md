@@ -260,6 +260,10 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     its own ASCII reading: an accent hides a comma pair from it (`Hernández Núñez, López
     García`), so it read the first word, and the first-entry and family-first exemptions apply as
     they did there. The right record by Hernández and López is accepted again.
+  - *DOI matcher, authors (round 28).* A period after an initial starts the title only when the
+    words found do not end an author entry: in `Zoe A. Mark, Anna B. Hope (2014). Hope.` the
+    `Hope` after `B.` is Anna's surname, so a record by Carl Hope titled "Hope" is rejected
+    (0.2.x rejected it) and the record by Anna Hope is accepted.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

@@ -557,6 +557,7 @@ function addRound12Rows(addDoi) {
   addRound24Rows(addDoi);
   addRound25Rows(addDoi);
   addRound26Rows(addDoi);
+  addRound27Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -1036,4 +1037,13 @@ function addRound26Rows(addDoi) {
     addDoi('right:accent-hides-comma-pair', 'accept', text, rec(`a${k}`, people), text.slice(0, 16));
     addDoi('wrong:accent-hides-comma-pair', 'reject', text, rec(`a${k}w`, [['Okafor', 'Zoe']]), text.slice(0, 16));
   });
+}
+
+function addRound27Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const rec = (doi, people, title) => ({ ...base, title: [title], DOI: `${WORKS[0].w.doi}.r27-${doi}`, author: people.map(([family, given]) => ({ family, given })) });
+  // A one-word title equal to a surname after a middle initial is that author, not the title.
+  const text = 'Zoe A. Mark, Anna B. Hope (2014). Hope. Journal of Names.';
+  addDoi('wrong:title-after-initial', 'reject', text, rec('h', [['Hope', 'Carl']], 'Hope'), 'Zoe A. Mark, Ann');
+  addDoi('right:title-after-initial', 'accept', text, rec('ha', [['Hope', 'Anna']], 'Hope'), 'Zoe A. Mark, Ann');
 }

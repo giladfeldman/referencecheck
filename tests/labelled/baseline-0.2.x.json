@@ -1338,6 +1338,20 @@
       "wrongAccepts": 1,
       "rightRejects": 0
     },
+    "doi/wrong:title-after-initial": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:title-after-initial": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 1
+    },
     "doi/right:given-first-one-initial-bare-year": {
       "rows": 1,
       "falseMerges": 0,
@@ -1357,7 +1371,7 @@
     "falseMerges": 60,
     "missedMerges": 246,
     "wrongAccepts": 191,
-    "rightRejects": 89,
-    "rows": 1648
+    "rightRejects": 90,
+    "rows": 1650
   }
 }

@@ -889,8 +889,14 @@ function titleStart(words: readonly SectionWord[], title: string): number {
   if (head.length === 0) return words.length;
   // The title starts a sentence: after a period, colon, question mark or year, never inside an
   // author entry ("Hope Rowe, Anne Bell (2014). Hope." is not titled at "Hope Rowe"; round 24).
+  // A period after an initial starts a title only when the words found are not the end of an
+  // author entry: in "Zoe A. Mark, Anna B. Hope (2014). Hope." the "Hope" after "B." is Anna's
+  // surname (round 29).
+  const endsEntry = (last: number) => last + 1 >= words.length || /[,;&]/.test(words[last].after) || /^(?:and|et)$/i.test(words[last + 1].word);
   for (let k = 1; k + head.length <= words.length; k++) {
-    if ((/[.:?!\d]/.test(words[k - 1].after) || (head.length >= 2 && words[k - 1].after.includes(','))) && head.every((h, n) => foldForMatch(words[k + n].word) === h)) return k;
+    const afterInitial = IS_INITIAL.test(words[k - 1].word) && words[k - 1].after.includes('.');
+    const sentence = /[.:?!\d]/.test(words[k - 1].after) && !(afterInitial && endsEntry(k + head.length - 1));
+    if ((sentence || (head.length >= 2 && words[k - 1].after.includes(','))) && head.every((h, n) => foldForMatch(words[k + n].word) === h)) return k;
   }
   return words.length;
 }
