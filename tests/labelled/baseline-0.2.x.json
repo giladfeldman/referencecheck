@@ -1100,6 +1100,20 @@
       "wrongAccepts": 0,
       "rightRejects": 0
     },
+    "doi/right:glued-initials-inner-capital": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:glued-initials-inner-capital": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
     "doi/right:second-surname-et-al": {
       "rows": 2,
       "falseMerges": 0,
@@ -1169,6 +1183,6 @@
     "missedMerges": 246,
     "wrongAccepts": 189,
     "rightRejects": 89,
-    "rows": 1596
+    "rows": 1602
   }
 }

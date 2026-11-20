@@ -51,6 +51,11 @@ describe('the right record is accepted', () => {
     [`DeJong, P. (2014). ${SD}. J Sleep Res.`, [['Jong', 'P.']]],
     [`VanDyke, J. (2014). ${SD}. J Sleep Res.`, [['Dyke', 'J.']]],
     [`VanDerBerg, J. (2014). ${SD}. J Sleep Res.`, [['Berg', 'J.']]],
+    // review 21: initials glued to a surname with a capital inside it
+    [`McDonaldJA (2014). ${SD}. J Sleep Res.`, [['McDonald', 'James A.']]],
+    [`VanDerBergJ (2014). ${SD}. J Sleep Res.`, [['Berg', 'J.']]],
+    [`OBrienJ (2014). ${SD}. J Sleep Res.`, [['OBrien', 'J.']]],
+    [`Smith-JonesJA (2014). ${SD}. J Sleep Res.`, [['Smith-Jones', 'J. A.']]],
   ] as Array<[string, Array<[string, string]>]>)('%j', async (text, people) => {
     expect(await accepts(text, people)).toBe(true);
     expect(await accepts(text, [['Okafor', 'Zoe']])).toBe(false);

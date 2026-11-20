@@ -835,6 +835,9 @@ function addRound19Rows(addDoi) {
     ['glued-particle', `Berg, A. (2014). ${SD}. J Sleep Res.`, [['VanDerBerg', 'A']]],
     ['glued-particle-reference', `DeJong, P. (2014). ${SD}. J Sleep Res.`, [['Jong', 'P.']]],
     ['glued-particle-reference', `VanDerBerg, J. (2014). ${SD}. J Sleep Res.`, [['Berg', 'J.']]],
+    ['glued-initials-inner-capital', `McDonaldJA (2014). ${SD}. J Sleep Res.`, [['McDonald', 'James A.']]],
+    ['glued-initials-inner-capital', `VanDerBergJ (2014). ${SD}. J Sleep Res.`, [['Berg', 'J.']]],
+    ['glued-initials-inner-capital', `Smith-JonesJA (2014). ${SD}. J Sleep Res.`, [['Smith-Jones', 'J. A.']]],
   ];
   rows.forEach(([shape, text, people], k) => {
     addDoi(`right:${shape}`, 'accept', text, rec(`s${k}`, people), text.slice(0, 16));

@@ -550,8 +550,10 @@ function isWholeWordOf(single: string, multi: string): boolean {
  */
 /** A surname with its initials written on ("SmithJA", a database export): the surname alone (round 19). */
 function withoutGluedInitials(name: string): string[] {
-  const m = name.match(/^(\p{Lu}[\p{Ll}'’-]+)\p{Lu}{1,3}$/u);
-  return m ? [m[1]] : [];
+  // Any surname ending in a lower-case letter, with capitals inside it too ("McDonaldJA",
+  // "Smith-JonesJA", round 22); three letters or more remain ("DeJON" is not "De").
+  const m = name.match(/^(\p{Lu}[\p{L}'’-]*\p{Ll})\p{Lu}{1,3}$/u);
+  return m && m[1].replace(/[^\p{L}]/gu, '').length >= 3 ? [m[1]] : [];
 }
 
 /** Particles written joined to the surname in some deposits ("DeJong", "VanDerBerg"). Not "Mac",
@@ -574,7 +576,8 @@ function withoutGluedParticles(name: string): string[] {
 function surnamesMatch(ref: string, crossref: string): boolean | null {
   if (!scriptsComparable(ref, crossref)) return null;
   if (crossScript(ref, crossref)) return looseSurnameMatch(ref, crossref);
-  for (const r of [ref, ...withoutGluedInitials(ref), ...withoutGluedParticles(ref)].flatMap(spellings)) {
+  const bare = [ref, ...withoutGluedInitials(ref)];
+  for (const r of [...bare, ...bare.flatMap(withoutGluedParticles)].flatMap(spellings)) {
     for (const c of [crossref, ...withoutGluedParticles(crossref)].flatMap(spellings)) {
       if (sameSurname(r, c) || isWholeWordOf(r, c) || isWholeWordOf(c, r) || leadsWith(r, c)) return true;
     }
