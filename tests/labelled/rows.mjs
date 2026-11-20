@@ -556,6 +556,7 @@ function addRound12Rows(addDoi) {
   addRound23Rows(addDoi);
   addRound24Rows(addDoi);
   addRound25Rows(addDoi);
+  addRound26Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -1019,4 +1020,20 @@ function addRound25Rows(addDoi) {
   });
   addDoi('wrong:initial-of-next-surname', 'reject', `J. Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, rec('j', [['Mark', 'Jane']]), 'J. Mark Little,');
   addDoi('wrong:title-after-comma', 'reject', 'Mark Little, Grace Collins, Mark my words (2014).', rec('t', [['Mark', 'Zoe']], 'Mark my words'), 'Mark Little, Gra');
+}
+
+function addRound26Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const SD = 'Sleep deprivation affects memory';
+  const rec = (doi, people) => ({ ...base, title: [SD], DOI: `${WORKS[0].w.doi}.r26-${doi}`, author: people.map(([family, given]) => ({ family, given })) });
+  // An accent hides the comma pair from 0.2.x ("Núñez, L"), so it read the first word only.
+  [
+    ['Hernández Núñez, López García', [['Hernández', 'María'], ['López', 'Ana']]],
+    ['Pérez Gómez, Ruiz Ortega', [['Pérez', 'Lucía'], ['Ruiz', 'Ana']]],
+    ['Muñoz Peña, Díaz Ortega', [['Muñoz', 'Elena'], ['Díaz', 'Rosa']]],
+  ].forEach(([cited, people], k) => {
+    const text = `${cited} (2014). ${SD}. J Sleep Res.`;
+    addDoi('right:accent-hides-comma-pair', 'accept', text, rec(`a${k}`, people), text.slice(0, 16));
+    addDoi('wrong:accent-hides-comma-pair', 'reject', text, rec(`a${k}w`, [['Okafor', 'Zoe']]), text.slice(0, 16));
+  });
 }

@@ -12,7 +12,8 @@
  * part of a list. Review 24 found a given name sharing only its initial with the cited surname
  * ("Larry" / "Little") taken for agreement; review 25 found the fix for it rejecting spellings
  * ("Mohamed" / "Muhammad") and "Lu" read in order in "Louis"; review 26 found accented surnames
- * that 0.2.x read cut short, an initial of the next surname, and a title after a comma. 0.2.x
+ * that 0.2.x read cut short, an initial of the next surname, and a title after a comma; review 27
+ * found an accent hiding a comma pair from 0.2.x, which then read the first word only. 0.2.x
  * decided every case below correctly.
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
@@ -138,6 +139,17 @@ describe('review 26', () => {
   });
   it('a title after a comma is found: "..., Mark my words (2014)." vs a record by Mark, Zoe', async () => {
     expect(await accepts('Mark Little, Grace Collins, Mark my words (2014).', [['Mark', 'Zoe']], 'Mark my words')).toBe(false);
+  });
+});
+
+describe('review 27', () => {
+  it.each([
+    ['Hernández Núñez, López García', [['Hernández', 'María'], ['López', 'Ana']]],
+    ['Pérez Gómez, Ruiz Ortega', [['Pérez', 'Lucía'], ['Ruiz', 'Ana']]],
+    ['Muñoz Peña, Díaz Ortega', [['Muñoz', 'Elena'], ['Díaz', 'Rosa']]],
+  ])('"%s" (an accent hides the comma pair from 0.2.x) vs the right record is accepted', async (cited, people) => {
+    expect(await accepts(`${cited} (2014). ${SD}. J Sleep Res.`, people as [string, string][])).toBe(true);
+    expect(await accepts(`${cited} (2014). ${SD}. J Sleep Res.`, [['Okafor', 'Zoe']])).toBe(false);
   });
 });
 

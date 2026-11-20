@@ -256,6 +256,10 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     (`J. Mark Little`: the `J.` is Little's), so a record by Jane Mark is rejected. A title of
     two or more words is also found after a comma (`Mark Little, Grace Collins, Mark my
     words`), so a given name inside the title no longer switches the check off.
+  - *DOI matcher, authors (round 27).* Whether 0.2.x read the first word only is also judged by
+    its own ASCII reading: an accent hides a comma pair from it (`Hernández Núñez, López
+    García`), so it read the first word, and the first-entry and family-first exemptions apply as
+    they did there. The right record by Hernández and López is accepted again.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

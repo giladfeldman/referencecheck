@@ -464,14 +464,17 @@ function legacySurnames(referenceText: string): { names: string[]; firstWord: bo
 
 /**
  * The surnames 0.2.x read, exactly as it read them: ASCII letters only, so "García" was read
- * "Garc" (round 27). Used only to tell which families 0.2.x matched.
+ * "Garc" (round 27). Used only to tell which families 0.2.x matched, and whether it read the
+ * first word only: "Hernández Núñez, López García" has no ASCII comma pair, so 0.2.x read
+ * "Hern" (round 28).
  */
-function readAs02(referenceText: string): string[] {
+function readAs02(referenceText: string): { names: string[]; firstWord: boolean } {
   const section = (referenceText.split(/\(\d{4}/)[0] || '').trim();
   const names = [...section.matchAll(/([A-Z][a-zA-Z'-]+)(?:\s*,\s*[A-Z]\.?)+/g)].map((m) => m[1]);
-  if (names.length > 0) return names;
+  if (names.length > 0) return { names, firstWord: false };
   const first = section.match(/^([A-Z][a-zA-Z'-]+)/);
-  return first ? [first[1]] : [];
+  // No comma pair: 0.2.x read the first word, or nothing, and then compared no authors at all.
+  return { names: first ? [first[1]] : [], firstWord: true };
 }
 
 function readAuthors(referenceText: string): ReferenceAuthors {
@@ -996,15 +999,16 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
   // A family name written inside the record's title is not an author, and a title word next to
   // it is not a given name ("WangL. 2014. Wang Group Studies", round 23).
   const titleAt = titleStart(words, crossrefTitle(crossrefResult));
-  const legacy = legacySurnames(referenceText);
-  const firstWordRead = legacy.firstWord;
+  // 0.2.x read the first word only, judged by its own ASCII reading: an accent can hide a comma
+  // pair from it ("Núñez, L"), and then it read the first word (round 28).
+  const read02 = readAs02(referenceText);
+  const firstWordRead = read02.firstWord;
   // A family name 0.2.x matched too (a read name and the family hold one another): a given name
   // sharing an initial with the entry agrees, so a spelling ("Mohamed" / "Muhammad", "Piotr" /
   // "Peter") keeps the right record. A family matched only by a reading 0.2.x did not make
   // ("Mark" in "Mark Little, G.") is held to the strict compare (round 26).
   // 0.2.x read no surname at all ("Núñez ..."): it compared no authors, so none is held strict.
-  const read02 = readAs02(referenceText);
-  const legacyMatched = (family: string) => read02.length === 0 || read02.some((n) => {
+  const legacyMatched = (family: string) => read02.names.length === 0 || read02.names.some((n) => {
     const a = n.toLowerCase();
     const b = family.toLowerCase();
     return a.includes(b) || b.includes(a);

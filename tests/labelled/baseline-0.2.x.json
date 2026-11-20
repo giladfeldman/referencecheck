@@ -1324,6 +1324,20 @@
       "wrongAccepts": 0,
       "rightRejects": 0
     },
+    "doi/right:accent-hides-comma-pair": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:accent-hides-comma-pair": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 1,
+      "rightRejects": 0
+    },
     "doi/right:given-first-one-initial-bare-year": {
       "rows": 1,
       "falseMerges": 0,
@@ -1342,8 +1356,8 @@
   "total": {
     "falseMerges": 60,
     "missedMerges": 246,
-    "wrongAccepts": 190,
+    "wrongAccepts": 191,
     "rightRejects": 89,
-    "rows": 1642
+    "rows": 1648
   }
 }
