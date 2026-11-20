@@ -1,7 +1,7 @@
 import { distance } from 'fastest-levenshtein';
 import type { ReferenceInput } from '../types.js';
 import type { DeduplicationConfig } from './types.js';
-import { cleanDoiInput, foldForMatch, parseName, splitAuthorList } from '../util/normalize.js';
+import { cleanDoiInput, DOI_SHAPE, foldForMatch, parseName, splitAuthorList } from '../util/normalize.js';
 import type { ParsedName } from '../util/normalize.js';
 import {
   crossScript, isParticle, looseInitial, looseSurnameMatch, sameSurname, scriptsComparable, surnameKey,
@@ -371,12 +371,15 @@ export function scoreMetadataCompleteness(ref: ReferenceInput): number {
  */
 function comparableDoi(ref: ReferenceInput): string {
   let d = cleanDoiInput(ref.doi).toLowerCase();
-  if (!/^10\.\d{4,9}\/\S+$/.test(d)) return '';
+  if (!DOI_SHAPE.test(d)) return '';
   d = d.replace(/[?#].*$/, '');
   d = d.replace(/\/(?:full|pdf|epdf|abstract)\/?$/, '');
   if (/^10\.(?:1101|64898)\//.test(d)) d = d.replace(/(\d)v\d+$/, '$1');
-  d = d.replace(/\.v\d+$/, '');
-  return /^10\.\d{4,9}\/\S+$/.test(d) ? d : '';
+  // `.vN` is a version only for registrants that version that way (figshare, Zenodo, or a
+  // DOI that says figshare); elsewhere `10.5555/a.v1` and `.v2` are two works (final
+  // review 2026-11-20: they were merged under every prefix).
+  if (/^10\.(?:6084|5281)\//.test(d) || /figshare/.test(d)) d = d.replace(/\.v\d+$/, '');
+  return DOI_SHAPE.test(d) ? d : '';
 }
 
 /** `same` / `different` by DOI alone, `null` unless both references carry one. */

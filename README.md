@@ -177,7 +177,7 @@ are in **[docs/API.md](./docs/API.md)**.
 | DOI shape and shortDOIs | `isMalformedDoi(doi)`, `isShortFormDoi(doi)`, `expandShortDoi(doi, options?)`, `readExpansionTarget(location)`, `clearShortDoiCache()` |
 | Retraction | `checkRetractionDetailed(doi, options?)` (preferred), `checkRetraction(doi, options?)`, `checkMultipleRetractions(dois, options?)`, `DEFAULT_RETRACTION_SOURCES` |
 | Expression of concern | `checkReferenceForEOCDetailed(reference)` (preferred), `checkReferenceForEOC(reference)`, `getEocSeverityCounts(issues)` |
-| Replies and errata | `checkReferenceForReplies(reference)`, `getRepliesSummary(issues)` |
+| Replies and errata | `checkReferenceForRepliesDetailed(reference)` (preferred), `checkReferenceForReplies(reference)`, `getRepliesSummary(issues)` |
 | Preprints | `checkReferenceForPreprint(reference)`, `detectKnownPreprintFromDoi(doi)`, `detectKnownPreprintFromText(text)`, `getPreprintSummary(issues)` |
 | Open access | `checkReferenceForOpenAccess(reference)`, `getOpenAccessSummary(issues)` |
 | Citations | `getCitationCount(doi)`, `getCitingWorks(doi)` |

@@ -23,9 +23,10 @@
  */
 
 import type { ReferenceInput } from '../types.js';
+import { referenceDoi } from '../doi/doiShape.js';
 import axios, { AxiosError } from 'axios';
 import { crossrefGet } from '../http/crossref.js';
-import { cleanDoiInput, formatDateParts } from '../util/normalize.js';
+import { formatDateParts } from '../util/normalize.js';
 import { sameDoi } from '../abstract/index.js';
 
 export interface ExpressionOfConcernIssue {
@@ -140,7 +141,8 @@ async function checkCrossrefForEOC(doi: string): Promise<EocSourceOutcome> {
     }
 
     const updates: any[] = Array.isArray(data['updated-by']) ? data['updated-by'] : [];
-    const eocs = updates.filter((u) => u && u.type === 'expression_of_concern');
+    // Any case, like the correction and retraction readers (final review 2026-11-20).
+  const eocs = updates.filter((u) => typeof u?.type === 'string' && u.type.toLowerCase() === 'expression_of_concern');
     if (eocs.length === 0) return { status: 'clean' };
 
     // Earliest notice date: a concern recorded by both the publisher and Retraction
@@ -274,7 +276,7 @@ const SOURCES: Array<{ name: string; check: (doi: string) => Promise<EocSourceOu
 export async function checkReferenceForEOCDetailed(
   reference: ReferenceInput
 ): Promise<EocReferenceResult> {
-  const doi = cleanDoiInput(reference.doi || reference.suggested_doi);
+  const doi = referenceDoi(reference);
 
   // No DOI is not a failure to check — there is nothing to look up. `complete`
   // stays true so a bibliography of DOI-less references is not reported as

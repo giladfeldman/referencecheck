@@ -43,7 +43,7 @@ export async function searchOpenAlexByJournalName(journalName: string, creds?: M
         },
         timeout: 10000,
         headers: {
-          'User-Agent': 'Scimeto/1.0 (Predatory Journal Checker)',
+          'User-Agent': `referencecheck (mailto:${DEFAULT_POLITE_EMAIL})`,
           'Accept': 'application/json',
         },
       }
@@ -130,7 +130,7 @@ export async function resolveOpenAlexByDOI(doi: string, creds?: MetadataCredenti
         },
         timeout: 10000,
         headers: {
-          'User-Agent': 'Scimeto/1.0 (Predatory Journal Checker)',
+          'User-Agent': `referencecheck (mailto:${DEFAULT_POLITE_EMAIL})`,
           'Accept': 'application/json',
         },
       }

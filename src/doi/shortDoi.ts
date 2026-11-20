@@ -36,14 +36,14 @@ import { formatError } from '../util/formatError.js';
 import type { MetadataCredentials } from '../http/credentials.js';
 import { DEFAULT_POLITE_EMAIL } from '../http/credentials.js';
 import { isShortFormDoi } from './doiShape.js';
-import { cleanDoiInput } from '../util/normalize.js';
+import { cleanDoiInput, DOI_SHAPE } from '../util/normalize.js';
 
 /** The resolver, and the only host an expansion is accepted from. */
 const DOI_RESOLVER = 'https://doi.org/';
 const RESOLVER_HOSTS = new Set(['doi.org', 'dx.doi.org']);
 
 /** Canonical DOI shape — the same expression `isMalformedDoi` accepts. */
-const CANONICAL_DOI = /^10\.\d{3,9}\/\S+$/;
+const CANONICAL_DOI = DOI_SHAPE;
 
 /**
  * Why an expansion did or did not happen. Every value is a distinct,

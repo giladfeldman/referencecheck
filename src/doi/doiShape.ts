@@ -7,7 +7,8 @@
  * library: before 2026-11-18 `https://doi.org/10.1037/x` was "malformed" here
  * while `validateDOI` accepted it — one input, two readings.
  */
-import { cleanDoiInput } from '../util/normalize.js';
+import type { ReferenceInput } from '../types.js';
+import { cleanDoiInput, DOI_SHAPE } from '../util/normalize.js';
 
 /**
  * Heuristic: returns true if `doi` looks malformed/truncated. Replication
@@ -20,7 +21,7 @@ export function isMalformedDoi(doi: string): boolean {
   const d = cleanDoiInput(doi);
   if (!d) return true;
   // Standard DOI shape: '10.<registrant>/<suffix>' (suffix at least 1 char).
-  if (/^10\.\d{3,9}\/\S+$/.test(d)) return false;
+  if (DOI_SHAPE.test(d)) return false;
   // Short-DOI form: '10/<token>' (token at least 1 char).
   if (/^10\/[A-Za-z0-9._-]+$/.test(d)) return false;
   return true;
@@ -37,4 +38,18 @@ export function isMalformedDoi(doi: string): boolean {
 export function isShortFormDoi(doi: string): boolean {
   if (typeof doi !== 'string') return false;
   return /^10\/[A-Za-z0-9._-]+$/.test(cleanDoiInput(doi));
+}
+
+/**
+ * The DOI a reference is checked under: the first of `doi` and `suggested_doi` that has the
+ * DOI shape, cleaned (`cleanDoiInput`). When neither has it, the first one written, cleaned,
+ * so the lookup still runs and reports what it found; '' when neither is written.
+ *
+ * Before 0.3.0 every per-reference service read `reference.doi || reference.suggested_doi`:
+ * a junk `doi` ("n/a") hid a valid `suggested_doi`, the junk was looked up, and its 404 read
+ * as "nothing found" (final review 2026-11-20).
+ */
+export function referenceDoi(reference: Pick<ReferenceInput, 'doi' | 'suggested_doi'>): string {
+  const written = [reference?.doi, reference?.suggested_doi].map((d) => cleanDoiInput(d)).filter((d) => d);
+  return written.find((d) => !isMalformedDoi(d)) ?? written[0] ?? '';
 }

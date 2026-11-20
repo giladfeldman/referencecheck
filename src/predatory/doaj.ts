@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { DOAJResult } from './types.js';
 import { normalizeIssn } from '../util/normalize.js';
+import { DEFAULT_POLITE_EMAIL } from '../http/credentials.js';
 
 /**
  * Check DOAJ (Directory of Open Access Journals) via API
@@ -22,7 +23,7 @@ export async function checkDOAJ(issn: string): Promise<DOAJResult> {
       {
         timeout: 10000,
         headers: {
-          'User-Agent': 'Scimeto/1.0 (Predatory Journal Checker)',
+          'User-Agent': `referencecheck (mailto:${DEFAULT_POLITE_EMAIL})`,
         },
       }
     );

@@ -9,6 +9,26 @@ The same sweep found a second class, **a check that reads a field its source doe
 so it can never fire and reports clean**: the expression-of-concern check, below.
 
 ### Fixed
+- **Final review (2026-11-20), same class, five more members:**
+  - *Replies: "none" and "could not check" were one answer.* A Crossref 404, 429, 5xx, timeout
+    or network error returned `[]`, like a paper with no replies. New
+    `checkReferenceForRepliesDetailed(reference)` returns `{ issues, complete, unavailable? }`
+    (`unavailable.reason`: `not_indexed`, `rate_limited`, `server_error`, `timeout`, `network`,
+    `malformed_response`). `checkReferenceForReplies` is unchanged in shape.
+  - *The expression-of-concern update type was read case-sensitively*, unlike the correction and
+    retraction readers: `Expression_Of_Concern` was missed.
+  - *A junk `doi` hid a valid `suggested_doi`* in the replies, expression-of-concern,
+    open-access and preprint checks (`doi || suggested_doi` took "n/a"). New
+    `referenceDoi(reference)`: the first of the two that has the DOI shape.
+  - *The DOI shape rule had two copies*: two readers allowed 3-digit registrant codes, two
+    required 4. 3-digit registrants exist (10.231, 10.488, 10.978, 10.979, checked against the
+    DOI handle server); `cleanDoiInput` now cuts a citation tail after them too
+    (`10.231/x.` -> `10.231/x`). One exported `DOI_SHAPE`.
+  - *Deduplication merged `.v1` and `.v2` under every DOI prefix*; now only for figshare
+    (10.6084, or a DOI that says figshare) and Zenodo (10.5281). `10.5555/a.v1` and
+    `10.5555/a.v2` are two works.
+  - The DOAJ and OpenAlex requests now identify as `referencecheck`, with the polite-pool
+    contact address.
 - **Expressions of concern were never detected.** Both sources read fields their APIs do not
   serve, so every paper was reported clean. Crossref: the check read
   `relation['has-expression-of-concern' | 'is-expression-of-concern-for']` (not a Crossref

@@ -4,6 +4,7 @@
  */
 
 import type { ReferenceInput } from '../types.js';
+import { referenceDoi } from '../doi/doiShape.js';
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
 import { cleanDoiInput, formatDateParts } from '../util/normalize.js';
@@ -28,7 +29,34 @@ export interface CitationRepliesIssue {
 /**
  * Check if a paper has associated replies, comments, or errata via CrossRef
  */
-async function checkForReplies(doi: string): Promise<CitationRepliesIssue[]> {
+/** Why Crossref could not answer. Every value means "we do not know", never "no replies". */
+export type RepliesUnavailableReason = 'not_indexed' | 'rate_limited' | 'server_error' | 'timeout' | 'network' | 'malformed_response';
+
+/**
+ * Replies, comments and errata for one reference, with COVERAGE. `complete: false` means
+ * Crossref was not read (`unavailable` says why), so an empty `issues` is not an all-clear.
+ */
+export interface RepliesReferenceResult {
+  issues: CitationRepliesIssue[];
+  complete: boolean;
+  unavailable?: { reason: RepliesUnavailableReason; detail?: string };
+}
+
+function classifyRepliesError(error: unknown): NonNullable<RepliesReferenceResult['unavailable']> {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    // A Crossref 404 is about Crossref (the DOI is not registered there), not about the paper.
+    if (status === 404) return { reason: 'not_indexed', detail: '404' };
+    if (status === 429) return { reason: 'rate_limited', detail: '429' };
+    if (status !== undefined && status >= 500) return { reason: 'server_error', detail: String(status) };
+    if (error.code === 'ECONNABORTED' || /timeout/i.test(error.message ?? '')) return { reason: 'timeout' };
+    return { reason: 'network', detail: error.code ?? error.message };
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return /timeout/i.test(message) ? { reason: 'timeout' } : { reason: 'network', detail: message };
+}
+
+async function checkForReplies(doi: string): Promise<RepliesReferenceResult> {
   const issues: CitationRepliesIssue[] = [];
 
   try {
@@ -36,7 +64,10 @@ async function checkForReplies(doi: string): Promise<CitationRepliesIssue[]> {
       timeout: 5000,
     });
 
-    const data = response.data?.message || {};
+    const data = response.data?.message;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return { issues: [], complete: false, unavailable: { reason: 'malformed_response', detail: 'Crossref 200 without a work record' } };
+    }
 
     // Replies and comments are Crossref relations (`has-reply`, `has-comment`,
     // `is-reply-to`). Corrections are NOT a relation: Crossref serves them in
@@ -147,14 +178,11 @@ async function checkForReplies(doi: string): Promise<CitationRepliesIssue[]> {
       });
     }
 
-    return issues;
+    return { issues, complete: true };
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status !== 404) {
-        console.warn(`Error checking replies for ${doi}:`, error.message);
-      }
-    }
-    return issues;
+    const unavailable = classifyRepliesError(error);
+    if (unavailable.reason !== 'not_indexed') console.warn(`Error checking replies for ${doi}:`, unavailable.reason, unavailable.detail ?? '');
+    return { issues: [], complete: false, unavailable };
   }
 }
 
@@ -162,13 +190,19 @@ async function checkForReplies(doi: string): Promise<CitationRepliesIssue[]> {
  * Check reference for citation replies
  */
 export async function checkReferenceForReplies(reference: ReferenceInput): Promise<CitationRepliesIssue[]> {
-  // Only check if we have a DOI
-  const doi = cleanDoiInput(reference.doi || reference.suggested_doi);
-  if (!doi) {
-    return [];
-  }
+  return (await checkReferenceForRepliesDetailed(reference)).issues;
+}
 
-  return await checkForReplies(doi);
+/**
+ * Replies check reporting COVERAGE as well as findings. Prefer this anywhere the result is
+ * shown to a user: `checkReferenceForReplies` returns `[]` both when Crossref lists no
+ * replies and when Crossref could not be asked (final review 2026-11-20); only this
+ * signature can tell them apart. No DOI is not a failure to check: `complete` stays true.
+ */
+export async function checkReferenceForRepliesDetailed(reference: ReferenceInput): Promise<RepliesReferenceResult> {
+  const doi = referenceDoi(reference);
+  if (!doi) return { issues: [], complete: true };
+  return checkForReplies(doi);
 }
 
 /**

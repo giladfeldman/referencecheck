@@ -4,6 +4,7 @@
  */
 
 import type { ReferenceInput } from '../types.js';
+import { referenceDoi } from '../doi/doiShape.js';
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
 import { cleanDoiInput, formatDateParts } from '../util/normalize.js';
@@ -166,7 +167,7 @@ async function checkPreprintStatus(doi: string): Promise<PreprintIssue | null> {
 export async function checkReferenceForPreprint(reference: ReferenceInput): Promise<PreprintIssue[]> {
   const issues: PreprintIssue[] = [];
 
-  const doi = cleanDoiInput(reference.doi || reference.suggested_doi) || null;
+  const doi = referenceDoi(reference) || null;
   const rawText = (reference as any).raw_text as string | undefined;
   const url = (reference as any).url as string | undefined;
 

@@ -14,6 +14,16 @@
 
 import { isParticle } from './surnames.js';
 
+/**
+ * The DOI shape, the one copy every reader uses: `10.<registrant>/<suffix>`. Registrant codes
+ * run from 3 digits (10.231, 10.488, 10.978 and 10.979 are registered, checked against the
+ * DOI handle server 2026-11-20) to 9. Before 0.3.0 two readers allowed 3 digits and two
+ * required 4, so `10.231/x.` was well-formed to one and kept its full stop in the other.
+ */
+export const DOI_SHAPE = /^10\.\d{3,9}\/\S+$/;
+/** The start of a DOI: `10.<registrant>/`. */
+export const DOI_START = /^10\.\d{3,9}\//;
+
 /** Wrappers a DOI arrives in: resolver URLs (any scheme, dx./www.), bare host, `doi:` labels. */
 const DOI_WRAPPER = /^(?:(?:https?:\/\/)?(?:dx\.|www\.)?doi\.org\/|doi:\s*)/i;
 
@@ -42,7 +52,7 @@ export function cleanDoiInput(doi: string | null | undefined): string {
     }
   }
   d = d.trim();
-  if (/^10\.\d{4,9}\//.test(d)) d = stripCitationTail(d);
+  if (DOI_START.test(d)) d = stripCitationTail(d);
   return d;
 }
 

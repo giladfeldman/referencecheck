@@ -4,8 +4,8 @@
  */
 
 import type { ReferenceInput } from '../types.js';
+import { referenceDoi } from '../doi/doiShape.js';
 import axios from 'axios';
-import { cleanDoiInput } from '../util/normalize.js';
 
 export interface OpenAccessIssue {
   type: 'open-access';
@@ -91,7 +91,7 @@ export async function checkReferenceForOpenAccess(reference: ReferenceInput): Pr
   const issues: OpenAccessIssue[] = [];
 
   // Only check if we have a DOI
-  const doi = cleanDoiInput(reference.doi || reference.suggested_doi);
+  const doi = referenceDoi(reference);
   if (!doi) {
     return issues;
   }
