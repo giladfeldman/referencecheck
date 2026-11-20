@@ -9,7 +9,8 @@
  * glued to the Crossref family, a title word taken for a given name, and the family-first lift
  * applied to "Garcia Lopez, M.". Review 23 found the title search landing on an author's given
  * name, the family-first lift on a comma list, and a sole entry before a bare year taken for
- * part of a list. 0.2.x decided every case below correctly.
+ * part of a list. Review 24 found a given name sharing only its initial with the cited surname
+ * ("Larry" / "Little") taken for agreement. 0.2.x decided every case below correctly.
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
@@ -93,6 +94,19 @@ describe('review 23', () => {
   });
   it('a comma list whose given names are two record families stays rejected', async () => {
     expect(await accepts(`Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, [['Mark', 'Zoe'], ['Grace', 'Quinn']])).toBe(false);
+  });
+});
+
+describe('review 24: a given name sharing only an initial with a cited surname', () => {
+  it.each([
+    [`Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, 'Mark', 'Larry'],
+    [`John Smith, Mary Jones (2014). ${SD}. J Sleep Res.`, 'John', 'Sam'],
+    [`Pieter Van Berg, Ann Lee (2014). ${SD}. J Sleep Res.`, 'Pieter', 'Victor'],
+  ])('%j vs a record by %s, %s is rejected', async (text, family, given) => {
+    expect(await accepts(text, [[family, given]])).toBe(false);
+  });
+  it.each([['Tom', 'Thomas'], ['Mike', 'Michael'], ['Kate', 'Katherine'], ['Mark', 'M.']])('"%s Little" vs a record by Little, %s is accepted', async (cited, given) => {
+    expect(await accepts(`${cited} Little, Grace Collins (2014). ${SD}. J Sleep Res.`, [['Little', given]])).toBe(true);
   });
 });
 

@@ -237,6 +237,14 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     `Surname, I.` pair, as 0.2.x read it: `Mark Little, Grace Collins` against a record by Zoe
     Mark and Quinn Grace is rejected. A year right after a sole author entry ends it like a
     period (`Hernandez Ruiz, 2014, Diabetes in adults`).
+  - *DOI matcher, authors (round 24).* A shared initial counts as agreement only when one side
+    is an initial (`Little` / `L.`, `M.` / `Mark`). Two written-out names must also share their
+    first two letters, or the shorter one's letters must appear in order in the longer one
+    (`Kate` / `Katherine`, `Tom` / `Thomas`). So `Mark Little, Grace Collins` against a record
+    by Larry Mark is rejected, as 0.2.x rejected it. Known limits: a nickname that fails both
+    tests (`Jim` / `James`, `Jack` / `John`) is rejected, like `Bill` / `William`; a record
+    given name that shares the first two letters of the cited surname (Lisa Mark against
+    `Mark Little`) is still accepted.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

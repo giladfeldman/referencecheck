@@ -890,6 +890,16 @@ function editDistance(a: string, b: string): number {
   return prev[b.length];
 }
 
+/** Two written-out names that may be one: the same first two letters, or the shorter one's letters in order in the longer, first letter first ("tom" / "thomas"). */
+function sameStart(a: string, b: string): boolean {
+  if (a.slice(0, 2) === b.slice(0, 2)) return true;
+  const [s, l] = a.length <= b.length ? [a, b] : [b, a];
+  if (s[0] !== l[0]) return false;
+  let k = 0;
+  for (const ch of l) if (ch === s[k]) k++;
+  return k >= s.length;
+}
+
 /**
  * A record's given name that does not fit the words written next to its family name in an
  * entry of ambiguous order: it shares no initial with them, and no word of it is a spelling
@@ -904,7 +914,16 @@ function givenConflicts(others: readonly string[], given: string | null): boolea
   if (cited.size === 0 || !given) return false;
   const recorded = initialsOf(given);
   if (recorded.size === 0 || [...recorded].some((l) => !/^[a-z]$/.test(l))) return false;
-  if ([...recorded].some((l) => cited.has(l))) return false;
+  // A shared initial agrees when one side of it is an initial ("Little" / "L.", "L." / "Larry").
+  // Two written-out words agree only when they also share the second letter ("Kate" / "Katherine",
+  // "Mike" / "Michael") or the shorter is written in order inside the longer ("Tom" / "Thomas"):
+  // "Larry" is not "Little", the cited family of "Mark Little" (round 25).
+  const citedInitials = initialsOf(others.filter((w) => IS_INITIAL.test(w)).join(' '));
+  const recordedInitials = initialsOf(given.split(/[\s.]+/u).filter((w) => IS_INITIAL.test(w) || /^\p{L}$/u.test(w)).join(' '));
+  if ([...recorded].some((l) => citedInitials.has(l)) || [...recordedInitials].some((l) => cited.has(l))) return false;
+  const full = (text: string) => foldForMatch(text).split(' ').filter((w) => w.length >= 2);
+  const citedFull = full(others.filter((w) => !IS_INITIAL.test(w)).join(' '));
+  if (full(given).some((g) => citedFull.some((w) => sameStart(g, w)))) return false;
   // Each word, and the name written as one word ("Hsiao-Ming" / "Xiaoming", round 20).
   const long = (text: string) => {
     const parts = foldForMatch(text).split(' ');

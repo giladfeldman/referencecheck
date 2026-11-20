@@ -553,6 +553,7 @@ function addRound12Rows(addDoi) {
   addRound20Rows(addDoi);
   addRound21Rows(addDoi);
   addRound22Rows(addDoi);
+  addRound23Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -957,4 +958,24 @@ function addRound22Rows(addDoi) {
   });
   addDoi('wrong:title-opening-is-cited-given-name', 'reject', 'Hope Rowe, Anne Bell (2014). Hope. Nature.', rec('hope', [['Hope', 'Zoe']], 'Hope'), 'Hope Rowe, Anne');
   addDoi('wrong:comma-list-two-collisions', 'reject', `Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, rec('mg', [['Mark', 'Zoe'], ['Grace', 'Quinn']]), 'Mark Little, Gra');
+}
+
+// ------------------------------------------------------------------ shapes added in review round 23
+// A comma list whose first given name is a record's family, and the record's given name shares
+// only its first letter with the cited surname (wrong records: no cited surname is a record
+// family), and right records where the citation writes a short form of the recorded given name
+// with the same first letters or its letters in order ("Tom" / "Thomas").
+function addRound23Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const SD = 'Sleep deprivation affects memory';
+  const rec = (doi, people) => ({ ...base, title: [SD], DOI: `${WORKS[0].w.doi}.r23-${doi}`, author: people.map(([family, given]) => ({ family, given })) });
+  [['Mark Little', 'Mark', 'Larry'], ['John Smith, Mary Jones', 'John', 'Sam'], ['Pieter Van Berg, Ann Lee', 'Pieter', 'Victor']].forEach(([cited, family, given], k) => {
+    const text = cited.includes(',') ? `${cited} (2014). ${SD}. J Sleep Res.` : `${cited}, Grace Collins (2014). ${SD}. J Sleep Res.`;
+    addDoi('wrong:given-shares-cited-family-initial', 'reject', text, rec(`c${k}`, [[family, given]]), text.slice(0, 16));
+  });
+  [['Tom', 'Thomas'], ['Mike', 'Michael'], ['Kate', 'Katherine']].forEach(([cited, given], k) => {
+    const text = `${cited} Little, Grace Collins (2014). ${SD}. J Sleep Res.`;
+    addDoi('right:same-initial-short-form', 'accept', text, rec(`s${k}`, [['Little', given]]), text.slice(0, 16));
+    addDoi('wrong:same-initial-short-form', 'reject', text, rec(`s${k}w`, [['Okafor', 'Zoe']]), text.slice(0, 16));
+  });
 }

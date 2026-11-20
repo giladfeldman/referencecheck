@@ -1254,6 +1254,27 @@
       "wrongAccepts": 0,
       "rightRejects": 0
     },
+    "doi/wrong:given-shares-cited-family-initial": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:same-initial-short-form": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:same-initial-short-form": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
     "doi/right:given-first-one-initial-bare-year": {
       "rows": 1,
       "falseMerges": 0,
@@ -1274,6 +1295,6 @@
     "missedMerges": 246,
     "wrongAccepts": 189,
     "rightRejects": 89,
-    "rows": 1619
+    "rows": 1628
   }
 }
