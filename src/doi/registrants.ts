@@ -50,8 +50,13 @@ export const OSF_PREPRINT_SLUGS: ReadonlyArray<{ slug: string; server: string }>
 
 const OSF_VERSION = /_v\d+$/i;
 
-/** bioRxiv/medRxiv: "v2", and the file endings ".full" / ".full.pdf" a link adds. */
-const BIORXIV_VERSION = /(?<=\d)(?:v\d+)?(?:\.full(?:\.pdf)?)?$/i;
+/**
+ * bioRxiv/medRxiv: "v2", and the page endings a bioRxiv link adds (".full", ".full.pdf",
+ * ".abstract", ".article-info", ".article-metrics", ".figures-only",
+ * ".supplementary-material"): each names the same preprint.
+ */
+const BIORXIV_VERSION =
+  /(?<=\d)(?:v\d+)?(?:\.(?:full(?:\.pdf)?|abstract|article-info|article-metrics|figures-only|supplementary-material))?$/i;
 
 export const DOI_REGISTRANTS: ReadonlyArray<DoiRegistrant> = [
   { prefix: /^10\.2139\/ssrn\./i, server: 'SSRN' },
@@ -60,8 +65,8 @@ export const DOI_REGISTRANTS: ReadonlyArray<DoiRegistrant> = [
   // Only the bioRxiv/medRxiv suffix forms (dated "2020.03.22.002386", or the older six-plus
   // digit "002386"). The 10.1101 prefix also carries Cold Spring Harbor journal articles
   // (10.1101/pdb.prot099176, 10.1101/gr.*), which Crossref types journal-article.
-  // Not anchored at the end: version and file suffixes (v1, .full, .full.pdf,
-  // .supplementary-material) all name the same preprint, as in 0.2.x.
+  // Not anchored at the end, so a version or page ending still names the server (as in
+  // 0.2.x); deduplication drops the endings listed in BIORXIV_VERSION.
   { prefix: /^10\.1101\/(?:\d{4}\.\d{2}\.\d{2}\.\d+|\d{6,})/i, server: 'bioRxiv/medRxiv', version: BIORXIV_VERSION },
   // bioRxiv/medRxiv deposit new preprints under 10.64898 (openRxiv); every one of its
   // 453,106 Crossref works is posted-content (type facet, 2026-11-18).

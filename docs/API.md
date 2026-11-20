@@ -390,9 +390,14 @@ interface CitationRepliesIssue {
 
 ### `checkReferenceForPreprint(reference)`
 
-`Promise<PreprintIssue[]>`. First a local match against known preprint servers: of the DOI
-prefix when the reference has a DOI, of the URL or citation text only when it has no full DOI (none, a junk value or an unexpanded short DOI; a
-journal DOI whose citation mentions ssrn.com is asked of Crossref, not called a preprint) against known preprint
+`Promise<PreprintIssue[]>`. Three steps. (1) A known preprint server's DOI prefix
+(`DOI_REGISTRANTS` rows with a `server`, below). (2) A full DOI the author wrote in `doi` (or,
+with `doi` empty, the DOI inside a resolver link in `url`, `https://doi.org/10.…`): Crossref
+decides, so a journal article whose citation mentions ssrn.com is not called a preprint; when
+Crossref cannot answer (the DOI is not indexed there, as for DataCite and OSF DOIs, or the
+request failed), the `url` decides; the citation text does not. (3) No full DOI of the
+author's (none, a junk value, an unexpanded short DOI, or only a `suggested_doi`): the `url`,
+then the citation text, then Crossref for the suggested DOI. Known preprint
 servers (`DOI_REGISTRANTS` rows with a `server`: SSRN, PsyArXiv and the other Center for Open
 Science servers (OSF Preprints, SocArXiv, MetaArXiv, EdArXiv, …), bioRxiv/medRxiv, arXiv,
 Preprints.org, Research Square, ChemRxiv, Cambridge Open Engage, Authorea, TechRxiv, engrXiv,

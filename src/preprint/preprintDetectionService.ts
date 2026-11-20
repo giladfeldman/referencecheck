@@ -50,6 +50,11 @@ export const KNOWN_PREPRINT_URL_PATTERNS: ReadonlyArray<{ pattern: RegExp; serve
   { pattern: /\bchemrxiv\.org\b/i, server: 'ChemRxiv' },
   { pattern: /\beartharxiv\.org\b/i, server: 'EarthArXiv' },
   { pattern: /\bpreprints\.org\b/i, server: 'Preprints.org' },
+  // OSF servers' own addresses, each measured 2026-11-20 to redirect to osf.io/preprints/<slug>
+  // (socarxiv.org and psyarxiv.com above). Other OSF servers are read from the osf.io address.
+  { pattern: /\bedarxiv\.org\b/i, server: 'EdArXiv' },
+  { pattern: /\bpaleorxiv\.org\b/i, server: 'PaleorXiv' },
+  { pattern: /\bbiohackrxiv\.org\b/i, server: 'BioHackrXiv' },
   // osf.io/preprints/<slug>, one per OSF server in the registrant list.
   ...OSF_PREPRINT_SLUGS.map(({ slug, server }) => ({ pattern: new RegExp(`\\bosf\\.io\\/preprints\\/${slug}\\b`, 'i'), server })),
   { pattern: /\becoevorxiv\.org\b/i, server: 'EcoEvoRxiv' },
@@ -79,9 +84,11 @@ export function detectKnownPreprintFromText(text: string | null | undefined): st
 }
 
 /**
- * Check if a DOI points to a preprint
+ * Ask Crossref whether a DOI is a preprint. `answered` is false when Crossref could not say:
+ * the DOI is not indexed there (404: DataCite, OSF, Zenodo DOIs) or the request failed. A
+ * record that is not a preprint is `answered: true, issue: null`.
  */
-async function checkPreprintStatus(doi: string): Promise<PreprintIssue | null> {
+async function checkPreprintStatus(doi: string): Promise<{ issue: PreprintIssue | null; answered: boolean }> {
   try {
     // Use CrossRef API to check if this is a preprint
     const response = await crossrefGet(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, {
@@ -93,7 +100,7 @@ async function checkPreprintStatus(doi: string): Promise<PreprintIssue | null> {
     // Check if this is a preprint
     if (data.type === 'posted-content' || data.subtype === 'preprint') {
       const publishedVersion = data.relation?.['is-preprint-of']?.[0]?.id;
-      return {
+      return { answered: true, issue: {
         type: 'preprint-status',
         severity: 'warning',
         code: 'IS_PREPRINT',
@@ -112,14 +119,14 @@ async function checkPreprintStatus(doi: string): Promise<PreprintIssue | null> {
           publishedDOI: publishedVersion || undefined,
           source: 'CrossRef',
         },
-      };
+      } };
     }
 
     // Check if this paper has a preprint version
     // An empty list is not a preprint (v0.3.0 review 3; the replies check had the same bug).
     if (Array.isArray(data.relation?.['has-preprint']) && data.relation['has-preprint'].length > 0) {
       const preprintDOI = data.relation['has-preprint'][0]?.id;
-      return {
+      return { answered: true, issue: {
         type: 'preprint-status',
         severity: 'info',
         code: 'HAS_PREPRINT_VERSION',
@@ -131,75 +138,79 @@ async function checkPreprintStatus(doi: string): Promise<PreprintIssue | null> {
           publishedDOI: doi,
           source: 'CrossRef',
         },
-      };
+      } };
     }
 
-    return null;
+    return { answered: true, issue: null };
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 404) {
-        return null;
-      }
+    if (axios.isAxiosError(error) && error.response?.status !== 404) {
       console.warn(`Error checking preprint status for ${doi}:`, error.message);
     }
-    return null;
+    return { answered: false, issue: null };
   }
 }
 
 /**
  * Check reference for preprint status.
  *
- * Two-stage detection (γ' fix):
- *   1. Fast heuristic against known preprint DOI prefixes, or URL patterns when there is
- *      no DOI.
- *      Catches SSRN, PsyArXiv, bioRxiv, arXiv, OSF preprints, etc. — many
- *      of which CrossRef does not tag as `type='posted-content'`.
- *   2. CrossRef API call as a fallback (only if the heuristic didn't match).
+ *   1. A known preprint server's DOI prefix (SSRN, PsyArXiv, bioRxiv, arXiv, OSF servers, …;
+ *      several are not typed `posted-content` in Crossref).
+ *   2. A full DOI the author wrote or linked: Crossref decides; when Crossref cannot answer,
+ *      the reference's own link (`url`) does.
+ *   3. Otherwise (none, junk, short, or only a suggested DOI): the link, then the citation
+ *      text, then Crossref for the suggested DOI.
  */
 export async function checkReferenceForPreprint(reference: ReferenceInput): Promise<PreprintIssue[]> {
-  const issues: PreprintIssue[] = [];
-
-  const doi = referenceDoi(reference) || null;
   const rawText = (reference as any).raw_text as string | undefined;
   const url = (reference as any).url as string | undefined;
 
-  // Fast heuristic — DOI prefix, or a URL pattern when the reference has no full DOI. A full
-  // DOI that is not a known server's goes to Crossref: a journal article whose citation text
-  // mentions ssrn.com or arxiv.org ("preprint at ...") is not itself a preprint (v0.3.0
-  // review 4). A junk DOI ("n/a") or an unexpanded short DOI (10/abc) cannot be answered for,
-  // so the URL and the text still decide there.
-  const heuristicServer = doi && DOI_SHAPE.test(doi)
-    ? detectKnownPreprintFromDoi(doi)
-    : detectKnownPreprintFromDoi(doi) ?? detectKnownPreprintFromText(url) ?? detectKnownPreprintFromText(rawText);
+  // The DOI the reference is checked under. With none written, a DOI inside a resolver link
+  // (url "https://doi.org/10.2139/ssrn.123") is that reference's DOI (v0.3.0 review 5).
+  const urlDoi = cleanDoiInput(url);
+  const doi = referenceDoi(reference) || (DOI_SHAPE.test(urlDoi) ? urlDoi : '') || null;
+  // A DOI the author wrote (or linked), in full: Crossref can answer for it. A suggested DOI
+  // is the tool's guess and does not count (the dedup rule, v0.3.0 review 5); neither does a
+  // junk value ("n/a") or an unexpanded short DOI (10/abc).
+  const writtenDoi = cleanDoiInput(reference.doi);
+  const authorsFullDoi = DOI_SHAPE.test(writtenDoi) || (!writtenDoi && DOI_SHAPE.test(urlDoi));
 
-  if (heuristicServer) {
-    issues.push({
-      type: 'preprint-status',
-      severity: 'warning',
-      code: 'IS_PREPRINT',
-      description: `This reference appears to be a ${heuristicServer} preprint, not a peer-reviewed publication. If it was eventually published, it's best to cite the associated publication.`,
-      location: doi || url || rawText?.slice(0, 80) || '(reference)',
-      suggestion: `Check if a peer-reviewed version has been published since this ${heuristicServer} preprint`,
-      metadata: {
-        doi: doi || undefined,
-        preprintServer: heuristicServer,
-        source: 'heuristic',
-      },
-    });
-    return issues;
+  const heuristic = (server: string): PreprintIssue[] => [{
+    type: 'preprint-status',
+    severity: 'warning',
+    code: 'IS_PREPRINT',
+    description: `This reference appears to be a ${server} preprint, not a peer-reviewed publication. If it was eventually published, it's best to cite the associated publication.`,
+    location: doi || url || rawText?.slice(0, 80) || '(reference)',
+    suggestion: `Check if a peer-reviewed version has been published since this ${server} preprint`,
+    metadata: {
+      doi: doi || undefined,
+      preprintServer: server,
+      source: 'heuristic',
+    },
+  }];
+
+  // 1. A known preprint server's DOI prefix.
+  const doiServer = detectKnownPreprintFromDoi(doi);
+  if (doiServer) return heuristic(doiServer);
+
+  if (authorsFullDoi && doi) {
+    // 2. A full DOI of the author's goes to Crossref, and Crossref's answer stands: a journal
+    // article whose citation mentions ssrn.com or arxiv.org ("earlier version at ...") is
+    // not itself a preprint (v0.3.0 review 4). When Crossref cannot answer (not indexed:
+    // a DataCite or OSF DOI; or the request failed), the reference's own link decides; the
+    // citation text does not (review 5).
+    const { issue, answered } = await checkPreprintStatus(doi);
+    if (answered) return issue ? [issue] : [];
+    const urlServer = detectKnownPreprintFromText(url);
+    return urlServer ? heuristic(urlServer) : [];
   }
 
-  // Fall through to CrossRef only if we have a DOI and the heuristic didn't match.
-  if (!doi) {
-    return issues;
-  }
-
-  const result = await checkPreprintStatus(doi);
-  if (result) {
-    issues.push(result);
-  }
-
-  return issues;
+  // 3. No full DOI of the author's: the link, then the citation text, then Crossref for a
+  // suggested DOI.
+  const textServer = detectKnownPreprintFromText(url) ?? detectKnownPreprintFromText(rawText);
+  if (textServer) return heuristic(textServer);
+  if (!doi) return [];
+  const { issue } = await checkPreprintStatus(doi);
+  return issue ? [issue] : [];
 }
 
 /**

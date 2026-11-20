@@ -155,6 +155,8 @@ describe('dedup: a ".vN" ending is a version only where the registrant versions 
     // Review 4: a bioRxiv link's file ending names the same version.
     ['10.1101/2020.01.01.123456v1.full', '10.1101/2020.01.01.123456v1'],
     ['10.1101/2020.01.01.123456v2.full.pdf', '10.1101/2020.01.01.123456'],
+    ['10.1101/2020.03.22.002386v1.supplementary-material', '10.1101/2020.03.22.002386'], // review 5
+    ['10.1101/2020.03.22.002386v2.abstract', '10.1101/2020.03.22.002386v1.article-info'],
     ['10.31730/osf.io/abcde_v2', '10.31730/osf.io/abcde'], // AfricArXiv
   ])('%s and %s: one work', (a, b) => { expect(rel(a, b)).toBe('same'); });
   it.each([
@@ -252,6 +254,39 @@ describe('one registrant list: preprint server names and version rules (review 3
   });
   // No full DOI (none, junk, or an unexpanded short DOI): Crossref cannot answer, so the URL
   // decides (review 5 pre-check, 2026-11-20: 7a59dd1 dropped the junk and short cases).
+  // Review 5 (2026-11-20), each reproduced against dist/ at 63a351b.
+  const ARXIV = 'https://arxiv.org/abs/2301.12345';
+  it('only a suggested DOI: the preprint link still decides (a suggestion is not the author\'s DOI)', async () => {
+    // Crossref would call the suggested DOI a journal article; the link must win anyway.
+    crossrefGetMock.mockResolvedValue(record({ type: 'journal-article' }));
+    const issues = await preprint.checkReferenceForPreprint({ id: 'r', raw_text: 'x', url: ARXIV, suggested_doi: '10.1037/xge0001234' } as any);
+    expect(issues.map((i: any) => [i.code, i.metadata.preprintServer])).toEqual([['IS_PREPRINT', 'arXiv']]);
+  });
+  it.each([
+    ['not indexed (404)', httpError(404)],
+    ['request failed', httpError(undefined, 'ENOTFOUND')],
+  ])('a full DOI Crossref cannot answer for (%s): the reference\'s link decides', async (_label, err) => {
+    crossrefGetMock.mockRejectedValue(err);
+    const issues = await preprint.checkReferenceForPreprint({ id: 'r', raw_text: 'x', doi: '10.17605/OSF.IO/ABCDE', url: 'https://osf.io/preprints/psyarxiv/abcde' } as any);
+    expect(issues.map((i: any) => [i.code, i.metadata.preprintServer])).toEqual([['IS_PREPRINT', 'PsyArXiv']]);
+  });
+  it('a full DOI Crossref cannot answer for, mentioned in the text only: not a preprint', async () => {
+    crossrefGetMock.mockRejectedValue(httpError(404));
+    const issues = await preprint.checkReferenceForPreprint({ id: 'r', raw_text: 'Data at zenodo; earlier version at arxiv.org', doi: '10.5281/zenodo.99999' } as any);
+    expect(issues).toEqual([]);
+  });
+  it('no DOI field, a resolver link: the DOI inside the link is read', async () => {
+    const issues = await preprint.checkReferenceForPreprint({ id: 'r', raw_text: 'x', url: 'https://doi.org/10.2139/ssrn.123' } as any);
+    expect(issues.map((i: any) => [i.code, i.metadata.preprintServer])).toEqual([['IS_PREPRINT', 'SSRN']]);
+    crossrefGetMock.mockResolvedValue(record({ type: 'posted-content', institution: [{ name: 'Some Server' }] }));
+    const viaCrossref = await preprint.checkReferenceForPreprint({ id: 'r', raw_text: 'x', url: 'https://doi.org/10.1000/xyz' } as any);
+    expect(viaCrossref.map((i: any) => [i.code, i.metadata.source])).toEqual([['IS_PREPRINT', 'CrossRef']]);
+  });
+  it.each([
+    ['https://edarxiv.org/abcde', 'EdArXiv'],
+    ['https://paleorxiv.org/abcde', 'PaleorXiv'],
+    ['https://biohackrxiv.org/abcde', 'BioHackrXiv'],
+  ])('own address %s -> %s', (url, server) => { expect(preprint.detectKnownPreprintFromText(url)).toBe(server); });
   it.each([[undefined], [''], ['n/a'], ['10/abc']])('DOI %j: a preprint URL is still recognised', async (doi) => {
     const issues = await preprint.checkReferenceForPreprint({ id: 'r', raw_text: 'x', url: 'https://ssrn.com/abstract=1', doi } as any);
     expect(issues.map((i: any) => [i.code, i.metadata.preprintServer])).toEqual([['IS_PREPRINT', 'SSRN']]);
