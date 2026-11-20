@@ -5,7 +5,7 @@
 
 import type { ReferenceInput } from '../types.js';
 import { referenceDoi } from '../doi/doiShape.js';
-import { doiRegistrant } from '../doi/registrants.js';
+import { doiRegistrant, OSF_PREPRINT_SLUGS } from '../doi/registrants.js';
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
 import { cleanDoiInput, formatDateParts } from '../util/normalize.js';
@@ -36,8 +36,9 @@ export interface PreprintIssue {
  *
  * γ' fix: cover the common cases by pattern. Returns the preprint server
  * name if recognised, or null otherwise. DOI prefixes live in the one registrant list
- * (src/doi/registrants.ts); every server named by a URL pattern below is a server in that
- * list (a parity test checks each name).
+ * (src/doi/registrants.ts); a URL pattern names the same server as that list (bioRxiv and
+ * medRxiv share one DOI prefix, so the list names them together; a parity test checks every
+ * name both ways). A URL pattern is read only when the reference has no DOI.
  */
 export const KNOWN_PREPRINT_URL_PATTERNS: ReadonlyArray<{ pattern: RegExp; server: string }> = [
   { pattern: /\bpsyarxiv\.com\b/i, server: 'PsyArXiv' },
@@ -49,10 +50,8 @@ export const KNOWN_PREPRINT_URL_PATTERNS: ReadonlyArray<{ pattern: RegExp; serve
   { pattern: /\bchemrxiv\.org\b/i, server: 'ChemRxiv' },
   { pattern: /\beartharxiv\.org\b/i, server: 'EarthArXiv' },
   { pattern: /\bpreprints\.org\b/i, server: 'Preprints.org' },
-  { pattern: /\bosf\.io\/preprints\/psyarxiv\b/i, server: 'PsyArXiv' },
-  { pattern: /\bosf\.io\/preprints\/socarxiv\b/i, server: 'SocArXiv' },
-  { pattern: /\bosf\.io\/preprints\/metaarxiv\b/i, server: 'MetaArXiv' },
-  { pattern: /\bosf\.io\/preprints\/edarxiv\b/i, server: 'EdArXiv' },
+  // osf.io/preprints/<slug>, one per OSF server in the registrant list.
+  ...OSF_PREPRINT_SLUGS.map(({ slug, server }) => ({ pattern: new RegExp(`\\bosf\\.io\\/preprints\\/${slug}\\b`, 'i'), server })),
   { pattern: /\becoevorxiv\.org\b/i, server: 'EcoEvoRxiv' },
   { pattern: /\bssrn\.com\b/i, server: 'SSRN' },
   { pattern: /\bresearchsquare\.com\b/i, server: 'Research Square' },
@@ -151,7 +150,8 @@ async function checkPreprintStatus(doi: string): Promise<PreprintIssue | null> {
  * Check reference for preprint status.
  *
  * Two-stage detection (γ' fix):
- *   1. Fast heuristic against known preprint DOI prefixes / URL patterns.
+ *   1. Fast heuristic against known preprint DOI prefixes, or URL patterns when there is
+ *      no DOI.
  *      Catches SSRN, PsyArXiv, bioRxiv, arXiv, OSF preprints, etc. — many
  *      of which CrossRef does not tag as `type='posted-content'`.
  *   2. CrossRef API call as a fallback (only if the heuristic didn't match).
@@ -163,11 +163,12 @@ export async function checkReferenceForPreprint(reference: ReferenceInput): Prom
   const rawText = (reference as any).raw_text as string | undefined;
   const url = (reference as any).url as string | undefined;
 
-  // Fast heuristic — DOI prefix or URL pattern.
-  const heuristicServer =
-    detectKnownPreprintFromDoi(doi) ??
-    detectKnownPreprintFromText(url) ??
-    detectKnownPreprintFromText(rawText);
+  // Fast heuristic — DOI prefix, or a URL pattern when the reference has no DOI. A DOI that
+  // is not a known server's goes to Crossref: a journal article whose citation text mentions
+  // ssrn.com or arxiv.org ("preprint at ...") is not itself a preprint (v0.3.0 review 4).
+  const heuristicServer = doi
+    ? detectKnownPreprintFromDoi(doi)
+    : detectKnownPreprintFromText(url) ?? detectKnownPreprintFromText(rawText);
 
   if (heuristicServer) {
     issues.push({

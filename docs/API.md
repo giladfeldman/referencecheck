@@ -191,6 +191,7 @@ this release: each year reader keeps its 0.2.x rule (`tests/parity/yearRules02.t
 | `DOI_SHAPE`, `DOI_START` | the one DOI shape every reader uses: `/^10\.\d{3,9}\/\S+$/` (a whole DOI) and `/^10\.\d{3,9}\//` (its start). 3-digit registrant codes exist (10.231, 10.488, 10.978, 10.979) |
 | `referenceDoi(reference)` | the DOI a reference is checked under (replies, expression of concern, open access, preprint, journal metadata): the first of `doi` and `suggested_doi` whose `cleanDoiInput` is a full DOI (`DOI_SHAPE`); else the first short DOI (`10/abc`); else the first written, cleaned; `''` when neither is written. When both are full DOIs, `doi` wins, even if they differ |
 | `DOI_REGISTRANTS`, `doiRegistrant(doi)`, type `DoiRegistrant` | the one list of registrants known by name (`src/doi/registrants.ts`): `{ prefix, server?, version? }`. `server` is the preprint server `detectKnownPreprintFromDoi` reports; `version` is the ending of a registrant that mints one DOI per version. Each row was checked on 2026-11-20 against the prefix owner in Crossref and a resolved DOI. `doiRegistrant` returns the first row whose prefix matches, or `undefined` |
+| `OSF_PREPRINT_SLUGS` | `{ slug, server }[]`: the `osf.io/preprints/<slug>` address of PsyArXiv and each Center for Open Science server in `DOI_REGISTRANTS` (names and slugs from the OSF preprint-provider API, 2026-11-20; Banglarxiv has no provider record there, so no slug). The preprint URL patterns are built from it |
 | `doiWithoutVersion(doi)` | the DOI without its version ending, for a registrant with a `version` rule: bioRxiv/medRxiv/openRxiv `…123v2`, Preprints.org (10.20944) `.v2`, Research Square (10.21203) `/v2`, ChemRxiv (10.26434) `/v2` `.v2` `-v2`, Cambridge Open Engage (10.33774) `-v2`, Authorea (10.22541) `/v2`, TechRxiv (10.36227) `.v2` `/v3`, PsyArXiv and the other Center for Open Science servers `osf.io/x_v2`, figshare `.v1`. Case-insensitive; any other DOI is returned unchanged. Zenodo DOIs carry no version ending and F1000 article versions are kept apart |
 | `doiForUrl(doi)` | `encodeURIComponent(cleanDoiInput(doi))`, the only form a DOI takes inside a request URL |
 | `foldForMatch(text)` | lower-cased, accents removed (`Müller` → `muller`; also ø ł ß đ ı æ œ þ: `Østergaard` → `ostergaard`), letters and digits of every script kept, everything else one space |
@@ -389,7 +390,9 @@ interface CitationRepliesIssue {
 
 ### `checkReferenceForPreprint(reference)`
 
-`Promise<PreprintIssue[]>`. First a local match of the DOI prefix or URL against known preprint
+`Promise<PreprintIssue[]>`. First a local match against known preprint servers: of the DOI
+prefix when the reference has a DOI, of the URL or citation text only when it has none (a
+journal DOI whose citation mentions ssrn.com is asked of Crossref, not called a preprint) against known preprint
 servers (`DOI_REGISTRANTS` rows with a `server`: SSRN, PsyArXiv and the other Center for Open
 Science servers (OSF Preprints, SocArXiv, MetaArXiv, EdArXiv, …), bioRxiv/medRxiv, arXiv,
 Preprints.org, Research Square, ChemRxiv, Cambridge Open Engage, Authorea, TechRxiv, engrXiv,

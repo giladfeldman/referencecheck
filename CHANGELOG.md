@@ -46,6 +46,14 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     TechRxiv and the other Center for Open Science servers (EdArXiv, LawArXiv, MarXiv, …), by DOI,
     and by URL where the server has its own address. An empty `has-preprint` list is no longer
     reported as a preprint version.
+  - *A URL or a mention in the citation text overrode the DOI.* A journal article whose
+    citation said "earlier version at ssrn.com" (or arxiv.org, or any preprint address) was
+    reported as a preprint without asking Crossref (since 0.2.x; the 0.3.0 URL list widened it).
+    The URL and the text are now read only when the reference has no DOI. The URL patterns name
+    each server exactly as the DOI list does (bioRxiv and medRxiv, which share one prefix, are
+    the one refinement), and the OSF addresses (`osf.io/preprints/<slug>`) are built from the
+    same list (`OSF_PREPRINT_SLUGS`). AfricArXiv is spelled as OSF spells it. A bioRxiv link's
+    file ending (`v1.full`, `.full.pdf`) no longer makes two works of one preprint.
   - The DOAJ and OpenAlex requests now identify as `referencecheck`, with the polite-pool
     contact address.
 - **Expressions of concern were never detected.** Both sources read fields their APIs do not

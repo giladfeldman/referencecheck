@@ -367,7 +367,7 @@ export function scoreMetadataCompleteness(ref: ReferenceInput): number {
  * A reference's DOI for comparison: cleaned, lower-cased; '' when it is not a DOI. Round 11
  * (owner default): what a link adds after the DOI is dropped ("/full", "/pdf", "/epdf",
  * "/abstract", a query string or a fragment), and so is a preprint version ("v2" ending under a
- * registrant that mints one DOI per version, `VERSIONED_DOI_REGISTRANTS`): versions of one
+ * registrant that mints one DOI per version, `DOI_REGISTRANTS` in src/doi/registrants.ts): versions of one
  * preprint are one work. A preprint and its published version carry different DOIs and
  * stay different.
  *
@@ -380,8 +380,8 @@ function comparableDoi(ref: ReferenceInput): string {
   if (!DOI_SHAPE.test(d)) return '';
   d = d.replace(/[?#].*$/, '');
   d = d.replace(/\/(?:full|pdf|epdf|abstract)\/?$/, '');
-  // A version suffix is dropped only for registrants that version that way (the table in
-  // doiShape.ts); elsewhere `10.5555/a.v1` and `.v2` are two works.
+  // A version suffix is dropped only for registrants that version that way (DOI_REGISTRANTS
+  // in src/doi/registrants.ts); elsewhere `10.5555/a.v1` and `.v2` are two works.
   d = doiWithoutVersion(d);
   return DOI_SHAPE.test(d) ? d : '';
 }

@@ -152,6 +152,10 @@ describe('dedup: a ".vN" ending is a version only where the registrant versions 
     ['10.36227/techrxiv.24425536.v1', '10.36227/techrxiv.24425536.v2'], // TechRxiv .vN
     ['10.36227/techrxiv.174535600.06736183/v1', '10.36227/techrxiv.174535600.06736183/v3'], // TechRxiv /vN
     ['10.31222/osf.io/krucz_v1', '10.31222/osf.io/krucz_v2'], // MetaArXiv
+    // Review 4: a bioRxiv link's file ending names the same version.
+    ['10.1101/2020.01.01.123456v1.full', '10.1101/2020.01.01.123456v1'],
+    ['10.1101/2020.01.01.123456v2.full.pdf', '10.1101/2020.01.01.123456'],
+    ['10.31730/osf.io/abcde_v2', '10.31730/osf.io/abcde'], // AfricArXiv
   ])('%s and %s: one work', (a, b) => { expect(rel(a, b)).toBe('same'); });
   it.each([
     // A figshare instance whose DOI does not say so is kept apart: two versions listed
@@ -166,6 +170,9 @@ describe('dedup: a ".vN" ending is a version only where the registrant versions 
     ['10.31234/osf.io/qyt2v_v1', '10.31234/osf.io/rwjhs_v1'], // two PsyArXiv preprints
     ['10.17605/osf.io/abcde_v1', '10.17605/osf.io/abcde_v2'], // OSF projects, not a preprint server
     ['10.5281/zenodo.123.v1', '10.5281/zenodo.123'], // Zenodo: no version endings (DataCite 200/200)
+    ['10.5281/zenodo.1', '10.5281/zenodo.2'], // Zenodo: each version has its own number
+    ['10.1101/2020.01.01.123456v1', '10.1101/2020.01.01.123457v1'], // two bioRxiv preprints
+    ['10.1101/pdb.prot099176', '10.1101/pdb.prot099177'], // Cold Spring Harbor journal articles
     ['10.12688/f1000research.165282.1', '10.12688/f1000research.165282.2'], // F1000 article versions: kept apart
     ['10.5555/notfigshare-data.v1', '10.5555/notfigshare-data.v2'],
     ['10.20944/preprints202508.1193.v1', '10.20944/preprints202508.1194.v1'], // two preprints
@@ -213,10 +220,40 @@ describe('one registrant list: preprint server names and version rules (review 3
   ])('%s -> %s', (doi, server) => {
     expect(preprint.detectKnownPreprintFromDoi(doi)).toBe(server);
   });
-  it('every URL pattern names a server from the registrant list', () => {
-    const names = new Set(DOI_REGISTRANTS.flatMap((r: any) => (r.server ? [r.server, ...r.server.split('/')] : [])));
-    const missing = preprint.KNOWN_PREPRINT_URL_PATTERNS.map((p: any) => p.server).filter((n: string) => !names.has(n));
-    expect(missing).toEqual([]);
+  // Review 4 (2026-11-20): names must match exactly. bioRxiv and medRxiv share one DOI
+  // prefix, so the list names them together; that is the one refinement allowed.
+  const REFINES: Record<string, string> = { bioRxiv: 'bioRxiv/medRxiv', medRxiv: 'bioRxiv/medRxiv' };
+  // Servers with no URL pattern, each with its reason.
+  const NO_URL: Record<string, string> = { Banglarxiv: 'no OSF provider record (api.osf.io, 2026-11-20)' };
+  const doiNames = () => new Set(DOI_REGISTRANTS.flatMap((r: any) => (r.server ? [r.server] : [])));
+  const urlNames = () => preprint.KNOWN_PREPRINT_URL_PATTERNS.map((p: any) => REFINES[p.server] ?? p.server);
+  it('every URL pattern names a server from the registrant list, exactly', () => {
+    const names = doiNames();
+    expect(urlNames().filter((n: string) => !names.has(n))).toEqual([]);
+  });
+  it('every server in the registrant list has a URL pattern', () => {
+    const urls = new Set(urlNames());
+    expect([...doiNames()].filter((n) => !urls.has(n) && !NO_URL[n])).toEqual([]);
+  });
+  it.each([
+    ['https://osf.io/preprints/lawarxiv/abcde', 'LawArXiv'],
+    ['https://osf.io/preprints/africarxiv/abcde', 'AfricArXiv'],
+    ['https://osf.io/preprints/psyarxiv/abcde', 'PsyArXiv'],
+    ['https://osf.io/preprints/osf/abcde', 'OSF Preprints'],
+  ])('URL %s -> %s', (url, server) => { expect(preprint.detectKnownPreprintFromText(url)).toBe(server); });
+  it('a journal DOI whose citation mentions ssrn.com is asked of Crossref, not called a preprint', async () => {
+    crossrefGetMock.mockResolvedValue(record({ type: 'journal-article' }));
+    const issues = await preprint.checkReferenceForPreprint({
+      id: 'r', raw_text: 'Smith, J. (2020). A study. J. Fin. 1, 2. Earlier version at ssrn.com/abstract=1', doi: '10.1111/jofi.12345',
+      url: 'https://ssrn.com/abstract=1',
+    } as any);
+    expect(issues.map((i: any) => i.code)).toEqual([]);
+    expect(crossrefGetMock).toHaveBeenCalled();
+  });
+  it('no DOI: a preprint URL is still recognised', async () => {
+    const issues = await preprint.checkReferenceForPreprint({ id: 'r', raw_text: 'x', url: 'https://ssrn.com/abstract=1' } as any);
+    expect(issues.map((i: any) => [i.code, i.metadata.preprintServer])).toEqual([['IS_PREPRINT', 'SSRN']]);
+    expect(crossrefGetMock).not.toHaveBeenCalled();
   });
   it('a version ending is read in any case', () => {
     expect(shape.doiWithoutVersion('10.31234/OSF.IO/ABC12_V2')).toBe('10.31234/OSF.IO/ABC12');

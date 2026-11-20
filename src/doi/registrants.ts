@@ -25,17 +25,33 @@ export interface DoiRegistrant {
   version?: RegExp;
 }
 
-/** Center for Open Science servers on OSF (Crossref member 15934), `10.x/osf.io/abcde_v2`. */
-const OSF_SERVERS: ReadonlyArray<[string, string]> = [
-  ['31219', 'OSF Preprints'], ['31221', 'Arabixiv'], ['31222', 'MetaArXiv'], ['31225', 'FocUS Archive'],
-  ['31226', 'Frenxiv'], ['31227', 'INA-Rxiv'], ['31228', 'LawArXiv'], ['31229', 'LIS Scholarship Archive'],
-  ['31230', 'MarXiv'], ['31231', 'MindRxiv'], ['31232', 'NutriXiv'], ['31233', 'PaleorXiv'],
-  ['31235', 'SocArXiv'], ['31236', 'SportRxiv'], ['31730', 'AfricaArXiv'], ['32943', 'Banglarxiv'],
-  ['33767', 'MediArXiv'], ['34055', 'BodoArXiv'], ['35542', 'EdArXiv'], ['37044', 'BioHackrXiv'],
+/**
+ * Center for Open Science servers on OSF (Crossref member 15934), `10.x/osf.io/abcde_v2`:
+ * [prefix code, name, osf.io/preprints/<slug>]. Names and slugs read from
+ * api.osf.io/v2/preprint_providers/<slug>/ on 2026-11-20; Banglarxiv returned no record
+ * there, so it has no URL slug.
+ */
+const OSF_SERVERS: ReadonlyArray<[string, string, string | null]> = [
+  ['31219', 'OSF Preprints', 'osf'], ['31221', 'Arabixiv', 'arabixiv'], ['31222', 'MetaArXiv', 'metaarxiv'],
+  ['31225', 'FocUS Archive', 'focusarchive'], ['31226', 'Frenxiv', 'frenxiv'], ['31227', 'INA-Rxiv', 'inarxiv'],
+  ['31228', 'LawArXiv', 'lawarxiv'], ['31229', 'LIS Scholarship Archive', 'lissa'], ['31230', 'MarXiv', 'marxiv'],
+  ['31231', 'MindRxiv', 'mindrxiv'], ['31232', 'NutriXiv', 'nutrixiv'], ['31233', 'PaleorXiv', 'paleorxiv'],
+  ['31235', 'SocArXiv', 'socarxiv'], ['31236', 'SportRxiv', 'sportrxiv'], ['31730', 'AfricArXiv', 'africarxiv'],
+  ['32943', 'Banglarxiv', null], ['33767', 'MediArXiv', 'mediarxiv'], ['34055', 'BodoArXiv', 'bodoarxiv'],
+  ['35542', 'EdArXiv', 'edarxiv'], ['37044', 'BioHackrXiv', 'biohackrxiv'],
   // Not listed: 10.31237 Thesis Commons (theses) and 10.71240 Lifecycle Journal (a journal).
 ];
 
+/** osf.io/preprints/<slug> for every OSF server above with a slug, and PsyArXiv (10.31234). */
+export const OSF_PREPRINT_SLUGS: ReadonlyArray<{ slug: string; server: string }> = [
+  { slug: 'psyarxiv', server: 'PsyArXiv' },
+  ...OSF_SERVERS.flatMap(([, server, slug]) => (slug ? [{ slug, server }] : [])),
+];
+
 const OSF_VERSION = /_v\d+$/i;
+
+/** bioRxiv/medRxiv: "v2", and the file endings ".full" / ".full.pdf" a link adds. */
+const BIORXIV_VERSION = /(?<=\d)(?:v\d+)?(?:\.full(?:\.pdf)?)?$/i;
 
 export const DOI_REGISTRANTS: ReadonlyArray<DoiRegistrant> = [
   { prefix: /^10\.2139\/ssrn\./i, server: 'SSRN' },
@@ -46,10 +62,10 @@ export const DOI_REGISTRANTS: ReadonlyArray<DoiRegistrant> = [
   // (10.1101/pdb.prot099176, 10.1101/gr.*), which Crossref types journal-article.
   // Not anchored at the end: version and file suffixes (v1, .full, .full.pdf,
   // .supplementary-material) all name the same preprint, as in 0.2.x.
-  { prefix: /^10\.1101\/(?:\d{4}\.\d{2}\.\d{2}\.\d+|\d{6,})/i, server: 'bioRxiv/medRxiv', version: /(?<=\d)v\d+$/i },
+  { prefix: /^10\.1101\/(?:\d{4}\.\d{2}\.\d{2}\.\d+|\d{6,})/i, server: 'bioRxiv/medRxiv', version: BIORXIV_VERSION },
   // bioRxiv/medRxiv deposit new preprints under 10.64898 (openRxiv); every one of its
   // 453,106 Crossref works is posted-content (type facet, 2026-11-18).
-  { prefix: /^10\.64898\//i, server: 'bioRxiv/medRxiv', version: /(?<=\d)v\d+$/i },
+  { prefix: /^10\.64898\//i, server: 'bioRxiv/medRxiv', version: BIORXIV_VERSION },
   { prefix: /^10\.48550\/arxiv\./i, server: 'arXiv' },
   { prefix: /^10\.20944\/preprints/i, server: 'Preprints.org', version: /\.v\d+$/i },
   { prefix: /^10\.21203\/rs\./i, server: 'Research Square', version: /\/v\d+$/i },
