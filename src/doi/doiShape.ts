@@ -9,6 +9,7 @@
  */
 import type { ReferenceInput } from '../types.js';
 import { cleanDoiInput, DOI_SHAPE } from '../util/normalize.js';
+import { doiRegistrant } from './registrants.js';
 
 /**
  * Heuristic: returns true if `doi` looks malformed/truncated. Replication
@@ -41,6 +42,20 @@ export function isShortFormDoi(doi: string): boolean {
 }
 
 /**
+ * One work's DOI without its version ending, for registrants that mint one DOI per version
+ * (the `version` rows of `DOI_REGISTRANTS`, src/doi/registrants.ts): bioRxiv/medRxiv/openRxiv
+ * `...123v2`, Preprints.org `.v3`, Research Square `/v2`, ChemRxiv `/v2` `.v2` `-v2`, Cambridge
+ * Open Engage `-v2`, Authorea `/v2`, TechRxiv `.v2` `/v3`, PsyArXiv and the other OSF servers
+ * `osf.io/qyt2v_v2`, figshare `.v1`. Under any other registrant a version-like ending is part
+ * of the DOI: `10.5555/a.v1` and `10.5555/a.v2` are two works. Case-insensitive; the rest of
+ * the DOI is returned as given.
+ */
+export function doiWithoutVersion(doi: string): string {
+  const version = doiRegistrant(doi)?.version;
+  return version ? doi.replace(version, '') : doi;
+}
+
+/**
  * The DOI a reference is checked under, cleaned (`cleanDoiInput`): the first of `doi` and
  * `suggested_doi` with the full DOI shape (`DOI_SHAPE`); else the first short DOI (`10/abc`);
  * else the first one written, so the lookup still runs and reports what it found; '' when
@@ -51,29 +66,6 @@ export function isShortFormDoi(doi: string): boolean {
  * a junk `doi` ("n/a") hid a valid `suggested_doi`, the junk was looked up, and its 404 read
  * as "nothing found" (final review 2026-11-20).
  */
-/**
- * One work's DOI without its version suffix, for registrants that mint one DOI per version
- * of a preprint or dataset. Each form was read in Crossref (2026-11-20; versions linked by
- * `is-version-of`): bioRxiv/medRxiv/openRxiv `...123v2`; Preprints.org
- * `10.20944/preprints202508.1193.v3`; Research Square `10.21203/rs.3.rs-906621/v2`;
- * ChemRxiv `/v2`, `.v2` and `-v2` (its bare DOI names the whole work); OSF-hosted servers
- * (PsyArXiv 10.31234, OSF Preprints 10.31219, ...) `osf.io/qyt2v_v2`; figshare and Zenodo `.v1`. Under any other registrant a `v2` ending is part of the DOI:
- * `10.5555/a.v1` and `10.5555/a.v2` are two works. Expects a cleaned, lower-cased DOI.
- */
-export const VERSIONED_DOI_REGISTRANTS: ReadonlyArray<{ prefix: RegExp; version: RegExp }> = [
-  { prefix: /^10\.(?:1101|64898)\//, version: /(?<=\d)v\d+$/ },
-  { prefix: /^10\.20944\//, version: /\.v\d+$/ },
-  { prefix: /^10\.21203\//, version: /\/v\d+$/ },
-  { prefix: /^10\.26434\//, version: /[./-]v\d+$/ },
-  { prefix: /^10\.\d{4,9}\/osf\.io\//, version: /_v\d+$/ },
-  { prefix: /^10\.(?:6084|5281)\/|figshare/, version: /\.v\d+$/ },
-];
-
-export function doiWithoutVersion(doi: string): string {
-  const row = VERSIONED_DOI_REGISTRANTS.find((r) => r.prefix.test(doi));
-  return row ? doi.replace(row.version, '') : doi;
-}
-
 export function referenceDoi(reference: Pick<ReferenceInput, 'doi' | 'suggested_doi'>): string {
   const written = [reference?.doi, reference?.suggested_doi].map((d) => cleanDoiInput(d)).filter((d) => d);
   return written.find((d) => DOI_SHAPE.test(d)) ?? written.find((d) => !isMalformedDoi(d)) ?? written[0] ?? '';

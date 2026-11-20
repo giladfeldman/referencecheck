@@ -204,7 +204,9 @@ describe('deduplication: DOIs (owner defaults)', () => {
     ['10.1101/123456', '10.1101/123456v2'],
     ['10.1101/2020.03.22.002386v1', '10.1101/2020.03.22.002386v3'],
     ['10.6084/m9.figshare.12345.v1', '10.6084/m9.figshare.12345.v2'],
-    ['10.5281/zenodo.123.v1', '10.5281/zenodo.123'],
+    // Was a Zenodo `.v1` cell; Zenodo DOIs carry no version ending (200/200 sampled at
+    // DataCite, v0.3.0 review 3), so a real versioned form stands in: PsyArXiv `_vN`.
+    ['10.31234/osf.io/qyt2v_v1', '10.31234/osf.io/qyt2v_v2'],
   ])('%s and %s are one work', (d1, d2) => {
     expect(lib.doiRelation(ref(d1), ref(d2))).toBe('same');
     expect(lib.calculateSimilarity(ref(d1), ref(d2, { normalized_authors: ['Smith J'], normalized_title: 'Short title of the work' }), cfg)).toBe(1);

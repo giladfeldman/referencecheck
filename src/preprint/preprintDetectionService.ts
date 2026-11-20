@@ -5,6 +5,7 @@
 
 import type { ReferenceInput } from '../types.js';
 import { referenceDoi } from '../doi/doiShape.js';
+import { doiRegistrant } from '../doi/registrants.js';
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
 import { cleanDoiInput, formatDateParts } from '../util/normalize.js';
@@ -34,30 +35,11 @@ export interface PreprintIssue {
  * so audit found false-negatives where SSRN/PsyArXiv preprints went unflagged.
  *
  * γ' fix: cover the common cases by pattern. Returns the preprint server
- * name if recognised, or null otherwise.
+ * name if recognised, or null otherwise. DOI prefixes live in the one registrant list
+ * (src/doi/registrants.ts); every server named by a URL pattern below is a server in that
+ * list (a parity test checks each name).
  */
-const KNOWN_PREPRINT_DOI_PREFIXES: Array<{ prefix: RegExp; server: string }> = [
-  { prefix: /^10\.2139\/ssrn\./i, server: 'SSRN' },
-  { prefix: /^10\.31234\//i, server: 'PsyArXiv' },
-  { prefix: /^10\.31219\/osf\.io\//i, server: 'OSF Preprints' },
-  // Only the bioRxiv/medRxiv suffix forms (dated "2020.03.22.002386", or the older six-plus
-  // digit "002386"). The 10.1101 prefix also carries Cold Spring Harbor journal articles
-  // (10.1101/pdb.prot099176, 10.1101/gr.*), which Crossref types journal-article.
-  // Not anchored at the end: version and file suffixes (v1, .full, .full.pdf,
-  // .supplementary-material) all name the same preprint, as in 0.2.x.
-  { prefix: /^10\.1101\/(?:\d{4}\.\d{2}\.\d{2}\.\d+|\d{6,})/i, server: 'bioRxiv/medRxiv' },
-  // bioRxiv/medRxiv deposit new preprints under 10.64898 (openRxiv); every one of its
-  // 453,106 Crossref works is posted-content (type facet, 2026-11-18).
-  { prefix: /^10\.64898\//i, server: 'bioRxiv/medRxiv' },
-  { prefix: /^10\.48550\/arxiv\./i, server: 'arXiv' },
-  { prefix: /^10\.20944\/preprints/i, server: 'Preprints.org' },
-  { prefix: /^10\.32942\/osf\.io\//i, server: 'EarthArXiv' },
-  { prefix: /^10\.31235\/osf\.io\//i, server: 'SocArXiv' },
-  { prefix: /^10\.31222\/osf\.io\//i, server: 'engrXiv' },
-  { prefix: /^10\.26434\/chemrxiv/i, server: 'ChemRxiv' },
-];
-
-const KNOWN_PREPRINT_URL_PATTERNS: Array<{ pattern: RegExp; server: string }> = [
+export const KNOWN_PREPRINT_URL_PATTERNS: ReadonlyArray<{ pattern: RegExp; server: string }> = [
   { pattern: /\bpsyarxiv\.com\b/i, server: 'PsyArXiv' },
   { pattern: /\barxiv\.org\b/i, server: 'arXiv' },
   { pattern: /\bbiorxiv\.org\b/i, server: 'bioRxiv' },
@@ -67,6 +49,16 @@ const KNOWN_PREPRINT_URL_PATTERNS: Array<{ pattern: RegExp; server: string }> = 
   { pattern: /\bchemrxiv\.org\b/i, server: 'ChemRxiv' },
   { pattern: /\beartharxiv\.org\b/i, server: 'EarthArXiv' },
   { pattern: /\bpreprints\.org\b/i, server: 'Preprints.org' },
+  { pattern: /\bosf\.io\/preprints\/psyarxiv\b/i, server: 'PsyArXiv' },
+  { pattern: /\bosf\.io\/preprints\/socarxiv\b/i, server: 'SocArXiv' },
+  { pattern: /\bosf\.io\/preprints\/metaarxiv\b/i, server: 'MetaArXiv' },
+  { pattern: /\bosf\.io\/preprints\/edarxiv\b/i, server: 'EdArXiv' },
+  { pattern: /\becoevorxiv\.org\b/i, server: 'EcoEvoRxiv' },
+  { pattern: /\bssrn\.com\b/i, server: 'SSRN' },
+  { pattern: /\bresearchsquare\.com\b/i, server: 'Research Square' },
+  { pattern: /\btechrxiv\.org\b/i, server: 'TechRxiv' },
+  { pattern: /\bauthorea\.com\b/i, server: 'Authorea' },
+  { pattern: /\bcambridge\.org\/engage\b/i, server: 'Cambridge Open Engage' },
 ];
 
 export function detectKnownPreprintFromDoi(doi: string | null | undefined): string | null {
@@ -74,10 +66,9 @@ export function detectKnownPreprintFromDoi(doi: string | null | undefined): stri
   // so this test and the Crossref fallback read the same DOI.
   const clean = cleanDoiInput(doi);
   if (!clean) return null;
-  for (const { prefix, server } of KNOWN_PREPRINT_DOI_PREFIXES) {
-    if (prefix.test(clean)) return server;
-  }
-  return null;
+  // The one registrant list (src/doi/registrants.ts), shared with deduplication's
+  // version rule; a registrant without a server name (figshare) is not a preprint.
+  return doiRegistrant(clean)?.server ?? null;
 }
 
 export function detectKnownPreprintFromText(text: string | null | undefined): string | null {
@@ -126,7 +117,8 @@ async function checkPreprintStatus(doi: string): Promise<PreprintIssue | null> {
     }
 
     // Check if this paper has a preprint version
-    if (data.relation?.['has-preprint']) {
+    // An empty list is not a preprint (v0.3.0 review 3; the replies check had the same bug).
+    if (Array.isArray(data.relation?.['has-preprint']) && data.relation['has-preprint'].length > 0) {
       const preprintDOI = data.relation['has-preprint'][0]?.id;
       return {
         type: 'preprint-status',

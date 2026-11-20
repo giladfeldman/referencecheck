@@ -27,6 +27,8 @@ const norm = await import('../../src/util/normalize.js');
 const shape = await import('../../src/doi/doiShape.js');
 const { doiRelation, scoreMetadataCompleteness } = await import('../../src/dedup/similarity.js');
 const { extractJournalMetadata } = await import('../../src/predatory/journalMetadata.js');
+const preprint = await import('../../src/preprint/preprintDetectionService.js');
+const { DOI_REGISTRANTS } = await import('../../src/doi/registrants.js');
 
 beforeEach(() => {
   crossrefGetMock.mockReset();
@@ -134,7 +136,6 @@ describe('dedup: a ".vN" ending is a version only where the registrant versions 
   const rel = (a: string, b: string) => doiRelation({ id: 'a', raw_text: 'x', doi: a } as any, { id: 'b', raw_text: 'x', doi: b } as any);
   it.each([
     ['10.6084/m9.figshare.12345.v1', '10.6084/m9.figshare.12345.v2'],
-    ['10.5281/zenodo.123.v1', '10.5281/zenodo.123'],
     ['10.1000/x.figshare.12345.v1', '10.1000/x.figshare.12345.v3'], // figshare under another prefix
     // Each form read in Crossref 2026-11-20 (versions linked by is-version-of).
     ['10.20944/preprints202508.1193.v1', '10.20944/preprints202508.1193.v3'], // Preprints.org
@@ -145,6 +146,12 @@ describe('dedup: a ".vN" ending is a version only where the registrant versions 
     ['10.1101/2020.01.01.123456v1', '10.1101/2020.01.01.123456v2'], // bioRxiv
     ['10.31234/osf.io/qyt2v_v1', '10.31234/osf.io/qyt2v_v2'], // PsyArXiv
     ['10.31219/osf.io/abcde_v3', '10.31219/osf.io/abcde'], // OSF Preprints
+    // Review 3 (2026-11-20), each read in Crossref is-version-of:
+    ['10.33774/coe-2025-pzt7t-v2', '10.33774/coe-2025-pzt7t'], // Cambridge Open Engage
+    ['10.22541/au.172258443.36807633/v1', '10.22541/au.172258443.36807633/v2'], // Authorea
+    ['10.36227/techrxiv.24425536.v1', '10.36227/techrxiv.24425536.v2'], // TechRxiv .vN
+    ['10.36227/techrxiv.174535600.06736183/v1', '10.36227/techrxiv.174535600.06736183/v3'], // TechRxiv /vN
+    ['10.31222/osf.io/krucz_v1', '10.31222/osf.io/krucz_v2'], // MetaArXiv
   ])('%s and %s: one work', (a, b) => { expect(rel(a, b)).toBe('same'); });
   it.each([
     // A figshare instance whose DOI does not say so is kept apart: two versions listed
@@ -157,6 +164,10 @@ describe('dedup: a ".vN" ending is a version only where the registrant versions 
     ['10.5555/x-v1', '10.5555/x-v2'],
     ['10.5555/x_v1', '10.5555/x_v2'], // a _vN ending outside OSF
     ['10.31234/osf.io/qyt2v_v1', '10.31234/osf.io/rwjhs_v1'], // two PsyArXiv preprints
+    ['10.17605/osf.io/abcde_v1', '10.17605/osf.io/abcde_v2'], // OSF projects, not a preprint server
+    ['10.5281/zenodo.123.v1', '10.5281/zenodo.123'], // Zenodo: no version endings (DataCite 200/200)
+    ['10.12688/f1000research.165282.1', '10.12688/f1000research.165282.2'], // F1000 article versions: kept apart
+    ['10.5555/notfigshare-data.v1', '10.5555/notfigshare-data.v2'],
     ['10.20944/preprints202508.1193.v1', '10.20944/preprints202508.1194.v1'], // two preprints
   ])('%s and %s: two works', (a, b) => { expect(rel(a, b)).toBe('different'); });
 });
@@ -179,5 +190,41 @@ describe('journal metadata looks up the valid suggested DOI, not the junk one (r
     expect(urls.length).toBeGreaterThan(0);
     expect(urls.some((u) => u.includes('10.1000/real') || u.includes(encodeURIComponent('10.1000/real')))).toBe(true);
     expect(urls.some((u) => u.includes('n/a') || u.includes(encodeURIComponent('n/a')))).toBe(false);
+  });
+});
+
+describe('one registrant list: preprint server names and version rules (review 3)', () => {
+  it.each([
+    ['10.31222/osf.io/krucz', 'MetaArXiv'],
+    ['10.31224/4330', 'engrXiv'],
+    ['10.31224/osf.io/mkbwv', 'engrXiv'],
+    ['10.31223/x5w163', 'EarthArXiv'],
+    ['10.32942/x2j92f', 'EcoEvoRxiv'],
+    ['10.31235/osf.io/kv2qc', 'SocArXiv'],
+    ['10.35542/osf.io/abcde', 'EdArXiv'],
+    ['10.31234/osf.io/47dx2_v1', 'PsyArXiv'],
+    ['10.21203/rs.3.rs-906621/v2', 'Research Square'],
+    ['10.33774/coe-2025-pzt7t-v2', 'Cambridge Open Engage'],
+    ['10.22541/au.172258443.36807633/v2', 'Authorea'],
+    ['10.36227/techrxiv.24425536.v2', 'TechRxiv'],
+    ['10.6084/m9.figshare.12345.v1', null], // a repository, not a preprint server
+    ['10.17605/osf.io/abcde', null], // OSF projects
+    ['10.31237/osf.io/abcde', null], // Thesis Commons
+  ])('%s -> %s', (doi, server) => {
+    expect(preprint.detectKnownPreprintFromDoi(doi)).toBe(server);
+  });
+  it('every URL pattern names a server from the registrant list', () => {
+    const names = new Set(DOI_REGISTRANTS.flatMap((r: any) => (r.server ? [r.server, ...r.server.split('/')] : [])));
+    const missing = preprint.KNOWN_PREPRINT_URL_PATTERNS.map((p: any) => p.server).filter((n: string) => !names.has(n));
+    expect(missing).toEqual([]);
+  });
+  it('a version ending is read in any case', () => {
+    expect(shape.doiWithoutVersion('10.31234/OSF.IO/ABC12_V2')).toBe('10.31234/OSF.IO/ABC12');
+    expect(shape.doiWithoutVersion('10.20944/PREPRINTS202508.1193.V3')).toBe('10.20944/PREPRINTS202508.1193');
+  });
+  it('an empty has-preprint list is not a preprint version', async () => {
+    crossrefGetMock.mockResolvedValue(record({ type: 'journal-article', relation: { 'has-preprint': [] } }));
+    const issues = await preprint.checkReferenceForPreprint({ id: 'r', raw_text: 'x', doi: '10.1000/x' } as any);
+    expect(issues.map((i: any) => i.code)).toEqual([]);
   });
 });

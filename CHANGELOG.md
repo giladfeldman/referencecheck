@@ -29,12 +29,23 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     DOI handle server); `cleanDoiInput` now cuts a citation tail after them too
     (`10.231/x.` -> `10.231/x`). One exported `DOI_SHAPE`.
   - *Deduplication merged `.v1` and `.v2` under every DOI prefix.* A version ending is now
-    dropped only for registrants that mint one DOI per version, each form read in Crossref:
-    bioRxiv/medRxiv/openRxiv (`…123v2`), Preprints.org (`.v2`), Research Square (`/v2`),
-    ChemRxiv (`/v2`, `.v2`, `-v2`), PsyArXiv and other OSF servers (`osf.io/x_v2`), figshare and
-    Zenodo (`.v1`); exported as
-    `VERSIONED_DOI_REGISTRANTS` / `doiWithoutVersion`. `10.5555/a.v1` and `10.5555/a.v2` are
-    two works.
+    dropped only for registrants that mint one DOI per version, each form read in Crossref
+    `is-version-of` relations (figshare: DataCite): bioRxiv/medRxiv/openRxiv (`…123v2`),
+    Preprints.org (`.v2`), Research Square (`/v2`), ChemRxiv (`/v2`, `.v2`, `-v2`), Cambridge
+    Open Engage (`-v2`), Authorea (`/v2`), TechRxiv (`.v2`, `/v3`), PsyArXiv and the other
+    Center for Open Science servers (`osf.io/x_v2`), figshare (`.v1`). `10.5555/a.v1` and
+    `10.5555/a.v2` are two works. Zenodo is not in the list: its DOIs carry no version ending
+    (each version has its own number), so a `zenodo.123.v1` cell in the 0.3.0 tests was a form
+    that does not exist. F1000/Open Research article versions (`.1`, `.2`) are kept apart.
+  - *Preprint server names came from a second, drifted table.* 10.31222 (MetaArXiv) was
+    reported as engrXiv; engrXiv (10.31224) and EarthArXiv (10.31223) were not recognised; the
+    EarthArXiv row (`10.32942/osf.io/`) matched no real DOI (10.32942 is EcoEvoRxiv). Preprint
+    detection and deduplication now read one list, `DOI_REGISTRANTS` (`src/doi/registrants.ts`),
+    each row checked against the prefix owner in Crossref and a resolved DOI. Newly recognised:
+    MetaArXiv, engrXiv, EarthArXiv, EcoEvoRxiv, Research Square, Cambridge Open Engage, Authorea,
+    TechRxiv and the other Center for Open Science servers (EdArXiv, LawArXiv, MarXiv, …), by DOI,
+    and by URL where the server has its own address. An empty `has-preprint` list is no longer
+    reported as a preprint version.
   - The DOAJ and OpenAlex requests now identify as `referencecheck`, with the polite-pool
     contact address.
 - **Expressions of concern were never detected.** Both sources read fields their APIs do not

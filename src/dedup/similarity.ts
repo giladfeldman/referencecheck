@@ -370,6 +370,10 @@ export function scoreMetadataCompleteness(ref: ReferenceInput): number {
  * registrant that mints one DOI per version, `VERSIONED_DOI_REGISTRANTS`): versions of one
  * preprint are one work. A preprint and its published version carry different DOIs and
  * stay different.
+ *
+ * Reads `doi` only, never `suggested_doi` (unlike `referenceDoi`): a suggestion is a DOI the
+ * tool proposed, not one the author wrote, and a wrong suggestion must not force two
+ * references into one (v0.3.0 review 3, decided).
  */
 function comparableDoi(ref: ReferenceInput): string {
   let d = cleanDoiInput(ref.doi).toLowerCase();
