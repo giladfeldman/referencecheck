@@ -11,8 +11,9 @@
  * name, the family-first lift on a comma list, and a sole entry before a bare year taken for
  * part of a list. Review 24 found a given name sharing only its initial with the cited surname
  * ("Larry" / "Little") taken for agreement; review 25 found the fix for it rejecting spellings
- * ("Mohamed" / "Muhammad") and "Lu" read in order in "Louis". 0.2.x decided every case below
- * correctly.
+ * ("Mohamed" / "Muhammad") and "Lu" read in order in "Louis"; review 26 found accented surnames
+ * that 0.2.x read cut short, an initial of the next surname, and a title after a comma. 0.2.x
+ * decided every case below correctly.
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
@@ -121,6 +122,22 @@ describe('review 25', () => {
     ['Jim Little', 'Little', 'James'], ['Jack Little', 'Little', 'John'],
   ])('"%s" vs a record by %s, %s is accepted (0.2.x read that surname)', async (cited, family, given) => {
     expect(await accepts(`${cited}, Grace Collins (2014). ${SD}. J Sleep Res.`, [[family, given]])).toBe(true);
+  });
+});
+
+describe('review 26', () => {
+  it.each([
+    ['García Mohamed and López Ana', 'Garcia', 'Muhammad'],
+    ['Núñez Piotr and López Ana', 'Nunez', 'Peter'],
+  ])('"%s" vs a record by %s, %s is accepted (0.2.x read the surname cut at the accent, or none)', async (cited, family, given) => {
+    expect(await accepts(`${cited} (2014). ${SD}. J Sleep Res.`, [[family, given]])).toBe(true);
+  });
+  it('an initial of the next surname does not agree: "J. Mark Little" vs a record by Mark, Jane', async () => {
+    expect(await accepts(`J. Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, [['Mark', 'Jane']])).toBe(false);
+    expect(await accepts(`J. Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, [['Little', 'Jane']])).toBe(true);
+  });
+  it('a title after a comma is found: "..., Mark my words (2014)." vs a record by Mark, Zoe', async () => {
+    expect(await accepts('Mark Little, Grace Collins, Mark my words (2014).', [['Mark', 'Zoe']], 'Mark my words')).toBe(false);
   });
 });
 

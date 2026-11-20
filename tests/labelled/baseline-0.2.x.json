@@ -1296,6 +1296,34 @@
       "wrongAccepts": 0,
       "rightRejects": 0
     },
+    "doi/right:accented-surname-spelling": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:accented-surname-spelling": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 1,
+      "rightRejects": 0
+    },
+    "doi/wrong:initial-of-next-surname": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:title-after-comma": {
+      "rows": 1,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
     "doi/right:given-first-one-initial-bare-year": {
       "rows": 1,
       "falseMerges": 0,
@@ -1314,8 +1342,8 @@
   "total": {
     "falseMerges": 60,
     "missedMerges": 246,
-    "wrongAccepts": 189,
+    "wrongAccepts": 190,
     "rightRejects": 89,
-    "rows": 1636
+    "rows": 1642
   }
 }

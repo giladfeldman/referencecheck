@@ -248,6 +248,14 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     still agrees, so spellings and nicknames with the same first letter (`Piotr` / `Peter`,
     `Jim` / `James`) keep the right record. Known limit: a record given name that shares the
     first two letters of the cited surname (Lisa Mark against `Mark Little`) is still accepted.
+  - *DOI matcher, authors (round 26).* Whether 0.2.x matched the family is judged by 0.2.x's
+    own reading, letter for letter: it cut `García` to `Garc`, which still matches a record
+    family `Garcia`, so the lenient compare keeps that record (`Mohamed` / `Muhammad`); where
+    0.2.x read no surname at all (`Núñez Piotr`), the compare is lenient too. In the strict
+    compare an initial before the family does not count when a written word follows it
+    (`J. Mark Little`: the `J.` is Little's), so a record by Jane Mark is rejected. A title of
+    two or more words is also found after a comma (`Mark Little, Grace Collins, Mark my
+    words`), so a given name inside the title no longer switches the check off.
   - *DOI matcher, titles.* Title words are compared by stem (`organisation` = `organization`,
     `behaviour` = `behavior`, `modelling` = `modeling`, `norms` = `norm`); the main title and
     the full title (with subtitle) are each tried, either may pass, so a reference that drops

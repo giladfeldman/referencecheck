@@ -462,6 +462,18 @@ function legacySurnames(referenceText: string): { names: string[]; firstWord: bo
   return { names: lastNames, firstWord: false };
 }
 
+/**
+ * The surnames 0.2.x read, exactly as it read them: ASCII letters only, so "García" was read
+ * "Garc" (round 27). Used only to tell which families 0.2.x matched.
+ */
+function readAs02(referenceText: string): string[] {
+  const section = (referenceText.split(/\(\d{4}/)[0] || '').trim();
+  const names = [...section.matchAll(/([A-Z][a-zA-Z'-]+)(?:\s*,\s*[A-Z]\.?)+/g)].map((m) => m[1]);
+  if (names.length > 0) return names;
+  const first = section.match(/^([A-Z][a-zA-Z'-]+)/);
+  return first ? [first[1]] : [];
+}
+
 function readAuthors(referenceText: string): ReferenceAuthors {
   // Common patterns for authors at start of reference
   // e.g., "Smith, J. A., & Jones, B. C. (2019)" or "Smith, J.A. (2019)"
@@ -788,7 +800,7 @@ function sameEntry(words: readonly SectionWord[], i: number): boolean {
 }
 
 /** The other words of one author entry holding a record's family name, or null when the order there is not ambiguous. */
-type EntryOthers = string[] | null;
+type EntryOthers = { all: string[]; after: string[] } | null;
 
 /**
  * The other words of each author entry that holds a record's family name, where the name order
@@ -821,6 +833,7 @@ function entriesOf(words: readonly SectionWord[], family: string, firstWordRead:
     for (let n = 0; k >= 0 && n < 4 && sameEntry(words, k); k--, n++) others.unshift(words[k].word);
     const cutBefore = k >= 0 && sameEntry(words, k);
     const given = others.filter((w) => !NAME_SUFFIX.test(w));
+    const after = others.slice(others.length - (i - end)).filter((w) => !NAME_SUFFIX.test(w));
     const ambiguous = given.some((w) => !IS_INITIAL.test(w) && /^\p{Lu}/u.test(w));
     // The sole author entry, first in a section with no "Surname, I." in it, is read family
     // first, as 0.2.x read it ("Hernandez Ruiz (2014)": a second surname, not a given name;
@@ -833,7 +846,7 @@ function entriesOf(words: readonly SectionWord[], family: string, firstWordRead:
       || (/^et$/i.test(next) && /^al$/i.test(words[i + 2]?.word ?? ''))
       || (/^and$/i.test(next) && /^others$/i.test(words[i + 2]?.word ?? ''));
     const readFirst = firstWordRead && at === 0 && sole && !given.some((w) => IS_INITIAL.test(w));
-    out.push(ambiguous && !cutAfter && !cutBefore && !readFirst ? given : null);
+    out.push(ambiguous && !cutAfter && !cutBefore && !readFirst ? { all: given, after } : null);
   }
   return out;
 }
@@ -874,7 +887,7 @@ function titleStart(words: readonly SectionWord[], title: string): number {
   // The title starts a sentence: after a period, colon, question mark or year, never inside an
   // author entry ("Hope Rowe, Anne Bell (2014). Hope." is not titled at "Hope Rowe"; round 24).
   for (let k = 1; k + head.length <= words.length; k++) {
-    if (/[.:?!\d]/.test(words[k - 1].after) && head.every((h, n) => foldForMatch(words[k + n].word) === h)) return k;
+    if ((/[.:?!\d]/.test(words[k - 1].after) || (head.length >= 2 && words[k - 1].after.includes(','))) && head.every((h, n) => foldForMatch(words[k + n].word) === h)) return k;
   }
   return words.length;
 }
@@ -942,7 +955,11 @@ function givenConflicts(others: readonly string[], given: string | null, strict:
  */
 function givenVetoes(words: readonly SectionWord[], family: string, given: string | null, firstWordRead: boolean, titleAt: number, strict: boolean): boolean {
   const entries = entriesOf(words, family, firstWordRead, titleAt);
-  return entries.length > 0 && entries.every((e) => e !== null && givenConflicts(e, given, strict));
+  // Strict: a written-out word after the family puts the family in given-name position ("J. Mark
+  // Little": the "J." is Little's), so only the words after it may be the given name (round 27).
+  const side = (e: { all: string[]; after: string[] }) =>
+    strict && e.after.some((w) => !IS_INITIAL.test(w) && /^\p{Lu}/u.test(w)) ? e.after : e.all;
+  return entries.length > 0 && entries.every((e) => e !== null && givenConflicts(side(e), given, strict));
 }
 
 /**
@@ -985,7 +1002,9 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
   // sharing an initial with the entry agrees, so a spelling ("Mohamed" / "Muhammad", "Piotr" /
   // "Peter") keeps the right record. A family matched only by a reading 0.2.x did not make
   // ("Mark" in "Mark Little, G.") is held to the strict compare (round 26).
-  const legacyMatched = (family: string) => legacy.names.some((n) => {
+  // 0.2.x read no surname at all ("Núñez ..."): it compared no authors, so none is held strict.
+  const read02 = readAs02(referenceText);
+  const legacyMatched = (family: string) => read02.length === 0 || read02.some((n) => {
     const a = n.toLowerCase();
     const b = family.toLowerCase();
     return a.includes(b) || b.includes(a);

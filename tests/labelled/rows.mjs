@@ -555,6 +555,7 @@ function addRound12Rows(addDoi) {
   addRound22Rows(addDoi);
   addRound23Rows(addDoi);
   addRound24Rows(addDoi);
+  addRound25Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -999,4 +1000,23 @@ function addRound24Rows(addDoi) {
     addDoi('right:same-initial-spelling', 'accept', text, rec(`s${k}`, [[family, given]]), text.slice(0, 16));
     addDoi('wrong:same-initial-spelling', 'reject', text, rec(`s${k}w`, [['Okafor', 'Zoe']]), text.slice(0, 16));
   });
+}
+
+// ------------------------------------------------------------------ shapes added in review round 25
+// An accented surname that 0.2.x read cut at the accent ("Garc") or not at all ("Núñez"), with
+// the given name spelled another way (right records: the record family is the cited surname
+// without its accent); an initial that belongs to the next word ("J. Mark Little" and a record
+// by Jane Mark) and a title after a comma ("..., Mark my words (2014)." and a record by Zoe
+// Mark), both wrong records.
+function addRound25Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const SD = 'Sleep deprivation affects memory';
+  const rec = (doi, people, title = SD) => ({ ...base, title: [title], DOI: `${WORKS[0].w.doi}.r25-${doi}`, author: people.map(([family, given]) => ({ family, given })) });
+  [['García Mohamed and López Ana', 'Garcia', 'Muhammad'], ['Núñez Piotr and López Ana', 'Nunez', 'Peter']].forEach(([cited, family, given], k) => {
+    const text = `${cited} (2014). ${SD}. J Sleep Res.`;
+    addDoi('right:accented-surname-spelling', 'accept', text, rec(`s${k}`, [[family, given]]), text.slice(0, 16));
+    addDoi('wrong:accented-surname-spelling', 'reject', text, rec(`s${k}w`, [['Okafor', 'Zoe']]), text.slice(0, 16));
+  });
+  addDoi('wrong:initial-of-next-surname', 'reject', `J. Mark Little, Grace Collins (2014). ${SD}. J Sleep Res.`, rec('j', [['Mark', 'Jane']]), 'J. Mark Little,');
+  addDoi('wrong:title-after-comma', 'reject', 'Mark Little, Grace Collins, Mark my words (2014).', rec('t', [['Mark', 'Zoe']], 'Mark my words'), 'Mark Little, Gra');
 }
