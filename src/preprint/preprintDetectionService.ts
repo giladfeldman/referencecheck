@@ -4,7 +4,6 @@
  */
 
 import type { ReferenceInput } from '../types.js';
-import { referenceDoi } from '../doi/doiShape.js';
 import { doiRegistrant, OSF_PREPRINT_SLUGS } from '../doi/registrants.js';
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
@@ -95,7 +94,9 @@ async function checkPreprintStatus(doi: string): Promise<{ issue: PreprintIssue 
       timeout: 5000,
     });
 
-    const data = response.data?.message || {};
+    // A 200 without a work record is not an answer (v0.3.0 review 6).
+    const data = response.data?.message;
+    if (!data || typeof data !== 'object') return { answered: false, issue: null };
 
     // Check if this is a preprint
     if (data.type === 'posted-content' || data.subtype === 'preprint') {
@@ -151,35 +152,25 @@ async function checkPreprintStatus(doi: string): Promise<{ issue: PreprintIssue 
 }
 
 /**
- * Check reference for preprint status.
+ * Check reference for preprint status (`preprintDois` names the DOIs it reads).
  *
- *   1. A known preprint server's DOI prefix (SSRN, PsyArXiv, bioRxiv, arXiv, OSF servers, …;
- *      several are not typed `posted-content` in Crossref).
- *   2. A full DOI the author wrote or linked: Crossref decides; when Crossref cannot answer,
- *      the reference's own link (`url`) does.
- *   3. Otherwise (none, junk, short, or only a suggested DOI): the link, then the citation
- *      text, then Crossref for the suggested DOI.
+ *   1. A full DOI of the author's: a known preprint server's prefix (SSRN, PsyArXiv, bioRxiv,
+ *      arXiv, OSF servers, …; several are not typed `posted-content` in Crossref), else
+ *      Crossref decides; when Crossref cannot answer, the reference's own link (`url`) does.
+ *   2. Otherwise: the link, then the citation text, then the suggested DOI (prefix, then
+ *      Crossref).
  */
 export async function checkReferenceForPreprint(reference: ReferenceInput): Promise<PreprintIssue[]> {
   const rawText = (reference as any).raw_text as string | undefined;
   const url = (reference as any).url as string | undefined;
+  const { authorDoi, suggestedDoi } = preprintDois(reference);
 
-  // The DOI the reference is checked under. With none written, a DOI inside a resolver link
-  // (url "https://doi.org/10.2139/ssrn.123") is that reference's DOI (v0.3.0 review 5).
-  const urlDoi = cleanDoiInput(url);
-  const doi = referenceDoi(reference) || (DOI_SHAPE.test(urlDoi) ? urlDoi : '') || null;
-  // A DOI the author wrote (or linked), in full: Crossref can answer for it. A suggested DOI
-  // is the tool's guess and does not count (the dedup rule, v0.3.0 review 5); neither does a
-  // junk value ("n/a") or an unexpanded short DOI (10/abc).
-  const writtenDoi = cleanDoiInput(reference.doi);
-  const authorsFullDoi = DOI_SHAPE.test(writtenDoi) || (!writtenDoi && DOI_SHAPE.test(urlDoi));
-
-  const heuristic = (server: string): PreprintIssue[] => [{
+  const heuristic = (server: string, doi: string, evidence: string): PreprintIssue[] => [{
     type: 'preprint-status',
     severity: 'warning',
     code: 'IS_PREPRINT',
     description: `This reference appears to be a ${server} preprint, not a peer-reviewed publication. If it was eventually published, it's best to cite the associated publication.`,
-    location: doi || url || rawText?.slice(0, 80) || '(reference)',
+    location: evidence,
     suggestion: `Check if a peer-reviewed version has been published since this ${server} preprint`,
     metadata: {
       doi: doi || undefined,
@@ -187,30 +178,51 @@ export async function checkReferenceForPreprint(reference: ReferenceInput): Prom
       source: 'heuristic',
     },
   }];
-
-  // 1. A known preprint server's DOI prefix.
-  const doiServer = detectKnownPreprintFromDoi(doi);
-  if (doiServer) return heuristic(doiServer);
-
-  if (authorsFullDoi && doi) {
-    // 2. A full DOI of the author's goes to Crossref, and Crossref's answer stands: a journal
-    // article whose citation mentions ssrn.com or arxiv.org ("earlier version at ...") is
-    // not itself a preprint (v0.3.0 review 4). When Crossref cannot answer (not indexed:
-    // a DataCite or OSF DOI; or the request failed), the reference's own link decides; the
-    // citation text does not (review 5).
-    const { issue, answered } = await checkPreprintStatus(doi);
-    if (answered) return issue ? [issue] : [];
+  const fromText = (doi: string, readText: boolean): PreprintIssue[] | null => {
     const urlServer = detectKnownPreprintFromText(url);
-    return urlServer ? heuristic(urlServer) : [];
+    if (urlServer) return heuristic(urlServer, doi, url as string);
+    const textServer = readText ? detectKnownPreprintFromText(rawText) : null;
+    return textServer ? heuristic(textServer, doi, (rawText as string).slice(0, 80)) : null;
+  };
+
+  if (authorDoi) {
+    // A full DOI of the author's: its prefix, else Crossref, whose answer stands (a journal
+    // article whose citation mentions ssrn.com is not a preprint, v0.3.0 review 4). When
+    // Crossref cannot answer, the reference's own link decides; the citation text does not.
+    const server = detectKnownPreprintFromDoi(authorDoi);
+    if (server) return heuristic(server, authorDoi, authorDoi);
+    const { issue, answered } = await checkPreprintStatus(authorDoi);
+    if (answered) return issue ? [issue] : [];
+    return fromText(authorDoi, false) ?? [];
   }
 
-  // 3. No full DOI of the author's: the link, then the citation text, then Crossref for a
-  // suggested DOI.
-  const textServer = detectKnownPreprintFromText(url) ?? detectKnownPreprintFromText(rawText);
-  if (textServer) return heuristic(textServer);
-  if (!doi) return [];
-  const { issue } = await checkPreprintStatus(doi);
+  // No full DOI of the author's: the link, then the citation text, then the suggested DOI
+  // (the tool's guess, read last: v0.3.0 review 6).
+  const text = fromText('', true);
+  if (text) return text;
+  if (!suggestedDoi) return [];
+  const server = detectKnownPreprintFromDoi(suggestedDoi);
+  if (server) return heuristic(server, suggestedDoi, suggestedDoi);
+  const { issue } = await checkPreprintStatus(suggestedDoi);
   return issue ? [issue] : [];
+}
+
+/**
+ * The DOIs the preprint check reads, each in full DOI shape or ''. `authorDoi`: the `doi`
+ * field, or, when that is not a full DOI (empty, "n/a", an unexpanded short DOI), the DOI
+ * inside a resolver link in `url` (https://doi.org/10.…). `suggestedDoi`: `suggested_doi`,
+ * read only when the author gave no full DOI. One rule for every step of the check, so the
+ * DOI it decides on and the DOI it reports are the same (v0.3.0 reviews 5 and 6).
+ */
+export function preprintDois(reference: ReferenceInput): { authorDoi: string; suggestedDoi: string } {
+  const full = (v: unknown) => {
+    const d = cleanDoiInput(typeof v === 'string' ? v : undefined);
+    return DOI_SHAPE.test(d) ? d : '';
+  };
+  return {
+    authorDoi: full(reference.doi) || full((reference as any).url),
+    suggestedDoi: full((reference as any).suggested_doi),
+  };
 }
 
 /**

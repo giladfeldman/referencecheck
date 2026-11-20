@@ -54,12 +54,18 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     request) the reference's link decides, never the citation text. With no full DOI of the
     author's (none, "n/a", an unexpanded short DOI, or only a tool-suggested DOI) the link and
     the text decide as before. A DOI inside a doi.org link is now read when the DOI field is
-    empty. EdArXiv, PaleorXiv and BioHackrXiv are recognised at their own addresses (each
+    empty, or when the DOI field holds a junk value. A tool-suggested DOI is read only after
+    the link and the text, and a reported DOI is always the full DOI the decision was made on
+    (never "n/a"). A Crossref 200 without a work record now counts as "could not answer".
+    One rule names the DOIs the check reads (`preprintDois`), and a 210-combination test
+    checks every mix of DOI, suggested DOI, link and text against that rule (it fails 67 of
+    them on the previous fix). EdArXiv, PaleorXiv and BioHackrXiv are recognised at their own addresses (each
     measured to redirect to OSF). The URL patterns name
     each server exactly as the DOI list does (bioRxiv and medRxiv, which share one prefix, are
     the one refinement), and the OSF addresses (`osf.io/preprints/<slug>`) are built from the
     same list (`OSF_PREPRINT_SLUGS`). AfricArXiv is spelled as OSF spells it. A bioRxiv link's
-    page ending (`v1.full`, `.full.pdf`, `.abstract`, `.supplementary-material`, …) no longer
+    page ending (`v1.full`, `.full.pdf+html`, `.full-text`, `.abstract`, any `.word` after the
+    identifier) no longer
     makes two works of one preprint.
   - The DOAJ and OpenAlex requests now identify as `referencecheck`, with the polite-pool
     contact address.

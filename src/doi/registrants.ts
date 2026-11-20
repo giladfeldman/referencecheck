@@ -51,12 +51,12 @@ export const OSF_PREPRINT_SLUGS: ReadonlyArray<{ slug: string; server: string }>
 const OSF_VERSION = /_v\d+$/i;
 
 /**
- * bioRxiv/medRxiv: "v2", and the page endings a bioRxiv link adds (".full", ".full.pdf",
- * ".abstract", ".article-info", ".article-metrics", ".figures-only",
- * ".supplementary-material"): each names the same preprint.
+ * bioRxiv/medRxiv: "v2", and any page ending a bioRxiv link adds after the identifier
+ * (".full", ".full.pdf", ".full.pdf+html", ".full-text", ".abstract", ".supplementary-material",
+ * …): each names the same preprint. The identifier ends in digits, so a dot followed by a
+ * letter is never part of it (v0.3.0 reviews 5 and 6).
  */
-const BIORXIV_VERSION =
-  /(?<=\d)(?:v\d+)?(?:\.(?:full(?:\.pdf)?|abstract|article-info|article-metrics|figures-only|supplementary-material))?$/i;
+const BIORXIV_VERSION = /(?<=\d)(?:v\d+)?(?:\.[a-z][a-z0-9.+_-]*)?$/i;
 
 export const DOI_REGISTRANTS: ReadonlyArray<DoiRegistrant> = [
   { prefix: /^10\.2139\/ssrn\./i, server: 'SSRN' },

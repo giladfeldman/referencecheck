@@ -390,14 +390,14 @@ interface CitationRepliesIssue {
 
 ### `checkReferenceForPreprint(reference)`
 
-`Promise<PreprintIssue[]>`. Three steps. (1) A known preprint server's DOI prefix
-(`DOI_REGISTRANTS` rows with a `server`, below). (2) A full DOI the author wrote in `doi` (or,
-with `doi` empty, the DOI inside a resolver link in `url`, `https://doi.org/10.…`): Crossref
-decides, so a journal article whose citation mentions ssrn.com is not called a preprint; when
-Crossref cannot answer (the DOI is not indexed there, as for DataCite and OSF DOIs, or the
-request failed), the `url` decides; the citation text does not. (3) No full DOI of the
-author's (none, a junk value, an unexpanded short DOI, or only a `suggested_doi`): the `url`,
-then the citation text, then Crossref for the suggested DOI. Known preprint
+`Promise<PreprintIssue[]>`. The DOIs it reads come from `preprintDois` (below). With a full
+DOI of the author's: a known preprint server's prefix decides; else Crossref decides, so a
+journal article whose citation mentions ssrn.com is not called a preprint; when Crossref
+cannot answer (the DOI is not indexed there, as for DataCite and OSF DOIs; the request failed;
+or a 200 came back without a work record), the `url` decides; the citation text does not.
+Without one: the `url`, then the citation text, then the suggested DOI (its prefix, then
+Crossref). A reported `metadata.doi` is always a full DOI, the one the decision was made on;
+`location` is the evidence (the DOI, the link, or the start of the citation text). Known preprint
 servers (`DOI_REGISTRANTS` rows with a `server`: SSRN, PsyArXiv and the other Center for Open
 Science servers (OSF Preprints, SocArXiv, MetaArXiv, EdArXiv, …), bioRxiv/medRxiv, arXiv,
 Preprints.org, Research Square, ChemRxiv, Cambridge Open Engage, Authorea, TechRxiv, engrXiv,
@@ -408,6 +408,7 @@ deposited), and a non-empty `has-preprint` relation gives `HAS_PREPRINT_VERSION`
 | Export | Returns |
 |---|---|
 | `detectKnownPreprintFromDoi(doi)` | server name for a known preprint DOI prefix, or `null` |
+| `preprintDois(reference)` | `{ authorDoi, suggestedDoi }`, each a full DOI (cleaned by `cleanDoiInput`, `DOI_SHAPE`) or `''`. `authorDoi`: `doi`, or, when that is not a full DOI (empty, "n/a", an unexpanded short DOI), the DOI in a resolver link in `url`. `suggestedDoi`: `suggested_doi`; the check reads it only when `authorDoi` is empty |
 | `detectKnownPreprintFromText(text)` | server name for a known preprint URL in the text, or `null` |
 | `getPreprintSummary(issues)` | `{ preprintCount, activePreprints, hasPreprints }` |
 

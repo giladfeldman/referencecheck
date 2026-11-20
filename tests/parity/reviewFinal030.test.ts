@@ -157,6 +157,8 @@ describe('dedup: a ".vN" ending is a version only where the registrant versions 
     ['10.1101/2020.01.01.123456v2.full.pdf', '10.1101/2020.01.01.123456'],
     ['10.1101/2020.03.22.002386v1.supplementary-material', '10.1101/2020.03.22.002386'], // review 5
     ['10.1101/2020.03.22.002386v2.abstract', '10.1101/2020.03.22.002386v1.article-info'],
+    ['10.1101/2020.03.22.002386v1.full-text', '10.1101/2020.03.22.002386'], // review 6
+    ['10.1101/2020.03.22.002386v1.full.pdf+html', '10.1101/2020.03.22.002386v1'],
     ['10.31730/osf.io/abcde_v2', '10.31730/osf.io/abcde'], // AfricArXiv
   ])('%s and %s: one work', (a, b) => { expect(rel(a, b)).toBe('same'); });
   it.each([
