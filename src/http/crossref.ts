@@ -894,7 +894,7 @@ function editDistance(a: string, b: string): number {
 function sameStart(a: string, b: string): boolean {
   if (a.slice(0, 2) === b.slice(0, 2)) return true;
   const [s, l] = a.length <= b.length ? [a, b] : [b, a];
-  if (s[0] !== l[0]) return false;
+  if (s.length < 3 || s[0] !== l[0]) return false;
   let k = 0;
   for (const ch of l) if (ch === s[k]) k++;
   return k >= s.length;
@@ -909,15 +909,17 @@ function sameStart(a: string, b: string): boolean {
  * "Mark, Zoe": "Mark" was a given name). No given name in the record, or one in another script,
  * decides nothing.
  */
-function givenConflicts(others: readonly string[], given: string | null): boolean {
+function givenConflicts(others: readonly string[], given: string | null, strict: boolean): boolean {
   const cited = initialsOf(others.join(' '));
   if (cited.size === 0 || !given) return false;
   const recorded = initialsOf(given);
   if (recorded.size === 0 || [...recorded].some((l) => !/^[a-z]$/.test(l))) return false;
-  // A shared initial agrees when one side of it is an initial ("Little" / "L.", "L." / "Larry").
-  // Two written-out words agree only when they also share the second letter ("Kate" / "Katherine",
-  // "Mike" / "Michael") or the shorter is written in order inside the longer ("Tom" / "Thomas"):
-  // "Larry" is not "Little", the cited family of "Mark Little" (round 25).
+  if (!strict && [...recorded].some((l) => cited.has(l))) return false;
+  // Strict, where only a reading 0.2.x did not make matched the family: a shared initial agrees
+  // when one side of it is an initial ("Little" / "L.", "L." / "Larry"); two written-out words
+  // agree only when they also share the second letter ("Kate" / "Katherine") or the shorter, of
+  // three letters or more, is written in order inside the longer ("Tom" / "Thomas"). "Larry" is
+  // not "Little", the cited family of "Mark Little" (round 25); "Louis" is not "Lu" (round 26).
   const citedInitials = initialsOf(others.filter((w) => IS_INITIAL.test(w)).join(' '));
   const recordedInitials = initialsOf(given.split(/[\s.]+/u).filter((w) => IS_INITIAL.test(w) || /^\p{L}$/u.test(w)).join(' '));
   if ([...recorded].some((l) => citedInitials.has(l)) || [...recordedInitials].some((l) => cited.has(l))) return false;
@@ -938,9 +940,9 @@ function givenConflicts(others: readonly string[], given: string | null): boolea
  * family name is of ambiguous order and the record's given name fits none of them (round 18: one
  * occurrence only was looked at, so "Mark Little and Zoe Mark" vetoed Zoe Mark's record).
  */
-function givenVetoes(words: readonly SectionWord[], family: string, given: string | null, firstWordRead: boolean, titleAt: number): boolean {
+function givenVetoes(words: readonly SectionWord[], family: string, given: string | null, firstWordRead: boolean, titleAt: number, strict: boolean): boolean {
   const entries = entriesOf(words, family, firstWordRead, titleAt);
-  return entries.length > 0 && entries.every((e) => e !== null && givenConflicts(e, given));
+  return entries.length > 0 && entries.every((e) => e !== null && givenConflicts(e, given, strict));
 }
 
 /**
@@ -977,7 +979,17 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
   // A family name written inside the record's title is not an author, and a title word next to
   // it is not a given name ("WangL. 2014. Wang Group Studies", round 23).
   const titleAt = titleStart(words, crossrefTitle(crossrefResult));
-  const firstWordRead = legacySurnames(referenceText).firstWord;
+  const legacy = legacySurnames(referenceText);
+  const firstWordRead = legacy.firstWord;
+  // A family name 0.2.x matched too (a read name and the family hold one another): a given name
+  // sharing an initial with the entry agrees, so a spelling ("Mohamed" / "Muhammad", "Piotr" /
+  // "Peter") keeps the right record. A family matched only by a reading 0.2.x did not make
+  // ("Mark" in "Mark Little, G.") is held to the strict compare (round 26).
+  const legacyMatched = (family: string) => legacy.names.some((n) => {
+    const a = n.toLowerCase();
+    const b = family.toLowerCase();
+    return a.includes(b) || b.includes(a);
+  });
   let authorCheck: DoiMatchCheck = 'not_comparable';
   if (refAuthors.length > 0 && crossrefAuthors.length > 0) {
     // Crossref authors none of the reference's surnames can be compared with (Han against
@@ -999,7 +1011,7 @@ function validateDOIMatch(referenceText: string, crossrefResult: any): MatchVali
       let comparable = false;
       // A family name read where the order is ambiguous matches only when the record's given
       // name agrees with the words written after it (round 17).
-      const vetoed = !(familyFirst && leads[n].length > 0) && givenVetoes(words, c, given, firstWordRead, titleAt);
+      const vetoed = !(familyFirst && leads[n].length > 0) && givenVetoes(words, c, given, firstWordRead, titleAt, !legacyMatched(c));
       for (const r of refAuthors) {
         const m = surnamesMatch(r, c);
         if (m === true && !vetoed) authorCheck = 'matched';

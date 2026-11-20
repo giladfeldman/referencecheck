@@ -554,6 +554,7 @@ function addRound12Rows(addDoi) {
   addRound21Rows(addDoi);
   addRound22Rows(addDoi);
   addRound23Rows(addDoi);
+  addRound24Rows(addDoi);
   {
     const record = { ...w.record, title: [w.title], subtitle: [], author: [{ family: 'LaCour', given: 'Michael J.' }] };
     const text = `Michael J. LaCour ${w.year}. ${w.title}. ${w.journal}.`;
@@ -977,5 +978,25 @@ function addRound23Rows(addDoi) {
     const text = `${cited} Little, Grace Collins (2014). ${SD}. J Sleep Res.`;
     addDoi('right:same-initial-short-form', 'accept', text, rec(`s${k}`, [['Little', given]]), text.slice(0, 16));
     addDoi('wrong:same-initial-short-form', 'reject', text, rec(`s${k}w`, [['Okafor', 'Zoe']]), text.slice(0, 16));
+  });
+}
+
+// ------------------------------------------------------------------ shapes added in review round 24
+// A two-letter cited surname whose letters are in order in the record's given name ("Lu" /
+// "Louis"; wrong records: the record family is the cited given name), and right records where
+// the citation spells the recorded given name another way with the same first letter, after the
+// surname 0.2.x read ("Mohamed Hassan, G..." / Hassan, Muhammad).
+function addRound24Rows(addDoi) {
+  const base = { ...WORKS[0].w.record, subtitle: [], published: { 'date-parts': [[2014]] } };
+  const SD = 'Sleep deprivation affects memory';
+  const rec = (doi, people) => ({ ...base, title: [SD], DOI: `${WORKS[0].w.doi}.r24-${doi}`, author: people.map(([family, given]) => ({ family, given })) });
+  [['Lu', 'Louis'], ['Ng', 'Nigel']].forEach(([surname, given], k) => {
+    const text = `Mark ${surname}, Grace Collins (2014). ${SD}. J Sleep Res.`;
+    addDoi('wrong:short-cited-surname-in-given', 'reject', text, rec(`c${k}`, [['Mark', given]]), text.slice(0, 16));
+  });
+  [['Mohamed Hassan', 'Hassan', 'Muhammad'], ['Piotr Nowak', 'Nowak', 'Peter'], ['Jan Nowak', 'Nowak', 'John']].forEach(([cited, family, given], k) => {
+    const text = `${cited}, Grace Collins (2014). ${SD}. J Sleep Res.`;
+    addDoi('right:same-initial-spelling', 'accept', text, rec(`s${k}`, [[family, given]]), text.slice(0, 16));
+    addDoi('wrong:same-initial-spelling', 'reject', text, rec(`s${k}w`, [['Okafor', 'Zoe']]), text.slice(0, 16));
   });
 }

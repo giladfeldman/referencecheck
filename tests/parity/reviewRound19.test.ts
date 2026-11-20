@@ -10,7 +10,9 @@
  * applied to "Garcia Lopez, M.". Review 23 found the title search landing on an author's given
  * name, the family-first lift on a comma list, and a sole entry before a bare year taken for
  * part of a list. Review 24 found a given name sharing only its initial with the cited surname
- * ("Larry" / "Little") taken for agreement. 0.2.x decided every case below correctly.
+ * ("Larry" / "Little") taken for agreement; review 25 found the fix for it rejecting spellings
+ * ("Mohamed" / "Muhammad") and "Lu" read in order in "Louis". 0.2.x decided every case below
+ * correctly.
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
@@ -107,6 +109,18 @@ describe('review 24: a given name sharing only an initial with a cited surname',
   });
   it.each([['Tom', 'Thomas'], ['Mike', 'Michael'], ['Kate', 'Katherine'], ['Mark', 'M.']])('"%s Little" vs a record by Little, %s is accepted', async (cited, given) => {
     expect(await accepts(`${cited} Little, Grace Collins (2014). ${SD}. J Sleep Res.`, [['Little', given]])).toBe(true);
+  });
+});
+
+describe('review 25', () => {
+  it.each([['Lu', 'Louis'], ['Ng', 'Nigel'], ['Li', 'Lois'], ['Xi', 'Xavier']])('"Mark %s" vs a record by Mark, %s is rejected', async (surname, given) => {
+    expect(await accepts(`Mark ${surname}, Grace Collins (2014). ${SD}. J Sleep Res.`, [['Mark', given]])).toBe(false);
+  });
+  it.each([
+    ['Mohamed Hassan', 'Hassan', 'Muhammad'], ['Piotr Nowak', 'Nowak', 'Peter'], ['Jan Nowak', 'Nowak', 'John'],
+    ['Jim Little', 'Little', 'James'], ['Jack Little', 'Little', 'John'],
+  ])('"%s" vs a record by %s, %s is accepted (0.2.x read that surname)', async (cited, family, given) => {
+    expect(await accepts(`${cited}, Grace Collins (2014). ${SD}. J Sleep Res.`, [[family, given]])).toBe(true);
   });
 });
 

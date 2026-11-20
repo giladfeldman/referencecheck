@@ -1275,6 +1275,27 @@
       "wrongAccepts": 0,
       "rightRejects": 0
     },
+    "doi/wrong:short-cited-surname-in-given": {
+      "rows": 2,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/right:same-initial-spelling": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
+    "doi/wrong:same-initial-spelling": {
+      "rows": 3,
+      "falseMerges": 0,
+      "missedMerges": 0,
+      "wrongAccepts": 0,
+      "rightRejects": 0
+    },
     "doi/right:given-first-one-initial-bare-year": {
       "rows": 1,
       "falseMerges": 0,
@@ -1295,6 +1316,6 @@
     "missedMerges": 246,
     "wrongAccepts": 189,
     "rightRejects": 89,
-    "rows": 1628
+    "rows": 1636
   }
 }
