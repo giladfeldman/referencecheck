@@ -49,7 +49,7 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   - *A URL or a mention in the citation text overrode the DOI.* A journal article whose
     citation said "earlier version at ssrn.com" (or arxiv.org, or any preprint address) was
     reported as a preprint without asking Crossref (since 0.2.x; the 0.3.0 URL list widened it).
-    The URL and the text are now read only when the reference has no DOI. The URL patterns name
+    The URL and the text are now read only when the reference has no full DOI (none, a junk value such as "n/a", or an unexpanded short DOI), which Crossref could not answer for. The URL patterns name
     each server exactly as the DOI list does (bioRxiv and medRxiv, which share one prefix, are
     the one refinement), and the OSF addresses (`osf.io/preprints/<slug>`) are built from the
     same list (`OSF_PREPRINT_SLUGS`). AfricArXiv is spelled as OSF spells it. A bioRxiv link's

@@ -250,8 +250,10 @@ describe('one registrant list: preprint server names and version rules (review 3
     expect(issues.map((i: any) => i.code)).toEqual([]);
     expect(crossrefGetMock).toHaveBeenCalled();
   });
-  it('no DOI: a preprint URL is still recognised', async () => {
-    const issues = await preprint.checkReferenceForPreprint({ id: 'r', raw_text: 'x', url: 'https://ssrn.com/abstract=1' } as any);
+  // No full DOI (none, junk, or an unexpanded short DOI): Crossref cannot answer, so the URL
+  // decides (review 5 pre-check, 2026-11-20: 7a59dd1 dropped the junk and short cases).
+  it.each([[undefined], [''], ['n/a'], ['10/abc']])('DOI %j: a preprint URL is still recognised', async (doi) => {
+    const issues = await preprint.checkReferenceForPreprint({ id: 'r', raw_text: 'x', url: 'https://ssrn.com/abstract=1', doi } as any);
     expect(issues.map((i: any) => [i.code, i.metadata.preprintServer])).toEqual([['IS_PREPRINT', 'SSRN']]);
     expect(crossrefGetMock).not.toHaveBeenCalled();
   });

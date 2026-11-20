@@ -8,7 +8,7 @@ import { referenceDoi } from '../doi/doiShape.js';
 import { doiRegistrant, OSF_PREPRINT_SLUGS } from '../doi/registrants.js';
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
-import { cleanDoiInput, formatDateParts } from '../util/normalize.js';
+import { cleanDoiInput, DOI_SHAPE, formatDateParts } from '../util/normalize.js';
 
 export interface PreprintIssue {
   type: 'preprint-status';
@@ -38,7 +38,7 @@ export interface PreprintIssue {
  * name if recognised, or null otherwise. DOI prefixes live in the one registrant list
  * (src/doi/registrants.ts); a URL pattern names the same server as that list (bioRxiv and
  * medRxiv share one DOI prefix, so the list names them together; a parity test checks every
- * name both ways). A URL pattern is read only when the reference has no DOI.
+ * name both ways). A URL pattern is read only when the reference has no full DOI.
  */
 export const KNOWN_PREPRINT_URL_PATTERNS: ReadonlyArray<{ pattern: RegExp; server: string }> = [
   { pattern: /\bpsyarxiv\.com\b/i, server: 'PsyArXiv' },
@@ -163,12 +163,14 @@ export async function checkReferenceForPreprint(reference: ReferenceInput): Prom
   const rawText = (reference as any).raw_text as string | undefined;
   const url = (reference as any).url as string | undefined;
 
-  // Fast heuristic — DOI prefix, or a URL pattern when the reference has no DOI. A DOI that
-  // is not a known server's goes to Crossref: a journal article whose citation text mentions
-  // ssrn.com or arxiv.org ("preprint at ...") is not itself a preprint (v0.3.0 review 4).
-  const heuristicServer = doi
+  // Fast heuristic — DOI prefix, or a URL pattern when the reference has no full DOI. A full
+  // DOI that is not a known server's goes to Crossref: a journal article whose citation text
+  // mentions ssrn.com or arxiv.org ("preprint at ...") is not itself a preprint (v0.3.0
+  // review 4). A junk DOI ("n/a") or an unexpanded short DOI (10/abc) cannot be answered for,
+  // so the URL and the text still decide there.
+  const heuristicServer = doi && DOI_SHAPE.test(doi)
     ? detectKnownPreprintFromDoi(doi)
-    : detectKnownPreprintFromText(url) ?? detectKnownPreprintFromText(rawText);
+    : detectKnownPreprintFromDoi(doi) ?? detectKnownPreprintFromText(url) ?? detectKnownPreprintFromText(rawText);
 
   if (heuristicServer) {
     issues.push({
