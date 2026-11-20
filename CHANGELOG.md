@@ -335,6 +335,9 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   2018: read the year from the string (`Number(s.slice(0, 4))`).
 - The lockfile pins `follow-redirects` 1.16.3 (via `axios`), clearing three high advisories in
   1.16.0. A consumer resolves its own copy from `axios`'s range; `npm audit fix` there does the same.
+- The dev dependency `rimraf` is gone (its `minimatch`/`glob` carried three moderate advisories, and
+  its fixed version needs Node 20): `npm run clean` uses Node's own `fs.rmSync`. `npm audit` reports
+  0 vulnerabilities.
 
 ### What a consumer does differently
 - Expect new expression-of-concern findings: the check works for the first time. One concern

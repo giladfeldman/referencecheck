@@ -45,7 +45,7 @@
     "prepare": "npm run build",
     "copy-data": "node scripts/copy-data.mjs",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "clean": "rimraf dist",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "docs:check": "node scripts/check-docs-coverage.mjs"
   },
   "dependencies": {
@@ -57,7 +57,6 @@
     "@types/node": "^20.0.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.0",
-    "typescript": "^5.4.0",
-    "rimraf": "^5.0.0"
+    "typescript": "^5.4.0"
   }
 }
