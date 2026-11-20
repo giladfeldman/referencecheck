@@ -56,8 +56,8 @@ export function isShortFormDoi(doi: string): boolean {
  * of a preprint or dataset. Each form was read in Crossref (2026-11-20; versions linked by
  * `is-version-of`): bioRxiv/medRxiv/openRxiv `...123v2`; Preprints.org
  * `10.20944/preprints202508.1193.v3`; Research Square `10.21203/rs.3.rs-906621/v2`;
- * ChemRxiv `/v2`, `.v2` and `-v2` (its bare DOI names the whole work); figshare and
- * Zenodo `.v1`. Under any other registrant a `v2` ending is part of the DOI:
+ * ChemRxiv `/v2`, `.v2` and `-v2` (its bare DOI names the whole work); OSF-hosted servers
+ * (PsyArXiv 10.31234, OSF Preprints 10.31219, ...) `osf.io/qyt2v_v2`; figshare and Zenodo `.v1`. Under any other registrant a `v2` ending is part of the DOI:
  * `10.5555/a.v1` and `10.5555/a.v2` are two works. Expects a cleaned, lower-cased DOI.
  */
 export const VERSIONED_DOI_REGISTRANTS: ReadonlyArray<{ prefix: RegExp; version: RegExp }> = [
@@ -65,6 +65,7 @@ export const VERSIONED_DOI_REGISTRANTS: ReadonlyArray<{ prefix: RegExp; version:
   { prefix: /^10\.20944\//, version: /\.v\d+$/ },
   { prefix: /^10\.21203\//, version: /\/v\d+$/ },
   { prefix: /^10\.26434\//, version: /[./-]v\d+$/ },
+  { prefix: /^10\.\d{4,9}\/osf\.io\//, version: /_v\d+$/ },
   { prefix: /^10\.(?:6084|5281)\/|figshare/, version: /\.v\d+$/ },
 ];
 

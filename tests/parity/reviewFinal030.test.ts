@@ -143,6 +143,8 @@ describe('dedup: a ".vN" ending is a version only where the registrant versions 
     ['10.26434/chemrxiv-2024-g3wwk-v2', '10.26434/chemrxiv-2024-g3wwk'], // ChemRxiv -vN
     ['10.26434/chemrxiv.15000484.v1', '10.26434/chemrxiv.15000484.v2'], // ChemRxiv .vN
     ['10.1101/2020.01.01.123456v1', '10.1101/2020.01.01.123456v2'], // bioRxiv
+    ['10.31234/osf.io/qyt2v_v1', '10.31234/osf.io/qyt2v_v2'], // PsyArXiv
+    ['10.31219/osf.io/abcde_v3', '10.31219/osf.io/abcde'], // OSF Preprints
   ])('%s and %s: one work', (a, b) => { expect(rel(a, b)).toBe('same'); });
   it.each([
     // A figshare instance whose DOI does not say so is kept apart: two versions listed
@@ -153,6 +155,8 @@ describe('dedup: a ".vN" ending is a version only where the registrant versions 
     ['10.1037/abc.v1', '10.1037/abc'],
     ['10.5555/rs/v1', '10.5555/rs/v2'], // a /vN ending outside Research Square / ChemRxiv
     ['10.5555/x-v1', '10.5555/x-v2'],
+    ['10.5555/x_v1', '10.5555/x_v2'], // a _vN ending outside OSF
+    ['10.31234/osf.io/qyt2v_v1', '10.31234/osf.io/rwjhs_v1'], // two PsyArXiv preprints
     ['10.20944/preprints202508.1193.v1', '10.20944/preprints202508.1194.v1'], // two preprints
   ])('%s and %s: two works', (a, b) => { expect(rel(a, b)).toBe('different'); });
 });

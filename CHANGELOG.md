@@ -31,7 +31,8 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   - *Deduplication merged `.v1` and `.v2` under every DOI prefix.* A version ending is now
     dropped only for registrants that mint one DOI per version, each form read in Crossref:
     bioRxiv/medRxiv/openRxiv (`…123v2`), Preprints.org (`.v2`), Research Square (`/v2`),
-    ChemRxiv (`/v2`, `.v2`, `-v2`), figshare and Zenodo (`.v1`); exported as
+    ChemRxiv (`/v2`, `.v2`, `-v2`), PsyArXiv and other OSF servers (`osf.io/x_v2`), figshare and
+    Zenodo (`.v1`); exported as
     `VERSIONED_DOI_REGISTRANTS` / `doiWithoutVersion`. `10.5555/a.v1` and `10.5555/a.v2` are
     two works.
   - The DOAJ and OpenAlex requests now identify as `referencecheck`, with the polite-pool
