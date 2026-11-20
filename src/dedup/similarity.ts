@@ -3,6 +3,7 @@ import type { ReferenceInput } from '../types.js';
 import type { DeduplicationConfig } from './types.js';
 import { cleanDoiInput, DOI_SHAPE, foldForMatch, parseName, splitAuthorList } from '../util/normalize.js';
 import type { ParsedName } from '../util/normalize.js';
+import { doiWithoutVersion } from '../doi/doiShape.js';
 import {
   crossScript, isParticle, looseInitial, looseSurnameMatch, sameSurname, scriptsComparable, surnameKey,
 } from '../util/surnames.js';
@@ -338,7 +339,8 @@ export function scoreMetadataCompleteness(ref: ReferenceInput): number {
   totalFields += 1;
 
   // Check additional fields
-  if (ref.doi) {
+  // A DOI counts only when it is one (a junk `doi` such as "n/a" is not).
+  if (comparableDoi(ref)) {
     score += 0.5;
   }
   totalFields += 0.5;
@@ -364,8 +366,8 @@ export function scoreMetadataCompleteness(ref: ReferenceInput): number {
 /**
  * A reference's DOI for comparison: cleaned, lower-cased; '' when it is not a DOI. Round 11
  * (owner default): what a link adds after the DOI is dropped ("/full", "/pdf", "/epdf",
- * "/abstract", a query string or a fragment), and so is a preprint version ("v2" after a
- * bioRxiv / medRxiv / openRxiv number, ".v1" figshare / Zenodo style): versions of one
+ * "/abstract", a query string or a fragment), and so is a preprint version ("v2" ending under a
+ * registrant that mints one DOI per version, `VERSIONED_DOI_REGISTRANTS`): versions of one
  * preprint are one work. A preprint and its published version carry different DOIs and
  * stay different.
  */
@@ -374,11 +376,9 @@ function comparableDoi(ref: ReferenceInput): string {
   if (!DOI_SHAPE.test(d)) return '';
   d = d.replace(/[?#].*$/, '');
   d = d.replace(/\/(?:full|pdf|epdf|abstract)\/?$/, '');
-  if (/^10\.(?:1101|64898)\//.test(d)) d = d.replace(/(\d)v\d+$/, '$1');
-  // `.vN` is a version only for registrants that version that way (figshare, Zenodo, or a
-  // DOI that says figshare); elsewhere `10.5555/a.v1` and `.v2` are two works (final
-  // review 2026-11-20: they were merged under every prefix).
-  if (/^10\.(?:6084|5281)\//.test(d) || /figshare/.test(d)) d = d.replace(/\.v\d+$/, '');
+  // A version suffix is dropped only for registrants that version that way (the table in
+  // doiShape.ts); elsewhere `10.5555/a.v1` and `.v2` are two works.
+  d = doiWithoutVersion(d);
   return DOI_SHAPE.test(d) ? d : '';
 }
 

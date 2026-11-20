@@ -13,20 +13,27 @@ so it can never fire and reports clean**: the expression-of-concern check, below
   - *Replies: "none" and "could not check" were one answer.* A Crossref 404, 429, 5xx, timeout
     or network error returned `[]`, like a paper with no replies. New
     `checkReferenceForRepliesDetailed(reference)` returns `{ issues, complete, unavailable? }`
-    (`unavailable.reason`: `not_indexed`, `rate_limited`, `server_error`, `timeout`, `network`,
-    `malformed_response`). `checkReferenceForReplies` is unchanged in shape.
+    (`unavailable.reason`: `not_indexed`, `rate_limited`, `server_error`, `http_error` (any
+    other 4xx), `timeout`, `network`, `malformed_response`). `checkReferenceForReplies` is
+    unchanged in shape. An empty relation list (`has-reply: []`) is no longer reported as a
+    reply.
   - *The expression-of-concern update type was read case-sensitively*, unlike the correction and
     retraction readers: `Expression_Of_Concern` was missed.
   - *A junk `doi` hid a valid `suggested_doi`* in the replies, expression-of-concern,
-    open-access and preprint checks (`doi || suggested_doi` took "n/a"). New
-    `referenceDoi(reference)`: the first of the two that has the DOI shape.
+    open-access, preprint and journal-metadata (OpenAlex) checks (`doi || suggested_doi` took
+    "n/a"). New `referenceDoi(reference)`: the first full DOI of the two, else the first short
+    DOI (`10/abc`), else the first written; when both are full DOIs, `doi` wins. A junk `doi`
+    no longer counts toward deduplication's metadata-completeness score.
   - *The DOI shape rule had two copies*: two readers allowed 3-digit registrant codes, two
     required 4. 3-digit registrants exist (10.231, 10.488, 10.978, 10.979, checked against the
     DOI handle server); `cleanDoiInput` now cuts a citation tail after them too
     (`10.231/x.` -> `10.231/x`). One exported `DOI_SHAPE`.
-  - *Deduplication merged `.v1` and `.v2` under every DOI prefix*; now only for figshare
-    (10.6084, or a DOI that says figshare) and Zenodo (10.5281). `10.5555/a.v1` and
-    `10.5555/a.v2` are two works.
+  - *Deduplication merged `.v1` and `.v2` under every DOI prefix.* A version ending is now
+    dropped only for registrants that mint one DOI per version, each form read in Crossref:
+    bioRxiv/medRxiv/openRxiv (`…123v2`), Preprints.org (`.v2`), Research Square (`/v2`),
+    ChemRxiv (`/v2`, `.v2`, `-v2`), figshare and Zenodo (`.v1`); exported as
+    `VERSIONED_DOI_REGISTRANTS` / `doiWithoutVersion`. `10.5555/a.v1` and `10.5555/a.v2` are
+    two works.
   - The DOAJ and OpenAlex requests now identify as `referencecheck`, with the polite-pool
     contact address.
 - **Expressions of concern were never detected.** Both sources read fields their APIs do not

@@ -3,6 +3,7 @@ import type { JournalMetadata } from './types.js';
 import type { MetadataCredentials } from '../http/credentials.js';
 import { searchOpenAlexByJournalName, resolveOpenAlexByDOI, journalKey } from './openAlex.js';
 import { normalizeIssn } from '../util/normalize.js';
+import { referenceDoi } from '../doi/doiShape.js';
 
 /**
  * Validate if a reference looks like an actual reference entry
@@ -339,9 +340,12 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
   // Priority 5: Try OpenAlex API lookups if enabled and we're missing data
   if (useOpenAlex) {
     // If we have a DOI but no journal/ISSN/publisher, try OpenAlex DOI lookup
-    if (reference.doi && (!metadata.journal || !metadata.issn || !metadata.publisher)) {
+    // The same DOI choice as every per-reference service: a junk `doi` does not hide a
+    // valid `suggested_doi` (v0.3.0 review 2).
+    const doi = referenceDoi(reference);
+    if (doi && (!metadata.journal || !metadata.issn || !metadata.publisher)) {
       try {
-        const openAlexResult = await resolveOpenAlexByDOI(reference.doi, creds);
+        const openAlexResult = await resolveOpenAlexByDOI(doi, creds);
         if (openAlexResult.found) {
           // Fill in missing fields from OpenAlex
           if (!metadata.journal && openAlexResult.journalTitle) {
@@ -357,7 +361,7 @@ export async function extractJournalMetadata(reference: ReferenceInput, useOpenA
         // Rate limiting: wait 200ms between OpenAlex API calls (polite pool)
         await new Promise(resolve => setTimeout(resolve, 200));
       } catch (error: any) {
-        console.warn(`OpenAlex DOI lookup failed for ${reference.doi}:`, error.message);
+        console.warn(`OpenAlex DOI lookup failed for ${doi}:`, error.message);
       }
     }
 

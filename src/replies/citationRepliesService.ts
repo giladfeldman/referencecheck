@@ -30,7 +30,7 @@ export interface CitationRepliesIssue {
  * Check if a paper has associated replies, comments, or errata via CrossRef
  */
 /** Why Crossref could not answer. Every value means "we do not know", never "no replies". */
-export type RepliesUnavailableReason = 'not_indexed' | 'rate_limited' | 'server_error' | 'timeout' | 'network' | 'malformed_response';
+export type RepliesUnavailableReason = 'not_indexed' | 'rate_limited' | 'server_error' | 'timeout' | 'http_error' | 'network' | 'malformed_response';
 
 /**
  * Replies, comments and errata for one reference, with COVERAGE. `complete: false` means
@@ -49,6 +49,8 @@ function classifyRepliesError(error: unknown): NonNullable<RepliesReferenceResul
     if (status === 404) return { reason: 'not_indexed', detail: '404' };
     if (status === 429) return { reason: 'rate_limited', detail: '429' };
     if (status !== undefined && status >= 500) return { reason: 'server_error', detail: String(status) };
+    // Any other answer with a status (400, 401, 403, 410): Crossref answered and refused.
+    if (status !== undefined) return { reason: 'http_error', detail: String(status) };
     if (error.code === 'ECONNABORTED' || /timeout/i.test(error.message ?? '')) return { reason: 'timeout' };
     return { reason: 'network', detail: error.code ?? error.message };
   }
@@ -120,7 +122,7 @@ async function checkForReplies(doi: string): Promise<RepliesReferenceResult> {
     }
 
     // Check for author replies
-    if (relations['has-reply']) {
+    if (Array.isArray(relations['has-reply']) && relations['has-reply'].length > 0) {
       const replies = relations['has-reply'];
       issues.push({
         type: 'citation-replies',
@@ -140,7 +142,7 @@ async function checkForReplies(doi: string): Promise<RepliesReferenceResult> {
     }
 
     // Check for comments (can be peer comments)
-    if (relations['has-comment']) {
+    if (Array.isArray(relations['has-comment']) && relations['has-comment'].length > 0) {
       const comments = relations['has-comment'];
       issues.push({
         type: 'citation-replies',
@@ -160,7 +162,7 @@ async function checkForReplies(doi: string): Promise<RepliesReferenceResult> {
     }
 
     // Check for responses to comments
-    if (relations['is-reply-to']) {
+    if (Array.isArray(relations['is-reply-to']) && relations['is-reply-to'].length > 0) {
       const responseTo = relations['is-reply-to'];
       issues.push({
         type: 'citation-replies',

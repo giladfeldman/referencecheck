@@ -6,7 +6,10 @@
  *  - the expression-of-concern update type was read case-sensitively, its siblings were not;
  *  - a junk `doi` hid a valid `suggested_doi` in every per-reference service;
  *  - the DOI shape rule had two copies ({3,9} and {4,9} registrant digits);
- *  - a ".vN" ending merged two different works under every DOI prefix.
+ *  - a ".vN" ending merged two different works under every DOI prefix (and, once narrowed,
+ *    split the versions of Preprints.org, Research Square and ChemRxiv: review 2);
+ *  - a short DOI hid a full suggested DOI; a junk DOI counted toward completeness; an empty
+ *    relation list read as a reply; any other 4xx read as a network failure (review 2).
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { readFileSync } from 'node:fs';
@@ -22,7 +25,8 @@ const replies = await import('../../src/replies/citationRepliesService.js');
 const eoc = await import('../../src/expressionOfConcern/expressionOfConcernService.js');
 const norm = await import('../../src/util/normalize.js');
 const shape = await import('../../src/doi/doiShape.js');
-const { doiRelation } = await import('../../src/dedup/similarity.js');
+const { doiRelation, scoreMetadataCompleteness } = await import('../../src/dedup/similarity.js');
+const { extractJournalMetadata } = await import('../../src/predatory/journalMetadata.js');
 
 beforeEach(() => {
   crossrefGetMock.mockReset();
@@ -44,6 +48,8 @@ describe('replies: "none found" and "could not check" are different answers', ()
     [httpError(404), 'not_indexed'],
     [httpError(undefined, 'ECONNABORTED'), 'timeout'],
     [httpError(undefined, 'ENOTFOUND'), 'network'],
+    [httpError(403), 'http_error'],
+    [httpError(400), 'http_error'],
   ])('%#: Crossref failure -> complete false, reason %s', async (err, reason) => {
     crossrefGetMock.mockRejectedValue(err);
     const r = await replies.checkReferenceForRepliesDetailed({ id: 'r', raw_text: 'x', doi: '10.1000/x' } as any);
@@ -53,6 +59,11 @@ describe('replies: "none found" and "could not check" are different answers', ()
   });
   it('a record with no replies -> complete true, no issues', async () => {
     crossrefGetMock.mockResolvedValue(record());
+    const r = await replies.checkReferenceForRepliesDetailed({ id: 'r', raw_text: 'x', doi: '10.1000/x' } as any);
+    expect(r).toEqual({ issues: [], complete: true });
+  });
+  it('empty relation lists are not replies (review 2, 2026-11-20)', async () => {
+    crossrefGetMock.mockResolvedValue(record({ relation: { 'has-reply': [], 'has-comment': [], 'is-reply-to': [] } }));
     const r = await replies.checkReferenceForRepliesDetailed({ id: 'r', raw_text: 'x', doi: '10.1000/x' } as any);
     expect(r).toEqual({ issues: [], complete: true });
   });
@@ -86,6 +97,8 @@ describe('the DOI a reference is checked under: the first one that is a DOI', ()
     [{ doi: '10.1037/0', suggested_doi: '10.1000/real' }, '10.1037/0'], // shape-valid, kept
     [{ doi: '  ', suggested_doi: '10.1000/real' }, '10.1000/real'],
     [{ doi: '10.1000/a', suggested_doi: '10.1000/b' }, '10.1000/a'],
+    [{ doi: '10/abc', suggested_doi: '10.1371/journal.pone.0061107' }, '10.1371/journal.pone.0061107'], // full DOI outranks a short one
+    [{ doi: 'n/a', suggested_doi: '10/abc' }, '10/abc'], // a short DOI outranks junk
     [{ doi: 'n/a' }, 'n/a'], // nothing better: looked up as written, the lookup reports it
     [{}, ''],
   ])('%j -> %s', (ref, want) => {
@@ -123,6 +136,13 @@ describe('dedup: a ".vN" ending is a version only where the registrant versions 
     ['10.6084/m9.figshare.12345.v1', '10.6084/m9.figshare.12345.v2'],
     ['10.5281/zenodo.123.v1', '10.5281/zenodo.123'],
     ['10.1000/x.figshare.12345.v1', '10.1000/x.figshare.12345.v3'], // figshare under another prefix
+    // Each form read in Crossref 2026-11-20 (versions linked by is-version-of).
+    ['10.20944/preprints202508.1193.v1', '10.20944/preprints202508.1193.v3'], // Preprints.org
+    ['10.21203/rs.3.rs-906621/v1', '10.21203/rs.3.rs-906621/v2'], // Research Square
+    ['10.26434/chemrxiv-2024-9lpb9', '10.26434/chemrxiv-2024-9lpb9/v2'], // ChemRxiv /vN
+    ['10.26434/chemrxiv-2024-g3wwk-v2', '10.26434/chemrxiv-2024-g3wwk'], // ChemRxiv -vN
+    ['10.26434/chemrxiv.15000484.v1', '10.26434/chemrxiv.15000484.v2'], // ChemRxiv .vN
+    ['10.1101/2020.01.01.123456v1', '10.1101/2020.01.01.123456v2'], // bioRxiv
   ])('%s and %s: one work', (a, b) => { expect(rel(a, b)).toBe('same'); });
   it.each([
     // A figshare instance whose DOI does not say so is kept apart: two versions listed
@@ -131,5 +151,29 @@ describe('dedup: a ".vN" ending is a version only where the registrant versions 
     ['10.5555/a.v1', '10.5555/a.v2'],
     ['10.1007/s11222.v1', '10.1007/s11222.v2'],
     ['10.1037/abc.v1', '10.1037/abc'],
+    ['10.5555/rs/v1', '10.5555/rs/v2'], // a /vN ending outside Research Square / ChemRxiv
+    ['10.5555/x-v1', '10.5555/x-v2'],
+    ['10.20944/preprints202508.1193.v1', '10.20944/preprints202508.1194.v1'], // two preprints
   ])('%s and %s: two works', (a, b) => { expect(rel(a, b)).toBe('different'); });
+});
+
+describe('metadata completeness: a DOI counts only when it is one', () => {
+  const base = { id: 'a', raw_text: 'x', title: 't', authors: 'Smith, J.', year: '2020' };
+  it.each([['n/a'], ['10.12/abc'], ['  ']])('doi %j scores like no DOI', (doi) => {
+    expect(scoreMetadataCompleteness({ ...base, doi } as any)).toBe(scoreMetadataCompleteness(base as any));
+  });
+  it('a real DOI scores higher', () => {
+    expect(scoreMetadataCompleteness({ ...base, doi: '10.1000/x' } as any)).toBeGreaterThan(scoreMetadataCompleteness(base as any));
+  });
+});
+
+describe('journal metadata looks up the valid suggested DOI, not the junk one (review 2)', () => {
+  it('doi "n/a", suggested_doi valid -> OpenAlex is asked for the suggested DOI', async () => {
+    axiosGetMock.mockResolvedValue({ status: 200, data: {} });
+    await extractJournalMetadata({ id: 'r', raw_text: 'x', doi: 'n/a', suggested_doi: '10.1000/real' } as any, true);
+    const urls = axiosGetMock.mock.calls.map((c: any[]) => String(c[0])).filter((u) => u.includes('openalex'));
+    expect(urls.length).toBeGreaterThan(0);
+    expect(urls.some((u) => u.includes('10.1000/real') || u.includes(encodeURIComponent('10.1000/real')))).toBe(true);
+    expect(urls.some((u) => u.includes('n/a') || u.includes(encodeURIComponent('n/a')))).toBe(false);
+  });
 });

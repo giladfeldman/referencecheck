@@ -42,7 +42,7 @@ import { cleanDoiInput, DOI_SHAPE } from '../util/normalize.js';
 const DOI_RESOLVER = 'https://doi.org/';
 const RESOLVER_HOSTS = new Set(['doi.org', 'dx.doi.org']);
 
-/** Canonical DOI shape — the same expression `isMalformedDoi` accepts. */
+/** A full DOI (`DOI_SHAPE`); `isMalformedDoi` also accepts the short form `10/abc`. */
 const CANONICAL_DOI = DOI_SHAPE;
 
 /**
