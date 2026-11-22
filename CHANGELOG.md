@@ -9,6 +9,21 @@ The same sweep found a second class, **a check that reads a field its source doe
 so it can never fire and reports clean**: the expression-of-concern check, below.
 
 ### Fixed
+- **Review 11 (2026-11-22), the DOI title check read in one direction only.** A candidate was
+  accepted when the record's title words occurred in the reference; the reference's own title
+  was never compared back. So a reference to "Instrumental Variables Analysis and Mendelian
+  Randomization for Causal Inference" (a replacement article) was accepted for the retracted
+  "Commentary: Mendelian Randomization for Causal Inference", which could report a retraction
+  the cited work does not have. Members of the class, each fixed and tested
+  (`tests/parity/review11Title.test.ts`): words written before the record's title ("The temporal
+  pattern to the experience of regret" for "The experience of regret"), a longer title around it
+  (a reference title that adds most of its words), and another part of a work ("Part I" for a
+  Part II record, "II." for a record without a part, also when the title is short). Measured on
+  the 1,849 labelled DOI pairs: the 905 right DOIs still accepted, 4 of the 5 wrong DOIs accepted
+  before now rejected; on the labelled set the journal-name confuser (`has-reply.json`) and 18
+  of 19 Part I/Part II rows now get their label. A reference that starts with its title and
+  holds "and" ("Instrumental Variables Analysis and Mendelian ...") no longer reads title words
+  as two authors and rejects the right DOI.
 - **Final review (2026-11-20), same class, five more members:**
   - *Replies: "none" and "could not check" were one answer.* A Crossref 404, 429, 5xx, timeout
     or network error returned `[]`, like a paper with no replies. New

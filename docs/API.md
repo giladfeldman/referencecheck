@@ -133,7 +133,8 @@ rejected if any check is `mismatched`, in this order:
   Green`, with or without `and`) are read by their last word. A Vancouver list is used alone
   when one is read; one entry of a surname and one initial is not Vancouver when the text after
   it continues a name (`Michael J. LaCour`). No surname is read from a reference that starts
-  with its title or names a group author (a word such as `Organization`,
+  with its title (also when the title holds `and`: a reference opening with the first three
+  words of the record's title counts no title word as a surname) or names a group author (a word such as `Organization`,
   `Institute`, `Group`, `Collaboration`): the check is then `not_comparable`;
 - **title**: of the Crossref title's words of four or more letters, stopwords removed, at least
   60% must occur in the reference text, compared by stem (`organisation` = `organization`,
@@ -144,7 +145,15 @@ rejected if any check is `mismatched`, in this order:
   `not_comparable`; so is a one-word main title that occurs in the reference, and a title of
   three such words or fewer that shares at least one word but not 60% when author and year are
   both `matched` (`Neural nets` for `Neural networks`); with no shared word, or without both
-  other checks matched, it is `mismatched`.
+  other checks matched, it is `mismatched`. The title is also compared back (0.3.0, review 11):
+  in the sentence of the reference that holds the record's title words (after the author
+  initials, without bracketed notes such as `[Preprint]`, and without a subtitle written after
+  them when the record has none), at least 60% of the distinctive words must be words of the
+  record's full title, so `Instrumental Variables Analysis and Mendelian Randomization for
+  Causal Inference` is `mismatched` against the record `Commentary: Mendelian Randomization for
+  Causal Inference`. A part number written after the title (`Part I`, `II.`) that differs from
+  the record's (none, or `Part II`) is `mismatched` whatever the title's length. A reference with
+  no punctuation is not compared back;
 
 A `not_comparable` check does not reject; the returned result carries all three checks.
 Theses, dissertations, unpublished manuscripts, personal communications, and works "in

@@ -728,6 +728,107 @@ function shareIn(words: readonly string[], refStems: ReadonlySet<string>): numbe
   return words.length === 0 ? 0 : words.filter((w) => refStems.has(titleStem(w))).length / words.length;
 }
 
+/** A word ending a sentence of the reference: not an initial ("J.") or a part number ("II."). */
+function endsSentence(token: string): boolean {
+  if (/^\(?\d{4}[a-z]?\)?[.,:;]?$/u.test(token)) return true;
+  if (/[’”"]$/u.test(token) || /^[‘“"]/u.test(token)) return true;
+  if (!/[.?!]["'’”)\]]*$/u.test(token)) return false;
+  const bare = token.replace(/[^\p{L}\p{N}]/gu, '');
+  return !(/^\p{Lu}$/u.test(bare) || /^(?:I{1,3}|IV|VI{0,3}|IX|X)$/u.test(bare));
+}
+
+interface OwnTitle { words: string[]; part: boolean }
+
+const PART_WORD = /^(?:part|pt)$/u;
+const ROMAN: Record<string, number> = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10 };
+const SPELLED: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5 };
+
+/** The part number opening `words` ("part ii ...", "ii theoretical ...", "part 2"), or null. A
+ *  bare "i", "v", "x" or digit is a part number only after "part". */
+function partNumber(words: readonly string[]): number | null {
+  const named = PART_WORD.test(words[0] ?? '');
+  const w = named ? words[1] ?? '' : words[0] ?? '';
+  if (/^\d{1,2}$/u.test(w)) return named ? Number(w) : null;
+  if (w in SPELLED) return named ? SPELLED[w] : null;
+  if (w in ROMAN) return named || !['i', 'v', 'x'].includes(w) ? ROMAN[w] : null;
+  return null;
+}
+
+/** The part number written in a record's title ("... Part II", "... relationships: II. ..."). */
+function recordPart(words: readonly string[]): number | null {
+  for (let i = 1; i < words.length; i++) {
+    const n = partNumber(words.slice(i));
+    if (n !== null) return n;
+  }
+  return null;
+}
+
+/** A token that is an author's initials ("J.", "SJ,", "M.-L."). */
+const INITIALS_TOKEN = /^\p{Lu}(?:[.-]{0,2}\p{Lu}){0,2}[.,;]*$/u;
+
+/**
+ * The reference's own title, compared back with the record's (review 11): the sentence of the
+ * reference holding most of the record's title words, from after the author initials written
+ * before them; without what is in brackets ("[Preprint]", "(SSRN Scholarly Paper ...)") and,
+ * when the record has no subtitle, without a subtitle written after them ("Radiation therapy
+ * for soft tissue sarcoma: Indications, timing ..."). `words` are its distinctive words (digits
+ * and author surnames left out); `part` is a part number ("II.", "Part 2") written right after
+ * the record's title words when the record's title has none. Null when the reference has no
+ * punctuation or no sentence holds a word of the record's title.
+ */
+function ownTitle(referenceText: string, item: any, titleStems: ReadonlySet<string>, authors: readonly string[]): OwnTitle | null {
+  // Written without punctuation ("fishman j b berg e a 2019 peptide affinity ..."), the title
+  // cannot be told from the journal after it: nothing to compare back.
+  if (!/[.,;:?!]/u.test(referenceText)) return null;
+  const sentences: string[][] = [];
+  let cur: string[] = [];
+  let depth = 0;
+  for (const token of referenceText.split(/\s+/u).filter(Boolean)) {
+    if (/^[‘“"]/u.test(token) && cur.length) { sentences.push(cur); cur = []; }
+    const opens = (token.match(/[([]/gu) ?? []).length;
+    const closes = (token.match(/[)\]]/gu) ?? []).length;
+    if (depth === 0 && opens === 0) cur.push(token);
+    else if (depth === 0 && /^[([]/u.test(token) === false) cur.push(token.replace(/[([].*$/u, ''));
+    depth = Math.max(0, depth + opens - closes);
+    if (endsSentence(token)) { sentences.push(cur); cur = []; depth = 0; }
+  }
+  if (cur.length) sentences.push(cur);
+  const names = new Set(authors.flatMap((n) => foldForMatch(n).split(' ')));
+  const main = typeof item?.title?.[0] === 'string' ? item.title[0] : '';
+  const hasSubtitle = typeof item?.subtitle?.[0] === 'string' || /\S\s*(?:[:?]|\s[-–—]\s)\s*\S/u.test(main);
+  let best: { words: string[]; part: boolean; hits: number } | null = null;
+  for (const [si, tokens] of sentences.entries()) {
+    const seq: Array<{ w: string; counts: boolean; hit: boolean; tok: string; initials: boolean }> = [];
+    for (const tok of tokens) {
+      const ws = titleSequence(tok);
+      ws.forEach((w, i) => {
+        const counts = [...w].length >= 4 && !TITLE_STOPWORDS.has(w) && !/^\d+$/u.test(w) && !names.has(w);
+        seq.push({ w, counts, hit: counts && titleStems.has(titleStem(w)), tok: i === ws.length - 1 ? tok : '', initials: INITIALS_TOKEN.test(tok) });
+      });
+    }
+    const hitAt = seq.map((x, i) => (x.hit ? i : -1)).filter((i) => i >= 0);
+    if (hitAt.length === 0 || (best && hitAt.length <= best.hits)) continue;
+    const first = hitAt[0];
+    const last = hitAt[hitAt.length - 1];
+    let start = 0;
+    for (let i = 0; i < first; i++) if (seq[i].initials) start = i + 1;
+    let end = seq.length;
+    if (!hasSubtitle) {
+      for (let i = last; i < seq.length; i++) if (/[:?]|[-–—]$/u.test(seq[i].tok)) { end = i + 1; break; }
+    }
+    const words = [...new Set(seq.slice(start, end).filter((x) => x.counts).map((x) => x.w))];
+    // The part number written after the record's title words (the next sentence too: "Causal
+    // Inference. Part I."), "Part" itself left out when the record's title has it.
+    let tail = last;
+    while (tail > first && PART_WORD.test(seq[tail].w)) tail -= 1;
+    const after = [...seq.slice(tail + 1).map((x) => x.w), ...titleSequence((sentences[si + 1] ?? []).join(' '))];
+    const written = partNumber(after);
+    const part = written !== null && written !== recordPart(titleSequence(crossrefTitle(item)));
+    best = { words, part, hits: hitAt.length };
+  }
+  return best && { words: best.words, part: best.part };
+}
+
 /**
  * Title evidence: do the Crossref title's distinctive words occur in the reference text?
  * Fewer than two such words, or a title in another script than the reference (a Russian
@@ -739,13 +840,18 @@ function shareIn(words: readonly string[], refStems: ReadonlySet<string>): numbe
  * stem (see titleStem). A reference that cuts the title with "..." is compared on the title
  * words written before the cut.
  */
-function checkTitle(referenceText: string, item: any): TitleEvidence {
+function checkTitle(referenceText: string, item: any, authors: readonly string[] = []): TitleEvidence {
   const full = crossrefTitle(item);
   const main = typeof item?.title?.[0] === 'string' ? item.title[0] : '';
   const fullSeq = titleSequence(full);
   if (distinctive(fullSeq).length < 2 && distinctive(titleSequence(main)).length < 2) return { check: 'not_comparable', words: 0, share: 0 };
   if (majorityScript(full) !== majorityScript(referenceText)) return { check: 'not_comparable', words: 0, share: 0 };
   const refStems = new Set(foldForMatch(referenceText).split(' ').filter(Boolean).map(titleStem));
+  const fullStems = new Set(distinctive(fullSeq).map(titleStem));
+  const own = ownTitle(referenceText, item, fullStems, authors);
+  // Another part of a work ("... Part I." against the record of Part II) is another work, also
+  // when the title is too short to compare (review 11).
+  if (own?.part) return { check: 'mismatched', words: own.words.length, share: 0 };
 
   const candidates: string[][] = [];
   for (const seq of [titleSequence(main), fullSeq]) {
@@ -756,7 +862,14 @@ function checkTitle(referenceText: string, item: any): TitleEvidence {
   for (const words of candidates) {
     if (words.length < 2) continue;
     const share = shareIn(words, refStems);
-    if (share >= TITLE_MATCH_SHARE) return { check: 'matched', words: words.length, share };
+    if (share >= TITLE_MATCH_SHARE) {
+      const back = own ? shareIn(own.words, fullStems) : 1;
+      // The reference's own title must be the record's too (review 11): "Instrumental Variables
+      // Analysis and Mendelian Randomization for Causal Inference" holds every word of the
+      // record "Commentary: Mendelian Randomization for Causal Inference" and is another work.
+      if (own && back < TITLE_MATCH_SHARE) return { check: 'mismatched', words: own.words.length, share: back };
+      return { check: 'matched', words: words.length, share };
+    }
     if (!best || share > best.share) best = { check: 'mismatched', words: words.length, share };
   }
   const mainWords = candidates[0];
@@ -996,7 +1109,13 @@ function validateDOIMatch(rawReferenceText: string, crossrefResult: any): MatchV
   // the first title word only was tested, so "Hoddy K. The Sleep and ..." or a reordered title
   // still matched a record by an author named Sleep).
   const titleWords = new Set(foldForMatch(crossrefTitle(crossrefResult)).split(' '));
-  const refAuthors = read.names.filter((r) => !read.uncertain.has(r) || !foldForMatch(r).split(' ').some((w) => titleWords.has(w)));
+  // A reference that starts with this record's title ("Instrumental Variables Analysis and
+  // Mendelian Randomization ... (2024)") names no author before it: a word of that title read
+  // as a surname ("Instrumental", the "and" read as joining two authors) is not one (review 11).
+  const head = titleSequence(crossrefTitle(crossrefResult)).slice(0, 3);
+  const opening = foldForMatch(referenceText).split(' ');
+  const titleFirst = head.length >= 2 && head.every((w, i) => opening[i] === w);
+  const refAuthors = read.names.filter((r) => !(read.uncertain.has(r) || titleFirst) || !foldForMatch(r).split(' ').some((w) => titleWords.has(w)));
   // A family of one letter is an initial filed as the family ("R" with given "Shakthi Kiran",
   // a common deposit of names written "Shakthi Kiran R"): the surname is then in `given`, and
   // there is no given name to compare. A given in capitals ("SHAKTHI KIRAN") is a written-out
@@ -1062,7 +1181,7 @@ function validateDOIMatch(rawReferenceText: string, crossrefResult: any): MatchV
     if (authorCheck !== 'matched' && incomparable > compared) authorCheck = 'not_comparable';
   }
 
-  const title = checkTitle(referenceText, crossrefResult);
+  const title = checkTitle(referenceText, crossrefResult, read.names);
   let titleCheck = title.check;
   // A short title (two or three distinctive words) that shares some but too few words, for
   // a candidate whose author AND year matched: the title cannot decide (one changed word is

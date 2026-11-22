@@ -36,13 +36,12 @@ const results = await scoreRows(lib, (items) => {
  */
 const KNOWN: Array<{ cls: string; note?: string; has?: string; why: string }> = [
   { cls: 'dedup/neg:part-i-vs-part-ii', why: 'titles one character apart; nothing in the metadata separates Part I from Part II' },
-  { cls: 'doi/wrong:part-ii', why: 'every title word of Part II occurs in a reference to Part I' },
+  { cls: 'doi/wrong:part-ii', has: 'Withdrawal notice', why: 'the quoted title ends before the journal details, so "Part I." is not read as following it (review 11 reads a part number in the next sentence only)' },
   { cls: 'dedup/neg:correction-notice', why: 'a correction notice repeats the work\'s title and authors, one year later' },
   { cls: 'doi/wrong:correction-notice', why: 'a notice titled "Corrigendum: <title>" carries every word of the title' },
   { cls: 'doi/owner:preprint-for-published', why: 'same authors, title and year; the matcher does not read the record type or venue' },
   { cls: 'doi/wrong:editorial', note: 'retraction-notice.json "Editorial"', why: 'a one-word title gives no title evidence (not_comparable)' },
   { cls: 'doi/wrong:editorial', note: 'retraction-notice.json "Introduction"', why: 'a one-word title gives no title evidence (not_comparable)' },
-  { cls: 'doi/wrong:same-surname-other-initial', note: 'has-reply.json', why: 'two of the three title words ("data", "science") occur in the journal name' },
   { cls: 'doi/right:vancouver', note: 'retracted-title-case.json', why: 'one-letter surnames written Vancouver ("R SK"): "SK" is read as the surname' },
   { cls: 'dedup/same:consumer~vancouver', note: 'retracted-title-case.json', why: 'one-letter surnames: "R SK" with no case is read as initial R, surname SK' },
   { cls: 'dedup/same:et-al-string', note: 'retracted-title-case.json', has: 'R SK, A S, et al.', why: 'one-letter surnames: "R SK, A S, et al." is read as initials and surnames SK, S' },
