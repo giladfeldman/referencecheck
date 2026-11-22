@@ -118,8 +118,8 @@ describe('cache', () => {
 
   it('fetchAbstracts fetches each distinct DOI once', async () => {
     const get = fakeGet({ 'api.crossref.org': crossref(LONG) });
-    const m = await fetchAbstracts([DOI, DOI.toUpperCase(), 'doi:10.9/x'], { httpGet: get });
-    expect([...m.keys()]).toEqual([DOI, '10.9/x']);
+    const m = await fetchAbstracts([DOI, DOI.toUpperCase(), 'doi:10.9999/x'], { httpGet: get });
+    expect([...m.keys()]).toEqual([DOI, '10.9999/x']);
     expect(get.calls).toHaveLength(2);
   });
 });
@@ -136,9 +136,13 @@ describe('helpers', () => {
   });
 
   it('normalises DOI forms and rejects non-DOIs', () => {
-    expect(normalizeAbstractDoi(' DOI: 10.1/AbC ')).toBe('10.1/abc');
-    expect(normalizeAbstractDoi('http://dx.doi.org/10.1/x')).toBe('10.1/x');
+    expect(normalizeAbstractDoi(' DOI: 10.1234/AbC ')).toBe('10.1234/abc');
+    expect(normalizeAbstractDoi('http://dx.doi.org/10.1234/x')).toBe('10.1234/x');
     expect(normalizeAbstractDoi('11.1/x')).toBeNull();
+    // review 10: the shared DOI_SHAPE, as every other reader (a 1- or 2-digit registrant is no DOI)
+    expect(normalizeAbstractDoi('10.1/x')).toBeNull();
+    expect(normalizeAbstractDoi('10.12/x')).toBeNull();
+    expect(normalizeAbstractDoi('10.231/x')).toBe('10.231/x');
   });
 
   it('MIN_ABSTRACT_CHARS is the documented 200', () => {

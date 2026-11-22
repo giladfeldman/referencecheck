@@ -23,6 +23,15 @@ import { isParticle } from './surnames.js';
 export const DOI_SHAPE = /^10\.\d{3,9}\/\S+$/;
 /** The start of a DOI: `10.<registrant>/`. */
 export const DOI_START = /^10\.\d{3,9}\//;
+/**
+ * The shortDOI shape (`10/<token>`, a shortdoi.org alias), the one copy every reader uses. Tokens
+ * shortdoi.org issues are letters and digits (`10/gt3vmw`); the token starts with one, and `.`, `_`
+ * and `-` are allowed after it. Before 0.3.0 cleanDoiInput required a letter or digit first while
+ * isMalformedDoi and isShortFormDoi accepted `10/-abc` (review 10).
+ */
+export const SHORT_DOI = /^10\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
+/** The start of a shortDOI: `10/` and the token's first character (see SHORT_DOI). */
+export const SHORT_DOI_START = /^10\/[A-Za-z0-9]/;
 
 /** Wrappers a DOI arrives in: resolver URLs (any scheme, dx./www.), bare host, `doi:` labels. */
 const DOI_WRAPPER = /^(?:(?:https?:\/\/)?(?:dx\.|www\.)?doi\.org\/|doi:\s*)/i;
@@ -71,7 +80,7 @@ export function cleanDoiInput(doi: string | null | undefined): string {
   d = d.trim();
   // A shortDOI ("10/gt3vmw") arrives in the same links and citations as a full DOI. Its
   // token is letters and digits only, so a "#..." after it is never part of it.
-  const isShort = /^10\/[A-Za-z0-9]/.test(d);
+  const isShort = SHORT_DOI_START.test(d);
   if (isShort) d = d.replace(/#.*$/, '');
   if (DOI_START.test(d) || isShort) {
     for (let prev = ''; prev !== d; ) {

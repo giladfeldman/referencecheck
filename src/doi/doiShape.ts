@@ -8,7 +8,7 @@
  * while `validateDOI` accepted it — one input, two readings.
  */
 import type { ReferenceInput } from '../types.js';
-import { cleanDoiInput, DOI_SHAPE } from '../util/normalize.js';
+import { cleanDoiInput, DOI_SHAPE, SHORT_DOI } from '../util/normalize.js';
 import { doiRegistrant } from './registrants.js';
 
 /**
@@ -24,7 +24,7 @@ export function isMalformedDoi(doi: string): boolean {
   // Standard DOI shape: '10.<registrant>/<suffix>' (suffix at least 1 char).
   if (DOI_SHAPE.test(d)) return false;
   // Short-DOI form: '10/<token>' (token at least 1 char).
-  if (/^10\/[A-Za-z0-9._-]+$/.test(d)) return false;
+  if (SHORT_DOI.test(d)) return false;
   return true;
 }
 
@@ -38,7 +38,7 @@ export function isMalformedDoi(doi: string): boolean {
  */
 export function isShortFormDoi(doi: string): boolean {
   if (typeof doi !== 'string') return false;
-  return /^10\/[A-Za-z0-9._-]+$/.test(cleanDoiInput(doi));
+  return SHORT_DOI.test(cleanDoiInput(doi));
 }
 
 /**

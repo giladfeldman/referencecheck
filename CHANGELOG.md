@@ -407,6 +407,11 @@ so it can never fire and reports clean**: the expression-of-concern check, below
 - `CORRECTION_NOTICE` is gone: it read a field Crossref does not serve and never fired, and a
   correction is not an expression of concern (corrections are `HAS_ERRATA`).
 - `EocUnavailableReason` gains `malformed_response` and `not_indexed`.
+- One shortDOI shape (`SHORT_DOI`, exported from `src/util/normalize.ts`): the token starts with a
+  letter or digit (`10/gt3vmw`). `isMalformedDoi` and `isShortFormDoi` no longer accept `10/-abc`,
+  `10/.abc` or `10/_abc`, which cleanDoiInput already did not read as a shortDOI (review 10).
+  `normalizeAbstractDoi` uses the shared `DOI_SHAPE`, so `10.1/x` and `10.12/x` (a 1- or 2-digit
+  registrant, no DOI) return `null` like every other reader.
 - `CrossrefResult.publishedDate` is ISO at Crossref's precision: `"2019-03-05"`, `"1998-02"`
   (was `"2019-3-5"`, `"1998-2"`), as are the preprint, reply and expression-of-concern dates.
   `validateDOI` and the DOI search now share one record mapper. JavaScript's `new Date()` reads

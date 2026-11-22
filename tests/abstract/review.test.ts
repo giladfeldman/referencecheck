@@ -51,9 +51,9 @@ describe('an unexpected 200 body is an error, never "absent" (finding 2)', () =>
 describe('fetchAbstracts reports invalid input instead of dropping it (finding 3)', () => {
   it('an invalid DOI comes back as an invalid entry under its original text', async () => {
     const get = routes({ 'api.crossref.org': { message: { abstract: LONG } } });
-    const m = await fetchAbstracts(['not a doi', '10.9/x'], { httpGet: get });
+    const m = await fetchAbstracts(['not a doi', '10.9999/x'], { httpGet: get });
     expect(m.get('not a doi')?.status).toBe('invalid_doi');
-    expect(m.get('10.9/x')?.status).toBe('found');
+    expect(m.get('10.9999/x')?.status).toBe('found');
   });
 });
 

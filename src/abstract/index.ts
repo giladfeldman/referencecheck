@@ -18,7 +18,7 @@
 import axios from 'axios';
 import type { MetadataCredentials } from '../http/credentials.js';
 import { DEFAULT_POLITE_EMAIL } from '../http/credentials.js';
-import { cleanDoiInput } from '../util/normalize.js';
+import { cleanDoiInput, DOI_SHAPE } from '../util/normalize.js';
 
 /** Shortest text accepted as an abstract; shorter is usually a title echo or a stub. */
 export const MIN_ABSTRACT_CHARS = 200;
@@ -113,7 +113,8 @@ export function normalizeAbstractDoi(doi: string): string | null {
   // it and is rejected here, as before.
   const d = cleanDoiInput(doi).toLowerCase();
   if (/%[0-9a-f]{2}/i.test(d)) return null;
-  return d.startsWith('10.') && d.includes('/') ? d : null;
+  // The shared DOI shape (review 10: this reader alone accepted `10.1/x`, a 1-digit registrant).
+  return DOI_SHAPE.test(d) ? d : null;
 }
 
 /**

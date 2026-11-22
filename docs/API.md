@@ -189,6 +189,7 @@ this release: each year reader keeps its 0.2.x rule (`tests/parity/yearRules02.t
 |---|---|
 | `cleanDoiInput(doi)` | the DOI with surrounding whitespace, a resolver URL (`http(s)://`, `dx.`/`www.`, or bare `doi.org/`) or a `doi:` label removed and percent-encoding decoded (unless decoding would add whitespace: `10.1000/a%20b` stays `10.1000/a%20b`, a well-formed DOI); for a DOI or a shortDOI (`10/abc`), also what a citation put after it: anything after a space that is followed by a bracket, `doi`, `PMID`, `PMCID`, `Available`, `Accessed`, `Retrieved`, `Epub`, `Published`, `PDF`, `URL` or a URL (any other space stays, so `10.1371/journal.pone. 0123456` is still malformed), trailing `. , ; :` and quotes, and a closing bracket that closes nothing inside the DOI (`10.1101/x).` → `10.1101/x`; `(20)30183-5` kept); in a resolver link (also inside a `doi:` label), everything from a raw `?` or `#` (the URL's query and fragment; a final `#`, as in Wiley SICI DOIs ending `CO;2-#`, stays, with or without a query after it; an encoded `%23` or `%3F` is decoded and kept); written bare, a raw `key=value` query (`?utm_source=x`), a lone final `?` and trailing slashes; a shortDOI also loses a `#...` (a bare `#...` and a page ending such as `/pdf` are kept: registered DOIs hold them); case kept; `''` for a non-string; any other input returned trimmed |
 | `DOI_SHAPE`, `DOI_START` | the one DOI shape every reader uses: `/^10\.\d{3,9}\/\S+$/` (a whole DOI) and `/^10\.\d{3,9}\//` (its start). 3-digit registrant codes exist (10.231, 10.488, 10.978, 10.979) |
+| `SHORT_DOI`, `SHORT_DOI_START` | the one shortDOI shape every reader uses: `/^10\/[A-Za-z0-9][A-Za-z0-9._-]*$/` (a whole shortDOI, `10/gt3vmw`) and `/^10\/[A-Za-z0-9]/` (its start). `10/-` is no shortDOI (doi.org answers 400) |
 | `referenceDoi(reference)` | the DOI a reference is checked under (replies, expression of concern, open access, preprint, journal metadata): the first of `doi` and `suggested_doi` whose `cleanDoiInput` is a full DOI (`DOI_SHAPE`); else the first short DOI (`10/abc`); else the first written, cleaned; `''` when neither is written. When both are full DOIs, `doi` wins, even if they differ |
 | `DOI_REGISTRANTS`, `doiRegistrant(doi)`, type `DoiRegistrant` | the one list of registrants known by name (`src/doi/registrants.ts`): `{ prefix, server?, version? }`. `server` is the preprint server `detectKnownPreprintFromDoi` reports; `version` is the ending of a registrant that mints one DOI per version. Each row was checked on 2026-11-20 against the prefix owner in Crossref and a resolved DOI. `doiRegistrant` returns the first row whose prefix matches, or `undefined` |
 | `OSF_PREPRINT_SLUGS` | `{ slug, server }[]`: the `osf.io/preprints/<slug>` address of PsyArXiv and each Center for Open Science server in `DOI_REGISTRANTS` (names and slugs from the OSF preprint-provider API, 2026-11-20; Banglarxiv has no provider record there, so no slug). The preprint URL patterns are built from it |
@@ -205,8 +206,8 @@ this release: each year reader keeps its 0.2.x rule (`tests/parity/yearRules02.t
 
 | Export | Returns |
 |---|---|
-| `isMalformedDoi(doi)` | `true` unless `cleanDoiInput(doi)` is `10.` + 3–9 digits + `/` + a suffix without spaces, or the shortDOI form `10/<token>`; `true` for a non-string. Shape only: `10.1037/0` returns `false` |
-| `isShortFormDoi(doi)` | `true` for `10/<token>`, also when written `https://doi.org/10/<token>` or `doi:10/<token>` |
+| `isMalformedDoi(doi)` | `true` unless `cleanDoiInput(doi)` is `10.` + 3–9 digits + `/` + a suffix without spaces, or the shortDOI form `10/<token>` (`SHORT_DOI`: the token starts with a letter or digit, then letters, digits, `.`, `_`, `-`); `true` for a non-string. Shape only: `10.1037/0` returns `false` |
+| `isShortFormDoi(doi)` | `true` for `10/<token>` (`SHORT_DOI`, as above), also when written `https://doi.org/10/<token>` or `doi:10/<token>` |
 | `expandShortDoi(doi, options?)` | `Promise<ShortDoiExpansion>`: one request to doi.org, reading the redirect. Non-shortDOI input returns `not-short-form` with no request. Cached 24 h |
 | `readExpansionTarget(location)` | the pure half: `{ doi }` from a redirect `Location`, or `{ reason }` (`no-redirect`, `off-resolver`, `unexpanded-target`) |
 | `clearShortDoiCache()` | empties the expansion cache |
@@ -686,7 +687,7 @@ under its original text with status `invalid_doi` (never dropped).
 - `cleanAbstractMarkup(raw)` — strips JATS/HTML tags (and a JATS title), decodes entities, drops
   a leading "Abstract"/"Summary" heading.
 - `invertedIndexToText(index)` — rebuilds text from an OpenAlex inverted `index`.
-- `normalizeAbstractDoi(doi)` — the DOI key used by the cache (`cleanDoiInput`, lower-cased), or `null`.
+- `normalizeAbstractDoi(doi)` — the DOI key used by the cache (`cleanDoiInput`, lower-cased), or `null` when it is not `DOI_SHAPE` (`10.` + 3–9 digits + `/` + suffix).
 - `sameDoi(a, b)` — whether two DOI strings name the same work: case-insensitive, and repeated slashes are equivalent (`10.1037//0882-…` is `10.1037/0882-…`). Every source's record must pass it against the requested DOI, or the attempt is an `error`.
 - `axiosJsonGet` — the default `JsonGet`.
 

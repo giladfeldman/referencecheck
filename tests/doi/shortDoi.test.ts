@@ -133,8 +133,14 @@ describe('the controls — what must NOT expand', () => {
 
   it('a 400 from the resolver is reported as malformed, not as an expansion', async () => {
     axiosHeadMock.mockResolvedValue(doiOrg('bare-10.json'));
-    const r = await expandShortDoi('10/-');
+    const r = await expandShortDoi('10/x-');
     expect(r).toEqual({ expanded: false, reason: 'malformed', status: 400 });
+  });
+
+  it('"10/-" is not the shortDOI form (SHORT_DOI: the token starts with a letter or digit; review 10)', async () => {
+    axiosHeadMock.mockResolvedValue(doiOrg('bare-10.json'));
+    const r = await expandShortDoi('10/-');
+    expect(r).toEqual({ expanded: false, reason: 'not-short-form' });
   });
 
   it('a 3xx with no Location header yields no-redirect', async () => {
