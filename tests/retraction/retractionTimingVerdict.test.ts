@@ -284,6 +284,17 @@ describe('retraction timing relative to the citing paper', () => {
     expect(r.verdict).toBe('flagged');
   });
 
+  it.each([
+    ['doi:10.1038/nature12373'],
+    ['https://dx.doi.org/10.1038/nature12373'],
+    ['https://doi.org/10.1038%2Fnature12373'],
+  ])('the citing DOI %s is read by the same cleaner as the cited DOI', async (written) => {
+    serve({ [JAMA]: fixture('retracted-rw-jama.json'), [CITING]: fixture('not-retracted.json') });
+    const r = await checkRetraction(JAMA, { citing: { doi: written }, checkReplacement: false });
+    expect(r.timing).toMatchObject({ timing: 'after_citing', citingPublishedDate: '2013-07-31' });
+    expect(citingCalls(CITING)).toBe(1);
+  });
+
   it('an invalid citing DOI is never sent to Crossref', async () => {
     serve({ [JAMA]: fixture('retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA, { citing: { doi: 'not-a-doi' }, checkReplacement: false });

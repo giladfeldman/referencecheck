@@ -662,9 +662,8 @@ export async function resolveCitingPublicationDate(
   citingDOI: string,
   creds?: MetadataCredentials
 ): Promise<CitingPublicationDate> {
-  const clean = String(citingDOI ?? '')
-    .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')
-    .trim();
+  // The same reader as the cited DOI: one input shape, one cleaner.
+  const clean = cleanDoiInput(citingDOI);
   if (!isDoiShaped(clean)) {
     return { unavailable: { reason: 'invalid_doi', detail: clean.slice(0, 80) } };
   }
