@@ -187,7 +187,7 @@ this release: each year reader keeps its 0.2.x rule (`tests/parity/yearRules02.t
 
 | Export | Returns |
 |---|---|
-| `cleanDoiInput(doi)` | the DOI with surrounding whitespace, a resolver URL (`http(s)://`, `dx.`/`www.`, or bare `doi.org/`) or a `doi:` label removed and percent-encoding decoded (unless decoding would add whitespace: `10.1000/a%20b` stays `10.1000/a%20b`, a well-formed DOI); for a DOI, also what a citation put after it: anything after a space that is followed by a bracket, `doi`, `PMID`, `PMCID`, `Available`, `Accessed`, `Retrieved`, `Epub`, `Published`, `PDF`, `URL` or a URL (any other space stays, so `10.1371/journal.pone. 0123456` is still malformed), trailing `. , ; :` and quotes, and a closing bracket that closes nothing inside the DOI (`10.1101/x).` → `10.1101/x`; `(20)30183-5` kept); case kept; `''` for a non-string; any other input returned trimmed |
+| `cleanDoiInput(doi)` | the DOI with surrounding whitespace, a resolver URL (`http(s)://`, `dx.`/`www.`, or bare `doi.org/`) or a `doi:` label removed and percent-encoding decoded (unless decoding would add whitespace: `10.1000/a%20b` stays `10.1000/a%20b`, a well-formed DOI); for a DOI or a shortDOI (`10/abc`), also what a citation put after it: anything after a space that is followed by a bracket, `doi`, `PMID`, `PMCID`, `Available`, `Accessed`, `Retrieved`, `Epub`, `Published`, `PDF`, `URL` or a URL (any other space stays, so `10.1371/journal.pone. 0123456` is still malformed), trailing `. , ; :` and quotes, and a closing bracket that closes nothing inside the DOI (`10.1101/x).` → `10.1101/x`; `(20)30183-5` kept); and what a link adds after it: a query (`?utm_source=x`, a lone `?`), a fragment (`#abs`; a final `#`, as in Wiley SICI DOIs ending `CO;2-#`, stays), trailing slashes and a page ending `/full`, `/pdf`, `/epdf`, `/abstract`; case kept; `''` for a non-string; any other input returned trimmed |
 | `DOI_SHAPE`, `DOI_START` | the one DOI shape every reader uses: `/^10\.\d{3,9}\/\S+$/` (a whole DOI) and `/^10\.\d{3,9}\//` (its start). 3-digit registrant codes exist (10.231, 10.488, 10.978, 10.979) |
 | `referenceDoi(reference)` | the DOI a reference is checked under (replies, expression of concern, open access, preprint, journal metadata): the first of `doi` and `suggested_doi` whose `cleanDoiInput` is a full DOI (`DOI_SHAPE`); else the first short DOI (`10/abc`); else the first written, cleaned; `''` when neither is written. When both are full DOIs, `doi` wins, even if they differ |
 | `DOI_REGISTRANTS`, `doiRegistrant(doi)`, type `DoiRegistrant` | the one list of registrants known by name (`src/doi/registrants.ts`): `{ prefix, server?, version? }`. `server` is the preprint server `detectKnownPreprintFromDoi` reports; `version` is the ending of a registrant that mints one DOI per version. Each row was checked on 2026-11-20 against the prefix owner in Crossref and a resolved DOI. `doiRegistrant` returns the first row whose prefix matches, or `undefined` |
@@ -395,8 +395,9 @@ DOI of the author's: a known preprint server's prefix decides; else Crossref dec
 journal article whose citation mentions ssrn.com is not called a preprint; when Crossref
 cannot answer (the DOI is not indexed there, as for DataCite and OSF DOIs; the request failed;
 or a 200 came back without a work record), the `url` decides; the citation text does not.
-Without one: the `url`, then the citation text, then the suggested DOI (its prefix, then
-Crossref). A reported `metadata.doi` is always a full DOI, the one the decision was made on;
+Without one: the `url`, then a preprint link written into the `doi` field, then the citation
+text, then the suggested DOI (its prefix, then Crossref). A reported `metadata.doi` is always a
+full DOI, the one the decision was made on, and absent when a link or the text decided;
 `location` is the evidence (the DOI, the link, or the start of the citation text). Known preprint
 servers (`DOI_REGISTRANTS` rows with a `server`: SSRN, PsyArXiv and the other Center for Open
 Science servers (OSF Preprints, SocArXiv, MetaArXiv, EdArXiv, …), bioRxiv/medRxiv, arXiv,

@@ -46,6 +46,7 @@ const WRAPPERS = [
   'DOI:',
   'DOI: ',
 ];
+const LINK_TAILS = ['?utm_source=x', '?versioned=true', '?', '#abs', '#sec1.2', '/', '//', '/full', '/pdf/', '/abstract', '?a=1#b', '/?utm_medium=email', '/full?casa_token=AbC.', '#abs).'];
 const SPACING: Array<[string, string]> = [
   ['', ''],
   ['  ', ''],
@@ -58,6 +59,9 @@ const variantsOf = (bare: string): string[] => {
   for (const w of WRAPPERS) for (const [lead, trail] of SPACING) out.push(`${lead}${w}${bare}${trail}`);
   // A DOI copied out of a URL bar arrives percent-encoded.
   out.push(`https://doi.org/${encodeURIComponent(bare)}`);
+  // What a copied link adds after the DOI (v0.3.0 review 7): a query, a fragment, trailing
+  // slashes, a publisher page ending, and those followed by citation punctuation.
+  for (const w of ['', 'https://doi.org/']) for (const tail of LINK_TAILS) out.push(`${w}${bare}${tail}`);
   return out;
 };
 

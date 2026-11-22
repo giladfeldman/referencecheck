@@ -157,8 +157,8 @@ async function checkPreprintStatus(doi: string): Promise<{ issue: PreprintIssue 
  *   1. A full DOI of the author's: a known preprint server's prefix (SSRN, PsyArXiv, bioRxiv,
  *      arXiv, OSF servers, …; several are not typed `posted-content` in Crossref), else
  *      Crossref decides; when Crossref cannot answer, the reference's own link (`url`) does.
- *   2. Otherwise: the link, then the citation text, then the suggested DOI (prefix, then
- *      Crossref).
+ *   2. Otherwise: the link, then a preprint link written into the `doi` field, then the
+ *      citation text, then the suggested DOI (prefix, then Crossref).
  */
 export async function checkReferenceForPreprint(reference: ReferenceInput): Promise<PreprintIssue[]> {
   const rawText = (reference as any).raw_text as string | undefined;
@@ -178,11 +178,18 @@ export async function checkReferenceForPreprint(reference: ReferenceInput): Prom
       source: 'heuristic',
     },
   }];
-  const fromText = (doi: string, readText: boolean): PreprintIssue[] | null => {
+  // A server read from a link or the citation text reports no DOI: the decision was not made
+  // on one (v0.3.0 review 7: a Zenodo DOI was reported beside an arXiv link's verdict).
+  const fromText = (readText: boolean): PreprintIssue[] | null => {
     const urlServer = detectKnownPreprintFromText(url);
-    if (urlServer) return heuristic(urlServer, doi, url as string);
-    const textServer = readText ? detectKnownPreprintFromText(rawText) : null;
-    return textServer ? heuristic(textServer, doi, (rawText as string).slice(0, 80)) : null;
+    if (urlServer) return heuristic(urlServer, '', url as string);
+    if (!readText) return null;
+    // A preprint link written into the `doi` field (no full DOI there) is read like `url`.
+    const doiField = typeof reference.doi === 'string' ? reference.doi : '';
+    const doiFieldServer = detectKnownPreprintFromText(doiField);
+    if (doiFieldServer) return heuristic(doiFieldServer, '', doiField);
+    const textServer = detectKnownPreprintFromText(rawText);
+    return textServer ? heuristic(textServer, '', (rawText as string).slice(0, 80)) : null;
   };
 
   if (authorDoi) {
@@ -193,12 +200,12 @@ export async function checkReferenceForPreprint(reference: ReferenceInput): Prom
     if (server) return heuristic(server, authorDoi, authorDoi);
     const { issue, answered } = await checkPreprintStatus(authorDoi);
     if (answered) return issue ? [issue] : [];
-    return fromText(authorDoi, false) ?? [];
+    return fromText(false) ?? [];
   }
 
   // No full DOI of the author's: the link, then the citation text, then the suggested DOI
   // (the tool's guess, read last: v0.3.0 review 6).
-  const text = fromText('', true);
+  const text = fromText(true);
   if (text) return text;
   if (!suggestedDoi) return [];
   const server = detectKnownPreprintFromDoi(suggestedDoi);

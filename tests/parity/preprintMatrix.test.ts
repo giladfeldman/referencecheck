@@ -12,7 +12,8 @@
  *   citation text never does.
  *   Without one: the `url`, then the citation text, then the suggested DOI (prefix, then
  *   Crossref).
- *   A reported DOI is always a full DOI.
+ *   A reported DOI is always a full DOI, and only when a DOI decided (review 7: a server
+ *   read from the link reports none).
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
@@ -59,7 +60,7 @@ function expected(doi: string | undefined, suggested: string | undefined, url: s
     if (PREFIX_SERVER[author]) return [PREFIX_SERVER[author], author];
     if (crossref(author) === 'journal') return [null, undefined];
     const u = urlServer(url);
-    return [u, u ? author : undefined];
+    return [u, undefined];
   }
   const t = urlServer(url) ?? textServer(text);
   if (t) return [t, undefined];

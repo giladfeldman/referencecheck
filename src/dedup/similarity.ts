@@ -378,8 +378,7 @@ export function scoreMetadataCompleteness(ref: ReferenceInput): number {
 function comparableDoi(ref: ReferenceInput): string {
   let d = cleanDoiInput(ref.doi).toLowerCase();
   if (!DOI_SHAPE.test(d)) return '';
-  d = d.replace(/[?#].*$/, '');
-  d = d.replace(/\/(?:full|pdf|epdf|abstract)\/?$/, '');
+  // A link's query, fragment and page ending are dropped by cleanDoiInput, for every reader.
   // A version suffix is dropped only for registrants that version that way (DOI_REGISTRANTS
   // in src/doi/registrants.ts); elsewhere `10.5555/a.v1` and `.v2` are two works.
   d = doiWithoutVersion(d);

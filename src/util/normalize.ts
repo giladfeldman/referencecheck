@@ -52,8 +52,30 @@ export function cleanDoiInput(doi: string | null | undefined): string {
     }
   }
   d = d.trim();
-  if (DOI_START.test(d)) d = stripCitationTail(d);
+  // A shortDOI ("10/gt3vmw") arrives in the same links and citations as a full DOI.
+  if (DOI_START.test(d) || /^10\/[A-Za-z0-9]/.test(d)) {
+    for (let prev = ''; prev !== d; ) {
+      prev = d;
+      d = stripLinkTail(stripCitationTail(d));
+    }
+  }
   return d;
+}
+
+/**
+ * What a link adds after a DOI is not part of it (v0.3.0 review 7): a query
+ * ("?utm_source=x", "?versioned=true", a lone "?"), a fragment ("#abs"), trailing slashes
+ * and a publisher page ending ("/full", "/pdf", "/epdf", "/abstract"). Before, only
+ * deduplication dropped them, so the preprint, retraction and Crossref lookups asked for
+ * "10.x/y?utm_source=x", got no record, and a preprint read as clean. A "#" that ends the
+ * DOI stays: Wiley SICI DOIs end in "CO;2-#" (three in the labelled set).
+ */
+function stripLinkTail(doi: string): string {
+  return doi
+    .replace(/\?(?:\S*=\S*)?$/, '')
+    .replace(/#.+$/, '')
+    .replace(/\/+$/, '')
+    .replace(/\/(?:full|pdf|epdf|abstract)$/i, '');
 }
 
 function countWhitespace(s: string): number {
