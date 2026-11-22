@@ -9,6 +9,13 @@ The same sweep found a second class, **a check that reads a field its source doe
 so it can never fire and reports clean**: the expression-of-concern check, below.
 
 ### Fixed
+- **QA 16 (2026-11-22), same class ("clean" vs "could not check"): an OpenRetractions 200
+  that is not an answer.** `api.openretractions.com` resolves again, to a parked domain (HTTP
+  200 with an HTML redirect to `/lander`; HTTPS fails the TLS handshake). The opt-in
+  OpenRetractions source counted any non-empty 200 as checked and not retracted; it now needs
+  a JSON answer with a boolean `retracted`, else the source is unavailable (`server_error`,
+  "200 without a JSON retraction answer"). `scripts/openretractions-probe.mjs` asks whether the
+  host serves the API, not only whether it resolves. The default stays `['crossref']`.
 - **Review 11 (2026-11-22), the DOI title check read in one direction only.** A candidate was
   accepted when the record's title words occurred in the reference; the reference's own title
   was never compared back. So a reference to "Instrumental Variables Analysis and Mendelian

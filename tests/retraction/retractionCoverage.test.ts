@@ -242,6 +242,23 @@ describe('a source that went unread is a source that went unread, whichever one 
     ]);
   });
 
+  it('a parked domain answering 200 with HTML is not an OpenRetractions answer (2026-11-22)', async () => {
+    // Measured 2026-11-22: the name resolves again, to a parked domain serving
+    // an HTML redirect to /lander with HTTP 200. Any truthy body used to count
+    // as "checked, not retracted".
+    axiosGetMock.mockResolvedValue({ status: 200, data: '<!DOCTYPE html><html><head><script>window.onload=function(){window.location.href="/lander"}</script></head></html>' });
+    crossrefGetMock.mockResolvedValue(fixture('not-retracted.json'));
+
+    const r = await checkRetraction(DOI, BOTH);
+
+    expect(r.isRetracted).toBe(false);
+    expect(r.checked).toBe(false);
+    expect(r.sourcesChecked).toEqual(['crossref']);
+    expect(r.sourcesUnavailable).toEqual([
+      { source: 'openretractions', reason: 'server_error', detail: '200 without a JSON retraction answer' },
+    ]);
+  });
+
   it('checkRetractionDetailed does not call that complete either', async () => {
     axiosGetMock.mockRejectedValue(httpError(undefined, 'ECONNABORTED', 'timeout of 5000ms'));
     crossrefGetMock.mockResolvedValue(fixture('not-retracted.json'));

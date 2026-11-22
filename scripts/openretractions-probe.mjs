@@ -19,8 +19,10 @@
  * the same run: if the control fails too, the verdict is could-not-verify, never
  * a pass.
  *
- *   0  host still unreachable AND control reachable -> default list still correct
- *   1  host is REACHABLE -> re-evaluate DEFAULT_RETRACTION_SOURCES
+ *   0  host unreachable, or resolving without serving the API (a parked domain,
+ *      measured 2026-11-22), AND control reachable -> default list still correct
+ *   1  host SERVES the API (JSON with a boolean `retracted`) -> re-evaluate
+ *      DEFAULT_RETRACTION_SOURCES
  *   2  control unreachable -> could not verify (no network), not a pass
  *
  * Usage:  node scripts/openretractions-probe.mjs
@@ -67,20 +69,32 @@ if (!target.ok) {
 // re-enabling a source on the strength of an A record would be a guess.
 console.log('\nhost resolves -- checking whether it SERVES the API');
 let served = 'no response';
+let api = false;
 try {
-  const res = await fetch(`https://${HOST}/10.1126/science.1256151`, {
+  // The path the library calls (OPEN_RETRACTIONS_API in src/retraction/retractionChecker.ts).
+  const res = await fetch(`https://${HOST}/doi/10.1126/science.1256151`, {
     method: 'GET',
     signal: AbortSignal.timeout(10_000),
     headers: { accept: 'application/json' },
   });
   const body = await res.text();
   served = `HTTP ${res.status}, ${body.length} B: ${body.slice(0, 200)}`;
+  // The API answers JSON with a boolean `retracted`, the shape the library reads.
+  try { api = typeof JSON.parse(body)?.retracted === 'boolean'; } catch { api = false; }
 } catch (err) {
   served = `request failed: ${err?.message || err}`;
 }
 console.log(`  ${served}`);
 
-console.error(`\nFAIL: ${HOST} resolves again.`);
+if (!api) {
+  // Measured 2026-11-22: the name resolves to a parked domain (an HTML redirect to
+  // /lander over HTTP, a TLS failure over HTTPS). That is not the API coming back.
+  console.log(`\nPASS: ${HOST} resolves but does not serve the API (no JSON retraction`);
+  console.log("answer), so DEFAULT_RETRACTION_SOURCES = ['crossref'] remains correct.");
+  process.exit(0);
+}
+
+console.error(`\nFAIL: ${HOST} serves the API again.`);
 console.error('OpenRetractions was dropped from DEFAULT_RETRACTION_SOURCES only because');
 console.error('it was unreachable. That measurement has now expired, so re-evaluate:');
 console.error('  1. does it serve usable answers (see the response above)?');

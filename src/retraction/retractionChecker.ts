@@ -85,9 +85,11 @@
  *
  * ## Why OpenRetractions is off by default
  *
- * `api.openretractions.com` does not resolve. Measured 2026-09-12: `EAI_AGAIN`
+ * `api.openretractions.com` does not serve its API. Measured 2026-09-12: `EAI_AGAIN`
  * on both `api.openretractions.com` and `openretractions.com`, while
- * `api.crossref.org` resolved on the same call. Under the strict completeness
+ * `api.crossref.org` resolved on the same call. Re-measured 2026-11-22: the name
+ * resolves again (13.248.169.48, 76.223.54.146), but to a parked domain: HTTP 200
+ * with an HTML redirect to `/lander`, and HTTPS fails the TLS handshake. Under the strict completeness
  * rule below, leaving it in the default source list would mark **every** lookup
  * incomplete forever — an alarm that fires on every reference tells a reader
  * nothing, and would drown the genuine Crossref failures it exists to surface.
@@ -385,7 +387,9 @@ export async function checkRetraction(
         }
       );
 
-      if (response.status === 200 && response.data) {
+      // Only a JSON answer is an answer: a parked domain serves HTML with a 200
+      // (measured 2026-11-22), which would otherwise read as "checked, not retracted".
+      if (response.status === 200 && response.data && typeof response.data === 'object' && typeof response.data.retracted === 'boolean') {
         const data = response.data;
         sourcesChecked.push('openretractions');
 
@@ -411,7 +415,7 @@ export async function checkRetraction(
         sourcesUnavailable.push({
           source: 'openretractions',
           reason: 'server_error',
-          detail: String(response.status),
+          detail: response.status === 200 ? '200 without a JSON retraction answer' : String(response.status),
         });
       }
     } catch (error: any) {
