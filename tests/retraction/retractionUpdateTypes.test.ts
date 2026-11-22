@@ -46,7 +46,7 @@ const checkRetractionDetailed = mod.checkRetractionDetailed as (
   o?: any
 ) => Promise<any>;
 
-const DOI = '10.1/abc';
+const DOI = '10.1000/abc';
 
 beforeEach(() => {
   crossrefGetMock.mockReset();

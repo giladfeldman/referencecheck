@@ -21,7 +21,7 @@
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { crossrefFixture as fixture } from '../fixtures/crossrefFixture.js';
-import { formatDateParts } from '../../src/util/normalize.js';
+import { DOI_SHAPE, formatDateParts } from '../../src/util/normalize.js';
 
 const crossrefGetMock = jest.fn<any>();
 const axiosGetMock = jest.fn<any>();
@@ -71,7 +71,7 @@ function serve(bodies: Record<string, any>) {
       const doi = decodeURIComponent(url.slice(LABS.length).split('?')[0]);
       key = 'labs:' + doi;
       if (!(key in bodies)) {
-        const empty = clone(fixture('labs-empty-carcin.json'));
+        const empty = clone(fixture('retraction/labs-empty-carcin.json'));
         empty.data.message.DOI = doi;
         return empty;
       }
@@ -95,7 +95,7 @@ beforeEach(() => {
 // =========================================================== three verdicts
 describe('every result says clean, flagged or could_not_check', () => {
   it('flagged: a Crossref updated-by retraction', async () => {
-    serve({ [JAMA]: fixture('retracted-rw-jama.json') });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA);
     expect(r.verdict).toBe('flagged');
   });
@@ -129,7 +129,7 @@ describe('every result says clean, flagged or could_not_check', () => {
 
   it('flagged wins over a source that went unread (and checked stays false)', async () => {
     axiosGetMock.mockRejectedValue(httpError(undefined, 'EAI_AGAIN', 'getaddrinfo EAI_AGAIN'));
-    serve({ [JAMA]: fixture('retracted-rw-jama.json') });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA, { sources: ['openretractions', 'crossref'] });
     expect(r.verdict).toBe('flagged');
     expect(r.checked).toBe(false);
@@ -149,7 +149,7 @@ describe('every result says clean, flagged or could_not_check', () => {
   });
 
   it('the batch call carries the verdict on every entry', async () => {
-    serve({ [JAMA]: fixture('retracted-rw-jama.json'), [CITING]: fixture('not-retracted.json'), '10.9999/gone': httpError(429) });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json'), [CITING]: fixture('not-retracted.json'), '10.9999/gone': httpError(429) });
     const m = await checkMultipleRetractions([JAMA, CITING, '10.9999/gone']);
     expect([...m.values()].map((r) => r.verdict)).toEqual(['flagged', 'clean', 'could_not_check']);
   });
@@ -196,9 +196,22 @@ describe('a 200 that is not an answer is not a clean (the folds fixed in v0.4.0)
     }
   );
 
+  // One DOI shape for the library: what DOI_SHAPE (and the shortDOI form)
+  // rejects is never sent to Crossref, as a cited or as a citing DOI.
+  it.each([['10.12/x', false], ['10.1234567890/x', false], ['10.231/x', true], ['10/abc12', true]])(
+    '%s is read by the shared DOI shape (DOI-shaped: %s)',
+    async (input, shaped) => {
+      expect(DOI_SHAPE.test(input) || /^10\/[A-Za-z0-9._-]+$/.test(input)).toBe(shaped);
+      serve({ [input]: fixture('not-retracted.json') });
+      const r = await checkRetraction(input);
+      expect(r.sourcesUnavailable.some((u: any) => u.reason === 'invalid_doi')).toBe(!shaped);
+      expect(crossrefGetMock.mock.calls.length > 0).toBe(shaped);
+    }
+  );
+
   it('verdict always agrees with isRetracted and checked', async () => {
     const cases: Array<[string, any]> = [
-      [JAMA, fixture('retracted-rw-jama.json')],
+      [JAMA, fixture('retraction/retracted-rw-jama.json')],
       [CITING, fixture('not-retracted.json')],
       [CITING, httpError(429)],
       [CITING, { status: 200, data: '' }],
@@ -219,7 +232,7 @@ describe('a misspelled update type still flags the work', () => {
     // by the misspelt publisher entry the 2026-11-18 scan of all 81,667
     // Crossref retraction notices found. On that real record a Retraction
     // Watch duplicate rescues it; without one, the typo read as clean.
-    const body = clone(fixture('retracted-rw-jama.json'));
+    const body = clone(fixture('retraction/retracted-rw-jama.json'));
     body.data.message['updated-by'][0].type = 'retracion';
     body.data.message['updated-by'][0].label = 'Retracion';
     body.data.message.title = ['Effect of a Program Combining Transitional Care'];
@@ -233,7 +246,7 @@ describe('a misspelled update type still flags the work', () => {
 // =========================================================== timing
 describe('retraction timing relative to the citing paper', () => {
   it('after_citing: citing paper (2013) published before the retraction (2019-10-08)', async () => {
-    serve({ [JAMA]: fixture('retracted-rw-jama.json') });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA, { citing: { publishedDate: '2013-07-31' } });
     expect(r.timing).toEqual({
       timing: 'after_citing',
@@ -245,13 +258,13 @@ describe('retraction timing relative to the citing paper', () => {
   });
 
   it('before_citing: citing paper (2025) published after the retraction', async () => {
-    serve({ [JAMA]: fixture('retracted-rw-jama.json') });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA, { citing: { publishedDate: '2025-12-31' } });
     expect(r.timing.timing).toBe('before_citing');
   });
 
   it('citing date from the citing DOI\'s Crossref `published`', async () => {
-    serve({ [JAMA]: fixture('retracted-rw-jama.json'), [CITING_LATE]: fixture('about-retraction-not-retracted.json') });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json'), [CITING_LATE]: fixture('about-retraction-not-retracted.json') });
     const r = await checkRetraction(JAMA, { citing: { doi: CITING_LATE } });
     expect(r.timing).toMatchObject({
       timing: 'before_citing',
@@ -264,7 +277,7 @@ describe('retraction timing relative to the citing paper', () => {
   it('falls back to `issued` when the citing record has no `published`', async () => {
     const citing = clone(fixture('not-retracted.json'));
     delete citing.data.message.published;
-    serve({ [JAMA]: fixture('retracted-rw-jama.json'), [CITING]: citing });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json'), [CITING]: citing });
     const r = await checkRetraction(JAMA, { citing: { doi: CITING } });
     expect(r.timing).toMatchObject({ timing: 'after_citing', citingDateField: 'issued', citingPublishedDate: '2013-07-31' });
   });
@@ -275,7 +288,7 @@ describe('retraction timing relative to the citing paper', () => {
     ['a 404', () => httpError(404), 'not_indexed'],
     ['a malformed 200', () => ({ status: 200, data: '' }), 'malformed_response'],
   ])('citing DOI lookup with %s gives unknown / citing_date_unavailable', async (_l, body, reason) => {
-    serve({ [JAMA]: fixture('retracted-rw-jama.json'), [CITING]: body() });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json'), [CITING]: body() });
     const r = await checkRetraction(JAMA, { citing: { doi: CITING } });
     expect(r.timing.timing).toBe('unknown');
     expect(r.timing.unknownReason).toBe('citing_date_unavailable');
@@ -289,21 +302,21 @@ describe('retraction timing relative to the citing paper', () => {
     ['https://dx.doi.org/10.1038/nature12373'],
     ['https://doi.org/10.1038%2Fnature12373'],
   ])('the citing DOI %s is read by the same cleaner as the cited DOI', async (written) => {
-    serve({ [JAMA]: fixture('retracted-rw-jama.json'), [CITING]: fixture('not-retracted.json') });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json'), [CITING]: fixture('not-retracted.json') });
     const r = await checkRetraction(JAMA, { citing: { doi: written }, checkReplacement: false });
     expect(r.timing).toMatchObject({ timing: 'after_citing', citingPublishedDate: '2013-07-31' });
     expect(citingCalls(CITING)).toBe(1);
   });
 
   it('an invalid citing DOI is never sent to Crossref', async () => {
-    serve({ [JAMA]: fixture('retracted-rw-jama.json') });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA, { citing: { doi: 'not-a-doi' }, checkReplacement: false });
     expect(r.timing.unknownReason).toBe('citing_date_unavailable');
     expect(crossrefGetMock).toHaveBeenCalledTimes(1);
   });
 
   it('unknown / no_citing_date when no citing paper is given', async () => {
-    serve({ [JAMA]: fixture('retracted-rw-jama.json') });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA);
     expect(r.timing).toMatchObject({ timing: 'unknown', unknownReason: 'no_citing_date', retractionDate: '2019-10-08' });
   });
@@ -315,7 +328,7 @@ describe('retraction timing relative to the citing paper', () => {
     ['month 13 (not a calendar date)', [[2019, 13, 1]], '2019-13-01', 'unknown'],
     ['no year', [[null]], undefined, 'unknown'],
   ])('retractionDate from %s is zero-padded and compared', async (_l, dateParts, expected, timing) => {
-    const body = clone(fixture('retracted-rw-jama.json'));
+    const body = clone(fixture('retraction/retracted-rw-jama.json'));
     body.data.message['updated-by'][0].updated = { 'date-parts': dateParts };
     serve({ [JAMA]: body });
     const r = await checkRetraction(JAMA, { citing: { publishedDate: '2013-07-31' }, checkReplacement: false });
@@ -332,7 +345,7 @@ describe('retraction timing relative to the citing paper', () => {
     [['2019'], false], [[], false], [[null], false],
   ])('date-parts %j: retractionDate and the citing date agree with formatDateParts', async (parts, real) => {
     const expected = formatDateParts(parts);
-    const body = clone(fixture('retracted-rw-jama.json'));
+    const body = clone(fixture('retraction/retracted-rw-jama.json'));
     body.data.message['updated-by'][0].updated = { 'date-parts': [parts] };
     const citing = clone(fixture('not-retracted.json'));
     citing.data.message.published = { 'date-parts': [parts] };
@@ -371,7 +384,7 @@ describe('retraction timing relative to the citing paper', () => {
     expect(r.retractionDate).toBe('2019-01-05');
     expect(r.timing).toMatchObject({ retractionDate: '2019-01-05', citingPublishedDate: '2019-02', timing: 'before_citing' });
 
-    serve({ [JAMA]: fixture('retracted-rw-jama.json') });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
     const t = await checkRetraction(JAMA, { citing: { publishedDate: '2019-1-5T23:30:00-08:00' }, checkReplacement: false });
     // The date part as written, never shifted through Date: 2019-01-05, not 2019-01-06 (UTC).
     expect(t.timing.citingPublishedDate).toBe('2019-01-05');
@@ -391,7 +404,7 @@ describe('retraction timing relative to the citing paper', () => {
     ['2019-10-09', 'before_citing'],
     ['2019-10-09T12:00:00Z', 'before_citing'],
   ])('precision: citing %s vs retraction 2019-10-08', async (citingDate, expected) => {
-    serve({ [JAMA]: fixture('retracted-rw-jama.json') });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA, { citing: { publishedDate: citingDate } });
     if (expected === 'same_period') expect(r.timing).toMatchObject({ timing: 'unknown', unknownReason: 'same_period' });
     else expect(r.timing.timing).toBe(expected);
@@ -408,13 +421,13 @@ describe('retraction timing relative to the citing paper', () => {
   it.each([['2019-13-01'], ['2019-02-30'], ['19-10-08'], ['last year'], ['']])(
     'a caller date %j it cannot read throws instead of becoming "unknown"',
     async (bad) => {
-      serve({ [JAMA]: fixture('retracted-rw-jama.json') });
+      serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
       await expect(checkRetraction(JAMA, { citing: { publishedDate: bad } })).rejects.toThrow(RangeError);
     }
   );
 
   it('the caller date wins over the citing DOI, and no lookup is made', async () => {
-    serve({ [JAMA]: fixture('retracted-rw-jama.json'), [CITING]: fixture('not-retracted.json') });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json'), [CITING]: fixture('not-retracted.json') });
     const r = await checkRetraction(JAMA, { citing: { publishedDate: '2025-01-01', doi: CITING } });
     expect(r.timing).toMatchObject({ timing: 'before_citing', citingDateSource: 'caller' });
     expect(citingCalls(CITING)).toBe(0);
@@ -430,7 +443,7 @@ describe('retraction timing relative to the citing paper', () => {
 
   it('a batch looks the citing DOI up once, however many references are flagged', async () => {
     serve({
-      [JAMA]: fixture('retracted-rw-jama.json'),
+      [JAMA]: fixture('retraction/retracted-rw-jama.json'),
       '10.1007/s11277-021-09072-0': fixture('multi-retraction-dates.json'),
       [CITING_LATE]: fixture('about-retraction-not-retracted.json'),
     });
@@ -470,9 +483,9 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
 
   it('the work\'s own title "RETRACTED AND REPLACED" (Labs serves an EMPTY block for it)', async () => {
     serve({
-      [CARCIN]: fixture('rr-title-carcin.json'),
-      '10.1093/carcin/bgaf065': fixture('rr-notice-carcin.json'),
-      ['labs:' + CARCIN]: fixture('labs-empty-carcin.json'),
+      [CARCIN]: fixture('retraction/rr-title-carcin.json'),
+      '10.1093/carcin/bgaf065': fixture('retraction/rr-notice-carcin.json'),
+      ['labs:' + CARCIN]: fixture('retraction/labs-empty-carcin.json'),
     });
     const r = await checkRetraction(CARCIN);
     expect(r.retractionType).toBe('retraction');
@@ -481,12 +494,12 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
 
   it('a plain title: the notice title and the Retraction Watch reason say so; the notes give the replacement DOI', async () => {
     serve({
-      [INFDIS]: fixture('rr-plain-infdis.json'),
-      '10.1093/infdis/jiae358': fixture('rr-notice-infdis.json'),
-      ['labs:' + INFDIS]: fixture('labs-rr-infdis.json'),
+      [INFDIS]: fixture('retraction/rr-plain-infdis.json'),
+      '10.1093/infdis/jiae358': fixture('retraction/rr-notice-infdis.json'),
+      ['labs:' + INFDIS]: fixture('retraction/labs-rr-infdis.json'),
       // The notes URL ends .../doi/10.1093/infdis/jiae357/7727684: the full
       // match is not a work (404 here), the trimmed form is.
-      '10.1093/infdis/jiae357': fixture('rr-replacement-infdis.json'),
+      '10.1093/infdis/jiae357': fixture('retraction/rr-replacement-infdis.json'),
     });
     const r = await checkRetraction(INFDIS);
     expect(r.replacement).toEqual({
@@ -498,9 +511,9 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
 
   it('a notes DOI Crossref cannot confirm is not reported, but the replacement still is', async () => {
     serve({
-      [INFDIS]: fixture('rr-plain-infdis.json'),
-      '10.1093/infdis/jiae358': fixture('rr-notice-infdis.json'),
-      ['labs:' + INFDIS]: fixture('labs-rr-infdis.json'),
+      [INFDIS]: fixture('retraction/rr-plain-infdis.json'),
+      '10.1093/infdis/jiae358': fixture('retraction/rr-notice-infdis.json'),
+      ['labs:' + INFDIS]: fixture('retraction/labs-rr-infdis.json'),
     });
     const r = await checkRetraction(INFDIS);
     expect(r.replacement.status).toBe('replaced');
@@ -509,15 +522,15 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
 
   it('JAMA: a Retraction Watch record without Retract and Replace and a plain notice title -> not_recorded', async () => {
     serve({
-      [JAMA]: fixture('retracted-rw-jama.json'),
-      [JAMA_NOTICE]: fixture('jama-notice.json'),
-      ['labs:' + JAMA]: fixture('labs-jama.json'),
+      [JAMA]: fixture('retraction/retracted-rw-jama.json'),
+      [JAMA_NOTICE]: fixture('retraction/jama-notice.json'),
+      ['labs:' + JAMA]: fixture('retraction/labs-jama.json'),
     });
     expect((await checkRetraction(JAMA)).replacement).toEqual({ status: 'not_recorded', evidence: [] });
   });
 
   it('a `new_version` entry is NOT a replacement (F1000 v2 and v3 were retracted too)', async () => {
-    serve({ '10.12688/f1000research.8114.1': fixture('retracted-f1000-versions.json') });
+    serve({ '10.12688/f1000research.8114.1': fixture('retraction/retracted-f1000-versions.json') });
     const r = await checkRetraction('10.12688/f1000research.8114.1');
     expect(r.isRetracted).toBe(true);
     expect(r.replacement).toEqual({ status: 'not_recorded', evidence: [] });
@@ -527,11 +540,11 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     // Derived: no retracted Crossref work carries is-replaced-by (0 of the
     // 2,213 works with that relation, measured 2026-11-18), so this grafts the
     // shape PeerJ preprints use onto a recorded retracted record.
-    const body = clone(fixture('retracted-rw-jama.json'));
+    const body = clone(fixture('retraction/retracted-rw-jama.json'));
     body.data.message.relation = {
       'is-replaced-by': [{ 'id-type': 'doi', id: '10.1/replacement', 'asserted-by': 'subject' }],
     };
-    serve({ [JAMA]: body, [JAMA_NOTICE]: fixture('jama-notice.json') });
+    serve({ [JAMA]: body, [JAMA_NOTICE]: fixture('retraction/jama-notice.json') });
     const r = await checkRetraction(JAMA);
     expect(r.replacement).toEqual({
       status: 'replaced',
@@ -541,9 +554,9 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
   });
 
   it('is-replaced-by naming the work itself is not a replacement', async () => {
-    const body = clone(fixture('retracted-rw-jama.json'));
+    const body = clone(fixture('retraction/retracted-rw-jama.json'));
     body.data.message.relation = { 'is-replaced-by': [{ 'id-type': 'doi', id: JAMA.toUpperCase() }] };
-    serve({ [JAMA]: body, [JAMA_NOTICE]: fixture('jama-notice.json') });
+    serve({ [JAMA]: body, [JAMA_NOTICE]: fixture('retraction/jama-notice.json') });
     expect((await checkRetraction(JAMA)).replacement.status).toBe('not_recorded');
   });
 
@@ -553,7 +566,7 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     ['notice 429', { [JAMA_NOTICE]: httpError(429) }, 'lookup_failed'],
     ['Labs HTML 200', { ['labs:' + JAMA]: { status: 200, data: '<html>' } }, 'malformed_response'],
   ])('a failed lookup (%s) with no positive signal is unknown, never not_recorded', async (_l, extra, reason) => {
-    serve(Object.assign({ [JAMA]: fixture('retracted-rw-jama.json'), [JAMA_NOTICE]: fixture('jama-notice.json') }, extra as Record<string, any>));
+    serve(Object.assign({ [JAMA]: fixture('retraction/retracted-rw-jama.json'), [JAMA_NOTICE]: fixture('retraction/jama-notice.json') }, extra as Record<string, any>));
     const r = await checkRetraction(JAMA);
     expect(r.replacement.status).toBe('unknown');
     expect(r.replacement.unknownReason).toBe(reason);
@@ -566,11 +579,11 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     ['a record whose reasons is a string', [{ reasons: 'etract and Replace' }]],
     ['a record with no reasons key (a renamed key)', [{ 'update-reasons': ['etract and Replace'] }]],
   ])('an unreadable Labs block (%s) is unknown / malformed_response', async (_l, block) => {
-    const labs = clone(fixture('labs-jama.json'));
+    const labs = clone(fixture('retraction/labs-jama.json'));
     labs.data.message['cr-labs-updates'] = block;
     serve({
-      [JAMA]: fixture('retracted-rw-jama.json'),
-      [JAMA_NOTICE]: fixture('jama-notice.json'),
+      [JAMA]: fixture('retraction/retracted-rw-jama.json'),
+      [JAMA_NOTICE]: fixture('retraction/jama-notice.json'),
       ['labs:' + JAMA]: labs,
     });
     const r = await checkRetraction(JAMA);
@@ -579,7 +592,7 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
 
   it('a positive signal stands even when the other lookups failed', async () => {
     serve({
-      [CARCIN]: fixture('rr-title-carcin.json'),
+      [CARCIN]: fixture('retraction/rr-title-carcin.json'),
       '10.1093/carcin/bgaf065': httpError(429),
       ['labs:' + CARCIN]: httpError(503),
     });
@@ -589,12 +602,12 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
   it.each([['etract and Replace'], ['+Retract and Replace'], ['Retract and Replace']])(
     'the reason %j is recognised (Labs cuts the first character; the CSV prefixes "+")',
     async (reason) => {
-      const labs = clone(fixture('labs-jama.json'));
+      const labs = clone(fixture('retraction/labs-jama.json'));
       labs.data.message['cr-labs-updates'][0].reasons = [reason];
       labs.data.message['cr-labs-updates'][0].notes = '';
       serve({
-        [JAMA]: fixture('retracted-rw-jama.json'),
-        [JAMA_NOTICE]: fixture('jama-notice.json'),
+        [JAMA]: fixture('retraction/retracted-rw-jama.json'),
+        [JAMA_NOTICE]: fixture('retraction/jama-notice.json'),
         ['labs:' + JAMA]: labs,
       });
       expect((await checkRetraction(JAMA)).replacement).toEqual({
@@ -605,7 +618,7 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
   );
 
   it('checkReplacement: false makes no extra request and says unknown / not_requested', async () => {
-    serve({ [JAMA]: fixture('retracted-rw-jama.json') });
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA, { checkReplacement: false });
     expect(r.replacement).toEqual({ status: 'unknown', evidence: [], unknownReason: 'not_requested' });
     expect(crossrefGetMock).toHaveBeenCalledTimes(1);

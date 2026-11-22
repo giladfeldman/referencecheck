@@ -49,6 +49,10 @@
   `citing.publishedDate` are written the same way (`2019-01-05`); an unreadable source date is
   kept as given. A caller date with a time (`2019-1-5T23:30:00-08:00`) was cut to its first ten
   characters (`2019-1-5T2`); it now gives the date as written (`2019-01-05`).
+- **One DOI reader.** The citing DOI is cleaned by `cleanDoiInput`, like the cited DOI (a
+  `doi:` label or a percent-encoded DOI was rejected as invalid, so its timing was `unknown`), and
+  both are checked against the shared `DOI_SHAPE` (or the shortDOI form): `10.12/x` and a
+  10-digit registrant are `invalid_doi` and never sent to Crossref; `10.231/x` is accepted.
 - **Timing never depends on the machine's time zone.** Dates are compared as year, month and day
   numbers, never through `Date` (which reads `2019-01` as UTC midnight, still 2018 in Los
   Angeles). `tests/retraction/timezone.test.ts` re-runs the comparisons in a fresh Node under

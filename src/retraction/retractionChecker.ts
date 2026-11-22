@@ -113,7 +113,8 @@
 import axios from 'axios';
 import { crossrefGet } from '../http/crossref.js';
 import type { MetadataCredentials } from '../http/credentials.js';
-import { cleanDoiInput, formatDateParts } from '../util/normalize.js';
+import { cleanDoiInput, DOI_SHAPE, formatDateParts } from '../util/normalize.js';
+import { isShortFormDoi } from '../doi/doiShape.js';
 import { DEFAULT_POLITE_EMAIL } from '../http/credentials.js';
 
 export type RetractionUnavailableReason =
@@ -560,8 +561,9 @@ function isWorkRecord(message: unknown): message is Record<string, any> {
 }
 
 /** DOI-shaped: `10.<digits>/<suffix>` or the short form `10/<token>`. */
+/** The shared DOI shape (`DOI_SHAPE`) or a shortDOI: one reader for the whole library. */
 function isDoiShaped(doi: string): boolean {
-  return /^10\.\d+\/\S+$/.test(doi) || /^10\/[A-Za-z0-9._-]+$/.test(doi);
+  return DOI_SHAPE.test(doi) || isShortFormDoi(doi);
 }
 
 // ---------------------------------------------------------------- timing

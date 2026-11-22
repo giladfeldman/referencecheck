@@ -48,7 +48,7 @@ jest.unstable_mockModule('../../src/http/crossref.js', () => ({
 const { checkRetraction, checkRetractionDetailed } =
   await import('../../src/retraction/retractionChecker.js');
 
-const DOI = '10.1/abc';
+const DOI = '10.1000/abc';
 
 /**
  * Consult BOTH indexes.

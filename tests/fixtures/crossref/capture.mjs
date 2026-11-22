@@ -84,21 +84,21 @@ const CASES = [
   ['cshl-journal-article.json', '10.1101/pdb.prot099176',
     'A Cold Spring Harbor Protocols journal article under the bioRxiv prefix 10.1101, flagged as a preprint by the prefix heuristic before 0.3.0.'],
   // Added 2026-11-18 for retraction timing and retracted-and-replaced (v0.3.0).
-  ['retracted-rw-jama.json', '10.1001/jama.2018.17933',
+  ['retraction/retracted-rw-jama.json', '10.1001/jama.2018.17933',
     'JAMA 2018, retracted 2019-10-08. Crossref carries a plain Retraction Watch `retraction` (no reason, no replacement link); a later JAMA article with a near-identical title exists (10.1001/jama.2019.11982), but neither Crossref nor Retraction Watch labels it a replacement.'],
-  ['retracted-f1000-versions.json', '10.12688/f1000research.8114.1',
+  ['retraction/retracted-f1000-versions.json', '10.12688/f1000research.8114.1',
     'F1000Research v1, retracted, with `new_version` entries naming v2 and v3 — which were retracted too. Proof that `new_version` is not evidence of a corrected replacement.'],
-  ['rr-title-carcin.json', '10.1093/carcin/bgs140',
+  ['retraction/rr-title-carcin.json', '10.1093/carcin/bgs140',
     'OUP retract-and-replace whose OWN title reads "RETRACTED AND REPLACED:". Its `updated-by` is a plain Retraction Watch `retraction`.'],
-  ['rr-notice-carcin.json', '10.1093/carcin/bgaf065',
+  ['retraction/rr-notice-carcin.json', '10.1093/carcin/bgaf065',
     'Its notice, titled "Retraction and replacement of: ...".'],
-  ['rr-plain-infdis.json', '10.1093/infdis/jiae178',
+  ['retraction/rr-plain-infdis.json', '10.1093/infdis/jiae178',
     'OUP retract-and-replace with a PLAIN title; only the notice title and the Retraction Watch reason say "replace".'],
-  ['rr-notice-infdis.json', '10.1093/infdis/jiae358',
+  ['retraction/rr-notice-infdis.json', '10.1093/infdis/jiae358',
     'Its notice, titled "Retraction and replacement of: ...".'],
-  ['rr-replacement-infdis.json', '10.1093/infdis/jiae357',
+  ['retraction/rr-replacement-infdis.json', '10.1093/infdis/jiae357',
     'The replacement article the Retraction Watch notes link to (".../doi/10.1093/infdis/jiae357/7727684").'],
-  ['jama-notice.json', '10.1001/jama.2019.11954',
+  ['retraction/jama-notice.json', '10.1001/jama.2019.11954',
     'The JAMA notice: "Notice of Retraction. ..." — no replacement wording.'],
 ];
 
@@ -108,11 +108,11 @@ const CASES = [
  * these fixtures pin the shape measured on the capture date.
  */
 const LABS_CASES = [
-  ['labs-rr-infdis.json', '10.1093/infdis/jiae178',
+  ['retraction/labs-rr-infdis.json', '10.1093/infdis/jiae178',
     'Reasons include "etract and Replace" (Labs cuts the first character of every reason); notes link the replacement.'],
-  ['labs-empty-carcin.json', '10.1093/carcin/bgs140',
+  ['retraction/labs-empty-carcin.json', '10.1093/carcin/bgs140',
     'A retract-and-replace for which Labs serves an EMPTY block `{}` — proof that "no Labs record" is not "not replaced".'],
-  ['labs-jama.json', '10.1001/jama.2018.17933',
+  ['retraction/labs-jama.json', '10.1001/jama.2018.17933',
     'A Retraction Watch record whose reasons do NOT include Retract and Replace.'],
 ];
 
