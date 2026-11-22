@@ -1,10 +1,16 @@
 /**
- * v0.3.0 review 7 (2026-11-22). Class: one DOI, written with what a copied link adds after it
- * (a query, a fragment, trailing slashes, a publisher page ending), was read as the DOI by
- * deduplication only. Every other reader passed "10.x/y?utm_source=x" on: Crossref answered
- * 404, and a preprint that only Crossref knows read as clean; a prefix-table preprint was
- * flagged with the link junk as its reported DOI. Every consumer's request is checked in
- * doiInputParity.test.ts (LINK_TAILS); this file pins the answers.
+ * v0.3.0 reviews 7 and 8 (2026-11-22). Class: one DOI, written with what a copied link adds
+ * after it, was read as the DOI by deduplication only. Every other reader passed
+ * "10.x/y?utm_source=x" on: Crossref answered 404, and a preprint that only Crossref knows
+ * read as clean; a prefix-table preprint was flagged with the link junk as its reported DOI.
+ *
+ * Review 8: the first fix cut too much. Real registered DOIs hold a "#..." (28,387 at
+ * DataCite, e.g. 10.15475/dhz/kfn/1918/12/28#page-1) or end in "/pdf" or "/full"
+ * (10.58079/pdf, 10.82364/144/ssu/ref/meta/full); each was checked at the doi.org handle API
+ * 2026-11-22. So: in a resolver link, a raw "?" or "#" starts URL syntax and is cut; written
+ * bare, only a key=value query, a lone final "?" and trailing slashes are. Every consumer's
+ * request is checked in doiInputParity.test.ts (LINK_TAILS, BARE_TAILS); this file pins the
+ * answers and the real DOIs.
  *
  * Also: a preprint link written into the `doi` field is read; a server read from a link
  * reports no DOI beside it.
@@ -15,6 +21,7 @@ const crossrefGetMock = jest.fn<any>();
 jest.unstable_mockModule('../../src/http/crossref.js', () => ({ crossrefGet: crossrefGetMock }));
 const preprint = await import('../../src/preprint/preprintDetectionService.js');
 const norm = await import('../../src/util/normalize.js');
+const shape = await import('../../src/doi/doiShape.js');
 const { doiRelation } = await import('../../src/dedup/similarity.js');
 
 /** A preprint that only Crossref knows (SciELO preprints, posted-content; no prefix row). */
@@ -29,25 +36,54 @@ beforeEach(() => {
   });
 });
 
-const TAILS = ['?utm_source=x', '?versioned=true', '?', '#abs', '/', '//', '/full', '/pdf/', '/abstract', '?a=1#b', '/?utm_medium=email', '/full?casa_token=AbC.', '#abs).'];
+const LINK_TAILS = ['?utm_source=x', '?versioned=true', '?', '#abs', '/', '//', '?a=1#b', '/?utm_medium=email', '#abs).', '?casa_token=AbC.'];
+const BARE_TAILS = ['?utm_source=x', '?versioned=true', '?', '/', '//', '?a=1#b', '/?utm_medium=email', '?utm_source=x.'];
 
 describe('cleanDoiInput drops what a link adds after a DOI', () => {
-  it.each(TAILS)('10.1000/abc%s -> 10.1000/abc', (tail) => {
-    expect(norm.cleanDoiInput(`10.1000/abc${tail}`)).toBe('10.1000/abc');
+  it.each(LINK_TAILS)('https://doi.org/10.1000/abc%s -> 10.1000/abc', (tail) => {
     expect(norm.cleanDoiInput(`https://doi.org/10.1000/abc${tail}`)).toBe('10.1000/abc');
+    expect(norm.cleanDoiInput(`doi.org/10.1000/abc${tail}`)).toBe('10.1000/abc');
   });
-  it('keeps the "#" that ends a Wiley SICI DOI', () => {
-    const sici = '10.1002/(SICI)1099-0992(199711/12)27:6<635::AID-EJSP835>3.0.CO;2-#';
-    expect(norm.cleanDoiInput(sici)).toBe(sici);
-    expect(norm.cleanDoiInput(`${sici}.`)).toBe(sici);
+  it.each(BARE_TAILS)('10.1000/abc%s -> 10.1000/abc', (tail) => {
+    expect(norm.cleanDoiInput(`10.1000/abc${tail}`)).toBe('10.1000/abc');
   });
-  it('keeps a "?" or "/" inside the DOI', () => {
-    expect(norm.cleanDoiInput('10.1002/(SICI)1099-0992(199711/12)27:6')).toBe('10.1002/(SICI)1099-0992(199711/12)27:6');
+  it.each(['?utm_source=x', '#abs', '/'])('shortDOI 10/gt3vmw%s in a link -> 10/gt3vmw', (tail) => {
+    expect(norm.cleanDoiInput(`https://doi.org/10/gt3vmw${tail}`)).toBe('10/gt3vmw');
+  });
+});
+
+describe('real registered DOIs stay whole (each resolved at the doi.org handle API, 2026-11-22)', () => {
+  const REAL = ['10.58079/pdf', '10.82364/144/ssu/ref/meta/full', '10.15475/dhz/kfn/1918/12/28#page-1',
+    '10.1002/(SICI)1099-0992(199711/12)27:6<635::AID-EJSP835>3.0.CO;2-#'];
+  it.each(REAL)('%s, written bare', (doi) => {
+    expect(norm.cleanDoiInput(doi)).toBe(doi);
+    expect(norm.cleanDoiInput(`doi: ${doi}.`)).toBe(doi);
+    expect(shape.isMalformedDoi(doi)).toBe(false);
+  });
+  it.each(REAL)('%s, in a link with its "#" encoded', (doi) => {
+    expect(norm.cleanDoiInput(`https://doi.org/${doi.replace('#', '%23')}`)).toBe(doi);
+  });
+  it('a SICI DOI in a link keeps its final raw "#"', () => {
+    const sici = '10.1002/1099-1379(200009)21:6<649::AID-JOB45>3.0.CO;2-#';
+    expect(norm.cleanDoiInput(`https://doi.org/${sici}`)).toBe(sici);
+  });
+  it('two DOIs differing only after "#" are two works; one fragment beside the plain DOI is one (owner default, round 11)', () => {
+    const ref = (doi: string) => ({ id: doi, raw_text: 'x', doi }) as any;
+    const a = '10.15475/dhz/kfn/1918/12/28#page-1';
+    const b = '10.15475/dhz/kfn/1918/12/28#article-f154ec251ff3e13f58359f93ff877690';
+    expect(doiRelation(ref(a), ref(b))).toBe('different');
+    expect(doiRelation(ref(a), ref('10.15475/dhz/kfn/1918/12/28'))).toBe('same');
+    expect(doiRelation(ref(a), ref(a))).toBe('same');
+    expect(doiRelation(ref(a), ref('10.15475/dhz/kfn/1918/12/30#page-1'))).toBe('different');
   });
 });
 
 describe('preprint check: a Crossref-only preprint written with a link tail is still a preprint', () => {
-  const forms = TAILS.flatMap((t) => [{ doi: `${CP}${t}` }, { url: `https://doi.org/${CP}${t}` }]);
+  const forms = [
+    ...BARE_TAILS.map((t) => ({ doi: `${CP}${t}` })),
+    ...LINK_TAILS.map((t) => ({ doi: `https://doi.org/${CP}${t}` })),
+    ...LINK_TAILS.map((t) => ({ url: `https://doi.org/${CP}${t}` })),
+  ];
   it.each(forms)('%j', async (ref) => {
     const issues = await preprint.checkReferenceForPreprint({ id: 'r', raw_text: 'x', ...ref } as any);
     expect(issues.map((i: any) => [i.code, i.metadata?.doi])).toEqual([['IS_PREPRINT', CP]]);
@@ -59,6 +95,7 @@ describe('preprint check: a prefix-table preprint reports the DOI, not the link 
     ['10.1101/2020.03.22.002386v1.full?versioned=true', '10.1101/2020.03.22.002386v1.full'],
     ['10.2139/ssrn.123?x=1', '10.2139/ssrn.123'],
     ['10.31234/osf.io/abcde/', '10.31234/osf.io/abcde'],
+    ['https://doi.org/10.31234/osf.io/abcde#abs', '10.31234/osf.io/abcde'],
   ])('%s', async (doi, reported) => {
     const issues = await preprint.checkReferenceForPreprint({ id: 'r', raw_text: 'x', doi } as any);
     expect(issues.map((i: any) => [i.code, i.metadata?.doi])).toEqual([['IS_PREPRINT', reported]]);
@@ -66,13 +103,16 @@ describe('preprint check: a prefix-table preprint reports the DOI, not the link 
 });
 
 describe('deduplication reads the same DOI', () => {
-  it.each(TAILS)('10.1000/abc%s is the same DOI as 10.1000/abc', (tail) => {
-    expect(doiRelation({ id: 'a', raw_text: 'x', doi: `10.1000/abc${tail}` } as any, { id: 'b', raw_text: 'x', doi: '10.1000/abc' } as any)).toMatch(/^same/);
+  const ref = (doi: string) => ({ id: doi, raw_text: 'x', doi }) as any;
+  it.each(BARE_TAILS)('10.1000/abc%s is the same DOI as 10.1000/abc', (tail) => {
+    expect(doiRelation(ref(`10.1000/abc${tail}`), ref('10.1000/abc'))).toMatch(/^same/);
+  });
+  it.each(['/full', '/pdf', '/abstract/'])('a publisher page ending %s is the same work (comparison only)', (tail) => {
+    expect(doiRelation(ref(`10.3389/fpsyg.2020.01234${tail}`), ref('10.3389/fpsyg.2020.01234'))).toMatch(/^same/);
+    expect(norm.cleanDoiInput(`10.3389/fpsyg.2020.01234${tail}`)).toBe(`10.3389/fpsyg.2020.01234${tail.replace(/\/$/, '')}`);
   });
   it('two SICI DOIs differing only before "#" stay different', () => {
-    const a = '10.1002/1099-1379(200009)21:6<649::AID-JOB45>3.0.CO;2-#';
-    const b = '10.1002/1099-1379(200009)21:6<650::AID-JOB46>3.0.CO;2-#';
-    expect(doiRelation({ id: 'a', raw_text: 'x', doi: a } as any, { id: 'b', raw_text: 'x', doi: b } as any)).toBe('different');
+    expect(doiRelation(ref('10.1002/1099-1379(200009)21:6<649::AID-JOB45>3.0.CO;2-#'), ref('10.1002/1099-1379(200009)21:6<650::AID-JOB46>3.0.CO;2-#'))).toBe('different');
   });
 });
 

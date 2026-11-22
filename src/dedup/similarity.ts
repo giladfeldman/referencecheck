@@ -375,14 +375,25 @@ export function scoreMetadataCompleteness(ref: ReferenceInput): number {
  * tool proposed, not one the author wrote, and a wrong suggestion must not force two
  * references into one (v0.3.0 review 3, decided).
  */
-function comparableDoi(ref: ReferenceInput): string {
-  let d = cleanDoiInput(ref.doi).toLowerCase();
-  if (!DOI_SHAPE.test(d)) return '';
-  // A link's query, fragment and page ending are dropped by cleanDoiInput, for every reader.
+function comparableDoi(ref: ReferenceInput): { base: string; fragment: string } | null {
+  const whole = cleanDoiInput(ref.doi).toLowerCase();
+  if (!DOI_SHAPE.test(whole)) return null;
+  // A link's query and fragment are dropped by cleanDoiInput, for every reader. Written bare,
+  // a "#..." is kept apart here: some registered DOIs hold one (10.15475/.../28#page-1 and
+  // .../28#article-... are two DOIs), so two different fragments are two works, while one
+  // fragment beside the plain DOI is one work (owner default, v0.3.0 round 11; review 8).
+  // A final "#" (Wiley SICI DOIs end in "CO;2-#") is part of the DOI.
+  const at = whole.search(/#./);
+  let d = at >= 0 ? whole.slice(0, at) : whole;
+  const fragment = at >= 0 ? whole.slice(at) : '';
+  // A publisher page ending ("10.3389/x.01234/full" copied from a journal page) is dropped
+  // here only, for comparison: some registered DOIs end in one (10.58079/pdf), so lookups
+  // keep it, and two references that differ only by it are one work.
+  d = d.replace(/\/(?:full|pdf|epdf|abstract)\/?$/, '');
   // A version suffix is dropped only for registrants that version that way (DOI_REGISTRANTS
   // in src/doi/registrants.ts); elsewhere `10.5555/a.v1` and `.v2` are two works.
   d = doiWithoutVersion(d);
-  return DOI_SHAPE.test(d) ? d : '';
+  return DOI_SHAPE.test(d) ? { base: d, fragment } : null;
 }
 
 /** `same` / `different` by DOI alone, `null` unless both references carry one. */
@@ -390,7 +401,8 @@ function doiIdentity(ref1: ReferenceInput, ref2: ReferenceInput): 'same' | 'diff
   const d1 = comparableDoi(ref1);
   const d2 = comparableDoi(ref2);
   if (!d1 || !d2) return null;
-  return d1 === d2 ? 'same' : 'different';
+  if (d1.base !== d2.base) return 'different';
+  return d1.fragment === d2.fragment || !d1.fragment || !d2.fragment ? 'same' : 'different';
 }
 
 /**

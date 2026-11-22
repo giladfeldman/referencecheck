@@ -70,13 +70,19 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     A preprint link written into the DOI field (`arxiv.org/abs/...`) is now read like the
     link field, and a server read from a link or the text no longer reports a DOI beside it
     (a Zenodo DOI was reported next to an arXiv link's verdict).
-  - **A DOI copied with a link's tail was looked up as written.** `cleanDoiInput` now drops a
-    query (`?utm_source=x`, `?versioned=true`), a fragment (`#abs`), trailing slashes and a
-    publisher page ending (`/full`, `/pdf`, `/epdf`, `/abstract`) after a DOI, for every reader.
-    Before, only deduplication dropped them: the preprint, retraction, Crossref, OpenAlex and
-    citation-count lookups asked for `10.x/y?utm_source=x`, so a preprint known only to Crossref
+  - **A DOI copied with a link's tail was looked up as written.** In a resolver link
+    (`https://doi.org/...`, `doi.org/...`) a raw `?` or `#` starts the URL's query or fragment,
+    and `cleanDoiInput` now cuts it there, for every reader; a DOI written bare loses only a
+    `key=value` query (`?utm_source=x`), a lone final `?` and trailing slashes. Before, only
+    deduplication dropped these, so the preprint, retraction, Crossref, OpenAlex and
+    citation-count lookups asked for `10.x/y?utm_source=x`, a preprint known only to Crossref
     read as clean, and a prefix-table preprint was reported with the tail in its DOI. A `#`
-    that ends a DOI stays (Wiley SICI DOIs end in `CO;2-#`).
+    or a page ending written bare is kept: registered DOIs hold them (28,387 DataCite DOIs
+    contain `#`, such as `10.15475/dhz/kfn/1918/12/28#page-1`; `10.58079/pdf` and
+    `10.82364/144/ssu/ref/meta/full` are DOIs), and a final `#` in a link stays (Wiley SICI
+    DOIs end in `CO;2-#`). Deduplication no longer treats two DOIs that differ after a `#` as
+    one work (they were merged since 0.2.x); a DOI with a fragment beside the same DOI without
+    one, and a page ending (`/full`, `/pdf`), are still one work.
   - The DOAJ and OpenAlex requests now identify as `referencecheck`, with the polite-pool
     contact address.
 - **Expressions of concern were never detected.** Both sources read fields their APIs do not

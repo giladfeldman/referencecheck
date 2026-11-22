@@ -26,6 +26,8 @@ export const DOI_START = /^10\.\d{3,9}\//;
 
 /** Wrappers a DOI arrives in: resolver URLs (any scheme, dx./www.), bare host, `doi:` labels. */
 const DOI_WRAPPER = /^(?:(?:https?:\/\/)?(?:dx\.|www\.)?doi\.org\/|doi:\s*)/i;
+/** A resolver link (not a `doi:` label): what follows the DOI is URL syntax. */
+const DOI_LINK = /^(?:https?:\/\/)?(?:dx\.|www\.)?doi\.org\//i;
 
 /**
  * Reduce any written form of a DOI to the DOI itself: surrounding whitespace removed,
@@ -37,8 +39,16 @@ const DOI_WRAPPER = /^(?:(?:https?:\/\/)?(?:dx\.|www\.)?doi\.org\/|doi:\s*)/i;
 export function cleanDoiInput(doi: string | null | undefined): string {
   if (typeof doi !== 'string') return '';
   let d = doi.trim();
+  const isLink = DOI_LINK.test(d);
   // Twice: "https://doi.org/doi:10.x/y" occurs in hand-built links.
   for (let i = 0; i < 2; i++) d = d.replace(DOI_WRAPPER, '').trim();
+  // In a resolver link a raw "?" starts the query and a raw "#" the fragment: neither is part
+  // of the DOI (a DOI's own "#" or "?" is written %23 / %3F in a link, and is decoded below).
+  // Cut before decoding. A lone final "#" stays: Wiley SICI DOIs end in "CO;2-#".
+  if (isLink) {
+    const cut = d.search(/[?#]/);
+    if (cut >= 0 && d.slice(cut) !== '#') d = d.slice(0, cut);
+  }
   if (/%[0-9a-f]{2}/i.test(d)) {
     try {
       const decoded = decodeURIComponent(d);
@@ -63,19 +73,18 @@ export function cleanDoiInput(doi: string | null | undefined): string {
 }
 
 /**
- * What a link adds after a DOI is not part of it (v0.3.0 review 7): a query
- * ("?utm_source=x", "?versioned=true", a lone "?"), a fragment ("#abs"), trailing slashes
- * and a publisher page ending ("/full", "/pdf", "/epdf", "/abstract"). Before, only
- * deduplication dropped them, so the preprint, retraction and Crossref lookups asked for
- * "10.x/y?utm_source=x", got no record, and a preprint read as clean. A "#" that ends the
- * DOI stays: Wiley SICI DOIs end in "CO;2-#" (three in the labelled set).
+ * What a copied link leaves after a DOI written without its resolver (v0.3.0 reviews 7 and
+ * 8): a query of `key=value` pairs ("?utm_source=x"), a lone final "?", and trailing
+ * slashes. Before, only deduplication dropped them, so the preprint, retraction and Crossref
+ * lookups asked for "10.x/y?utm_source=x", got no record, and a preprint read as clean.
+ * Measured 2026-11-22 (doi.org handle API, DataCite search): "10.5334/irsp.571/" is not a
+ * DOI and "10.5334/irsp.571" is; one DataCite DOI holds "?" (10.4125/pd00??th), none a
+ * `key=value` query. NOT cut from a DOI written bare: a "#..." fragment (28,387 DataCite DOIs
+ * hold one, e.g. 10.15475/dhz/kfn/1918/12/28#page-1, a different DOI from .../28) and a
+ * page ending ("/full", "/pdf": 10.58079/pdf and 10.82364/144/ssu/ref/meta/full are DOIs).
  */
 function stripLinkTail(doi: string): string {
-  return doi
-    .replace(/\?(?:\S*=\S*)?$/, '')
-    .replace(/#.+$/, '')
-    .replace(/\/+$/, '')
-    .replace(/\/(?:full|pdf|epdf|abstract)$/i, '');
+  return doi.replace(/\?(?:\S*=\S*)?$/, '').replace(/\/+$/, '');
 }
 
 function countWhitespace(s: string): number {
