@@ -82,7 +82,10 @@ so it can never fire and reports clean**: the expression-of-concern check, below
     `10.82364/144/ssu/ref/meta/full` are DOIs), and a final `#` in a link stays (Wiley SICI
     DOIs end in `CO;2-#`). Deduplication no longer treats two DOIs that differ after a `#` as
     one work (they were merged since 0.2.x); a DOI with a fragment beside the same DOI without
-    one, and a page ending (`/full`, `/pdf`), are still one work.
+    one, and a page ending (`/full`, `/pdf`), are still one work, except where dropping the
+    ending would leave no DOI (`10.58079/pdf` is a DOI; it had lost its DOI identity and could
+    merge with a work of another DOI). A link inside a `doi:` label is read as a link, and a
+    `?` decoded from `%3F` is part of the DOI.
   - The DOAJ and OpenAlex requests now identify as `referencecheck`, with the polite-pool
     contact address.
 - **Expressions of concern were never detected.** Both sources read fields their APIs do not

@@ -389,7 +389,10 @@ function comparableDoi(ref: ReferenceInput): { base: string; fragment: string } 
   // A publisher page ending ("10.3389/x.01234/full" copied from a journal page) is dropped
   // here only, for comparison: some registered DOIs end in one (10.58079/pdf), so lookups
   // keep it, and two references that differ only by it are one work.
-  d = d.replace(/\/(?:full|pdf|epdf|abstract)\/?$/, '');
+  // Only when what remains is still a DOI: 10.58079/pdf is itself a DOI, and reading it as
+  // "10.58079" left it with no DOI, so it merged with a work of another DOI (v0.3.0 review 9).
+  const withoutPage = d.replace(/\/(?:full|pdf|epdf|abstract)\/?$/, '');
+  if (DOI_SHAPE.test(withoutPage)) d = withoutPage;
   // A version suffix is dropped only for registrants that version that way (DOI_REGISTRANTS
   // in src/doi/registrants.ts); elsewhere `10.5555/a.v1` and `.v2` are two works.
   d = doiWithoutVersion(d);

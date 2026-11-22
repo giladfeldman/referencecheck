@@ -39,16 +39,23 @@ const DOI_LINK = /^(?:https?:\/\/)?(?:dx\.|www\.)?doi\.org\//i;
 export function cleanDoiInput(doi: string | null | undefined): string {
   if (typeof doi !== 'string') return '';
   let d = doi.trim();
-  const isLink = DOI_LINK.test(d);
-  // Twice: "https://doi.org/doi:10.x/y" occurs in hand-built links.
-  for (let i = 0; i < 2; i++) d = d.replace(DOI_WRAPPER, '').trim();
+  // Twice: "https://doi.org/doi:10.x/y" and "doi: https://doi.org/10.x/y" occur in
+  // hand-built links. A link inside a label is still a link (v0.3.0 review 9).
+  let isLink = false;
+  for (let i = 0; i < 2; i++) {
+    if (DOI_LINK.test(d)) isLink = true;
+    d = d.replace(DOI_WRAPPER, '').trim();
+  }
   // In a resolver link a raw "?" starts the query and a raw "#" the fragment: neither is part
   // of the DOI (a DOI's own "#" or "?" is written %23 / %3F in a link, and is decoded below).
-  // Cut before decoding. A lone final "#" stays: Wiley SICI DOIs end in "CO;2-#".
+  // Cut before decoding. A final "#" stays, with or without a query after it: Wiley SICI DOIs
+  // end in "CO;2-#".
   if (isLink) {
     const cut = d.search(/[?#]/);
-    if (cut >= 0 && d.slice(cut) !== '#') d = d.slice(0, cut);
+    if (cut >= 0) d = /^#(?:\?.*)?$/.test(d.slice(cut)) ? d.slice(0, cut + 1) : d.slice(0, cut);
   }
+  // Only a "?" written as such starts a query; one decoded from %3F is part of the DOI.
+  const rawQuery = d.includes('?');
   if (/%[0-9a-f]{2}/i.test(d)) {
     try {
       const decoded = decodeURIComponent(d);
@@ -62,11 +69,14 @@ export function cleanDoiInput(doi: string | null | undefined): string {
     }
   }
   d = d.trim();
-  // A shortDOI ("10/gt3vmw") arrives in the same links and citations as a full DOI.
-  if (DOI_START.test(d) || /^10\/[A-Za-z0-9]/.test(d)) {
+  // A shortDOI ("10/gt3vmw") arrives in the same links and citations as a full DOI. Its
+  // token is letters and digits only, so a "#..." after it is never part of it.
+  const isShort = /^10\/[A-Za-z0-9]/.test(d);
+  if (isShort) d = d.replace(/#.*$/, '');
+  if (DOI_START.test(d) || isShort) {
     for (let prev = ''; prev !== d; ) {
       prev = d;
-      d = stripLinkTail(stripCitationTail(d));
+      d = stripLinkTail(stripCitationTail(d), rawQuery);
     }
   }
   return d;
@@ -83,8 +93,8 @@ export function cleanDoiInput(doi: string | null | undefined): string {
  * hold one, e.g. 10.15475/dhz/kfn/1918/12/28#page-1, a different DOI from .../28) and a
  * page ending ("/full", "/pdf": 10.58079/pdf and 10.82364/144/ssu/ref/meta/full are DOIs).
  */
-function stripLinkTail(doi: string): string {
-  return doi.replace(/\?(?:\S*=\S*)?$/, '').replace(/\/+$/, '');
+function stripLinkTail(doi: string, rawQuery: boolean): string {
+  return (rawQuery ? doi.replace(/\?(?:\S*=\S*)?$/, '') : doi).replace(/\/+$/, '');
 }
 
 function countWhitespace(s: string): number {

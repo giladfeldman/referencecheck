@@ -78,6 +78,34 @@ describe('real registered DOIs stay whole (each resolved at the doi.org handle A
   });
 });
 
+describe('review 9: one DOI, every wrapper, one reading', () => {
+  const ref = (doi: string) => ({ id: doi, raw_text: 'x', doi }) as any;
+  it('10.58079/pdf keeps its DOI identity in deduplication (a page ending is dropped only when a DOI remains)', () => {
+    expect(doiRelation(ref('10.58079/pdf'), ref('10.58079/pdf'))).toBe('same');
+    expect(doiRelation(ref('10.58079/pdf'), ref('10.58079/other'))).toBe('different');
+    expect(doiRelation(ref('10.58079/pdf'), ref('10.1234/other'))).toBe('different');
+  });
+  it.each(['https://doi.org/10.1000/x#f', 'doi: https://doi.org/10.1000/x#f', 'DOI:https://dx.doi.org/10.1000/x?utm_source=a', 'https://doi.org/doi:10.1000/x#f'])(
+    'a link inside a doi: label is a link: %s -> 10.1000/x', (v) => {
+      expect(norm.cleanDoiInput(v)).toBe('10.1000/x');
+    });
+  it('a SICI DOI followed by a query keeps its final "#", in a link and bare', () => {
+    const sici = '10.1002/1099-1379(200009)21:6<649::AID-JOB45>3.0.CO;2-#';
+    expect(norm.cleanDoiInput(`https://doi.org/${sici}?utm_source=x`)).toBe(sici);
+    expect(norm.cleanDoiInput(`${sici}?utm_source=x`)).toBe(sici);
+  });
+  it('a "?" decoded from %3F is part of the DOI; a raw one is a query', () => {
+    expect(norm.cleanDoiInput('https://doi.org/10.1000/a%3Fb%3Dc')).toBe('10.1000/a?b=c');
+    expect(norm.cleanDoiInput('10.1000/a%3Fb%3Dc')).toBe('10.1000/a?b=c');
+    expect(norm.cleanDoiInput('10.1000/a?b=c')).toBe('10.1000/a');
+  });
+  it('a shortDOI with a fragment reads the same bare and in a link', () => {
+    expect(norm.cleanDoiInput('10/abc#x')).toBe('10/abc');
+    expect(shape.isMalformedDoi('10/abc#x')).toBe(false);
+    expect(shape.isMalformedDoi('https://doi.org/10/abc#x')).toBe(false);
+  });
+});
+
 describe('preprint check: a Crossref-only preprint written with a link tail is still a preprint', () => {
   const forms = [
     ...BARE_TAILS.map((t) => ({ doi: `${CP}${t}` })),
