@@ -139,8 +139,10 @@ describe('review 12 round 2: a field is read from the reply, never defaulted', (
   });
 
   it('the summary counts hybrid papers', () => {
-    const issue = (s: string) => ({ type: 'open-access', severity: 'info', code: 'OA_AVAILABLE', description: '', location: '', metadata: { openAccessStatus: s } });
-    expect(lib.getOpenAccessSummary([issue('hybrid'), issue('bronze'), issue('gold')])).toEqual({ openAccessCount: 3, goldOA: 1, hybridOA: 1, greenOA: 0, bronzeOA: 1 });
+    const issue = (s: string | undefined) => ({ type: 'open-access', severity: 'info', code: 'OA_AVAILABLE', description: '', location: '', metadata: { openAccessStatus: s } });
+    expect(lib.getOpenAccessSummary([issue('hybrid'), issue('bronze'), issue('gold')])).toEqual({ openAccessCount: 3, goldOA: 1, hybridOA: 1, greenOA: 0, bronzeOA: 1, unknownOA: 0 });
+    // An open paper with no reported type is counted, so the type counts sum to the total (review 13).
+    expect(lib.getOpenAccessSummary([issue('gold'), issue(undefined)])).toEqual({ openAccessCount: 2, goldOA: 1, hybridOA: 0, greenOA: 0, bronzeOA: 0, unknownOA: 1 });
   });
 
   it('simple-text stage: a candidate Crossref could not validate is a stage error, not only a rejection', async () => {
@@ -168,6 +170,8 @@ describe('review 12: the part rule', () => {
     ['no part written, record of Part II', 'Smith, J. (2019). Causal inference in practice. Journal of Statistics, 4, 1-10.', { title: 'Causal inference in practice, Part II', authors: SMITH, year: 2019 }],
     ['Part I written before the title, record of Part II', 'Smith, J. (2019). Part I: Causal inference in practice. Journal of Statistics, 4, 1-10.', { title: 'Causal inference in practice, Part II', authors: SMITH, year: 2019 }],
     ['no part written, record ending in a bare roman part', 'Smith, J. (2019). Causal inference in practice. Journal of Statistics, 4, 1-10.', { title: 'Causal inference in practice II', authors: SMITH, year: 2019 }],
+    ['Part III written, record of Part I with a numeral inside the title (review 13)', 'Smith, J. (2019). Phase III trial of a drug, Part III. Journal of Statistics, 4, 1-10.', { title: 'Phase III trial of a drug, Part I', authors: SMITH, year: 2019 }],
+    ['Part II written, record of Part I of a Type II title (review 13)', 'Smith, J. (2019). Type II diabetes in clinics, Part II. Journal of Statistics, 4, 1-10.', { title: 'Type II diabetes in clinics, Part I', authors: SMITH, year: 2019 }],
   ])('%s is rejected', async (_name, reference, rec) => {
     expect(await accepts(reference, rec as Rec)).toBe(false);
   });
@@ -179,6 +183,7 @@ describe('review 12: the part rule', () => {
     ['a title ending in a numeral after a short word (review 12 round 2)', 'Smith, J. (2020). Memory of survivors of World War II. Journal of Things, 1, 2-3.', { title: 'Memory of survivors of World War II', authors: SMITH, year: 2020 }],
     ['a title ending in a three-letter numeral', 'Smith, J. (2020). Attitudes toward Rocky III. Journal of Things, 1, 2-3.', { title: 'Attitudes toward Rocky III', authors: SMITH, year: 2020 }],
     ['a title with numerals inside and at the end', 'Smith, J. (2020). Psychology of Henry VIII and Pope Pius IX. Journal of Things, 1, 2-3.', { title: 'Psychology of Henry VIII and Pope Pius IX', authors: SMITH, year: 2020 }],
+    ['the same part beside a numeral inside the title (review 13)', 'Smith, J. (2019). Phase III trial of a drug, Part I. Journal of Statistics, 4, 1-10.', { title: 'Phase III trial of a drug, Part I', authors: SMITH, year: 2019 }],
     ['a numeral inside the title', 'Smith, J. (2019). Type II diabetes in rural clinics. Journal of Statistics, 4, 1-10.', { title: 'Type II diabetes in rural clinics', authors: SMITH, year: 2019 }],
     ['a roman numeral opening the next sentence (a journal name)', 'Smith, J. (2019). Causal inference in practice. II Farmaco, 4, 1-10.', { title: 'Causal Inference in Practice', authors: SMITH, year: 2019 }],
   ])('%s is accepted', async (_name, reference, rec) => {

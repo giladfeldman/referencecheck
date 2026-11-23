@@ -451,7 +451,8 @@ access, else `[]` (also on a 404 or network failure).
 
 ### `getOpenAccessSummary(issues)`
 
-`{ openAccessCount, goldOA, hybridOA, greenOA, bronzeOA }`.
+`{ openAccessCount, goldOA, hybridOA, greenOA, bronzeOA, unknownOA }`; `unknownOA` counts open papers
+whose type Unpaywall did not report, so the five type counts sum to `openAccessCount`.
 
 ```ts
 interface OpenAccessIssue {

@@ -9,6 +9,11 @@ The same sweep found a second class, **a check that reads a field its source doe
 so it can never fire and reports clean**: the expression-of-concern check, below.
 
 ### Fixed
+- **Review 13 (2026-11-23).** A reference part is compared with the part the record names
+  ("..., Part I", a final "II"), not with any numeral of its title: "Phase III trial ..., Part I"
+  cited as "Part III" is rejected (round 2 had accepted it). `getOpenAccessSummary` adds
+  `unknownOA`, the open papers whose type Unpaywall did not report, so the type counts sum to
+  `openAccessCount`.
 - **Review 12 round 2 (2026-11-23), class "a field is defaulted or guessed instead of read from
   the reply".** The open-access type was never read from Unpaywall: every open paper was `gold`
   (an open-access journal) or else `green`, so bronze and hybrid papers were reported as GREEN.

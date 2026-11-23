@@ -112,6 +112,8 @@ export function getSummaryData(issues: OpenAccessIssue[]): {
   hybridOA: number;
   greenOA: number;
   bronzeOA: number;
+  /** Open, but Unpaywall gave no type: the type counts sum to openAccessCount. */
+  unknownOA: number;
 } {
   const statuses = issues
     .map(i => i.metadata?.openAccessStatus)
@@ -123,5 +125,6 @@ export function getSummaryData(issues: OpenAccessIssue[]): {
     hybridOA: statuses.filter(s => s === 'hybrid').length,
     greenOA: statuses.filter(s => s === 'green').length,
     bronzeOA: statuses.filter(s => s === 'bronze').length,
+    unknownOA: issues.length - statuses.length,
   };
 }

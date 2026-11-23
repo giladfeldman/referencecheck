@@ -861,7 +861,11 @@ function ownTitle(referenceText: string, item: any, titleStems: ReadonlySet<stri
     // numeral after a short word ("World War II", "War" being no title word) is not seen above.
     const named = recordNamedPart(recordWords);
     const inSentence = named !== null && seq.slice(start).some((x) => partNumber([x.w]) === named || (x.w in ROMAN && ROMAN[x.w] === named));
-    const part = written !== null ? !recordParts(recordWords).includes(written) : named !== null && !inSentence;
+    // A part the record names ("..., Part I", a final "II") is the one to match; any numeral of the
+    // title counts only when it names none ("Type II diabetes ..., Part I" is part 1, review 13).
+    const part = written !== null
+      ? (named !== null ? written !== named : !recordParts(recordWords).includes(written))
+      : named !== null && !inSentence;
     best = { words, part, hits: hitAt.length };
   }
   return best && { words: best.words, part: best.part };
