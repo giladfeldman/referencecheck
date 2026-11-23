@@ -122,7 +122,11 @@ describe('a source that answered is not the same as a source that did not', () =
 
   it('a 404 IS an answer — the index was reached and holds no record', async () => {
     // The control that keeps the fix from becoming "everything is unchecked".
-    axiosGetMock.mockRejectedValue(httpError(404));
+    // The API's own 404 is a JSON body; an HTML 404 from a parked host is not an answer
+    // (v0.3.0 review 12, tests/parity/review12Answers.test.ts).
+    const notIndexed = httpError(404);
+    notIndexed.response.data = { message: 'not found' };
+    axiosGetMock.mockRejectedValue(notIndexed);
     crossrefGetMock.mockResolvedValue(fixture('not-retracted.json'));
 
     const r = await checkRetraction(DOI, BOTH);

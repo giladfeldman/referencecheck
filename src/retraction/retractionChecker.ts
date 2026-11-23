@@ -229,7 +229,14 @@ function classifyRequestFailure(
 ): RetractionSourceUnavailable | null {
   const status = error?.response?.status;
   if (status === 404) {
-    if (source === 'openretractions') return null; // answered: not in this index
+    // answered: not in this index -- but only when the 404 is the API's own JSON
+    // answer; a parked or misrouted host's HTML 404 is no answer (v0.3.0 review 12).
+    if (source === 'openretractions') {
+      const body = error?.response?.data;
+      return body && typeof body === 'object' && !Array.isArray(body)
+        ? null
+        : { source, reason: 'server_error', detail: '404 without a JSON body' };
+    }
     return { source, reason: 'not_indexed', detail: '404' };
   }
   if (status === 429) return { source, reason: 'rate_limited', detail: '429' };
@@ -447,8 +454,13 @@ export async function checkRetraction(
         creds
       );
 
-      if (crossrefResponse.status === 200) {
-        const message = crossrefResponse.data?.message ?? {};
+      const message = crossrefResponse.data?.message;
+      if (crossrefResponse.status === 200 && (!message || typeof message !== 'object' || Array.isArray(message))) {
+        // A 200 whose body is no work record (a captive portal's HTML, an empty
+        // body) is not Crossref's answer (v0.3.0 review 12): before, `?? {}` read
+        // it as a work with no retraction, so it counted as checked-clean.
+        sourcesUnavailable.push({ source: 'crossref', reason: 'server_error', detail: '200 without a work record' });
+      } else if (crossrefResponse.status === 200) {
         sourcesChecked.push('crossref');
 
         // The real relation key. NOT `update` (which Crossref does not serve)

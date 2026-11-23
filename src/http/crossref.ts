@@ -141,9 +141,13 @@ export async function validateDOI(doi: string, creds?: MetadataCredentials): Pro
     let crossrefError: any;
     try {
       const response = await crossrefGet(`${CROSSREF_API}/${encodeURIComponent(cleanDOI)}`, {}, creds);
+      const message = response.data?.message;
+      if (response.status === 200 && (!message || typeof message !== 'object' || Array.isArray(message))) {
+        // A 200 without a work record (a captive portal's HTML) is no answer: report the
+        // source as unavailable, never as an invalid DOI (v0.3.0 review 12; it was a TypeError).
+        return { valid: false, error: '[Crossref API] 200 without a work record' };
+      }
       if (response.status === 200) {
-        const data = response.data;
-        const message = data.message;
 
         const validResult = {
           valid: true,
@@ -763,6 +767,20 @@ function recordPart(words: readonly string[]): number | null {
   return null;
 }
 
+/** The part a record's title names unambiguously: "Part II" / "Pt 2" anywhere, or a roman
+ *  numeral (ii to x) as its last word ("... in practice II"). A numeral inside the title ("Type II
+ *  diabetes") is not one. Used when the reference writes no part (review 12). */
+function recordNamedPart(words: readonly string[]): number | null {
+  for (let i = 0; i < words.length; i++) {
+    if (PART_WORD.test(words[i])) {
+      const n = partNumber(words.slice(i));
+      if (n !== null) return n;
+    }
+  }
+  const lastWord = words[words.length - 1] ?? '';
+  return words.length > 1 && lastWord in ROMAN && !['i', 'v', 'x'].includes(lastWord) ? ROMAN[lastWord] : null;
+}
+
 /** A token that is an author's initials ("J.", "SJ,", "M.-L."). */
 const INITIALS_TOKEN = /^\p{Lu}(?:[.-]{0,2}\p{Lu}){0,2}[.,;]*$/u;
 
@@ -821,9 +839,17 @@ function ownTitle(referenceText: string, item: any, titleStems: ReadonlySet<stri
     // Inference. Part I."), "Part" itself left out when the record's title has it.
     let tail = last;
     while (tail > first && PART_WORD.test(seq[tail].w)) tail -= 1;
-    const after = [...seq.slice(tail + 1).map((x) => x.w), ...titleSequence((sentences[si + 1] ?? []).join(' '))];
-    const written = partNumber(after);
-    const part = written !== null && written !== recordPart(titleSequence(crossrefTitle(item)));
+    // The next sentence counts only when it opens with "Part": a bare numeral there is the next
+    // field ("II Farmaco", a journal), not a part (review 12).
+    const next = titleSequence((sentences[si + 1] ?? []).join(' '));
+    const after = [...seq.slice(tail + 1).map((x) => x.w), ...(PART_WORD.test(next[0] ?? '') ? next : [])];
+    let written = partNumber(after);
+    // "Part II: Causal inference ...": a named part among the title words (review 12; "part" is
+    // itself a title word when the record's title has it).
+    for (let i = start; written === null && i <= last; i++) if (PART_WORD.test(seq[i].w)) written = partNumber(seq.slice(i).map((x) => x.w));
+    const recordWords = titleSequence(crossrefTitle(item));
+    // A reference that writes no part is not matched to a record of one part (review 12).
+    const part = written !== null ? written !== recordPart(recordWords) : recordNamedPart(recordWords) !== null;
     best = { words, part, hits: hitAt.length };
   }
   return best && { words: best.words, part: best.part };
@@ -1390,7 +1416,14 @@ async function findDOIFromSearchAPI(
       return;
     }
 
-    const items = response.data?.message?.items || [];
+    const items = response.data?.message?.items;
+    if (!Array.isArray(items)) {
+      // A 200 without a result list is no search answer: lookup_failed, not no_match
+      // (v0.3.0 review 12).
+      outcome.status = 'lookup_failed';
+      outcome.errors.push('search: 200 without a result list');
+      return;
+    }
 
     // Try each result until we find a valid match
     for (const item of items) {

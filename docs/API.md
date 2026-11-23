@@ -79,8 +79,9 @@ When a field is absent the library sends `DEFAULT_POLITE_EMAIL`, a fixed project
 
 Returns `Promise<{ valid; data?: CrossrefResult; error?; source?: 'crossref' | 'resolver' }>`.
 Reads the DOI through `cleanDoiInput` (resolver URL, `doi:` label, whitespace and percent-encoding removed, like every other DOI reader here), asks Crossref, and on a Crossref 404 asks doi.org
-whether the DOI resolves (`source: 'resolver'`, `score: 50`, no metadata). Results are cached
-in memory for 30 minutes.
+whether the DOI resolves (`source: 'resolver'`, `score: 50`, no metadata). A Crossref 200
+without a work record is `valid: false` with the error `[Crossref API] 200 without a work
+record` (the source could not answer), never a crash. Results are cached in memory for 30 minutes.
 
 ```ts
 interface CrossrefResult {
@@ -152,7 +153,10 @@ rejected if any check is `mismatched`, in this order:
   record's full title, so `Instrumental Variables Analysis and Mendelian Randomization for
   Causal Inference` is `mismatched` against the record `Commentary: Mendelian Randomization for
   Causal Inference`. A part number written after the title (`Part I`, `II.`) that differs from
-  the record's (none, or `Part II`) is `mismatched` whatever the title's length. A reference with
+  the record's (none, or `Part II`) is `mismatched` whatever the title's length, and so is a
+reference that writes no part against a record that names one (`..., Part II`, or a roman
+numeral ending the title). A numeral opening the next sentence is a part only after `Part`
+(`II Farmaco` is a journal). A reference with
   no punctuation is not compared back;
 
 A `not_comparable` check does not reject; the returned result carries all three checks.
@@ -289,7 +293,10 @@ interface RetractionSourceUnavailable {
   earliest date.
 - `RetractionUnavailableReason`: `rate_limited`, `timeout`, `server_error`, `network`,
   `not_indexed` (a Crossref 404: the DOI is not a Crossref work, which says nothing about
-  retraction).
+  retraction). A reply that is not the source's answer is `server_error`: a Crossref 200
+  without a work record (`200 without a work record`), an OpenRetractions 200 without a JSON
+  boolean `retracted`, or an OpenRetractions 404 without a JSON body (`404 without a JSON
+  body`; only the API's own JSON 404 means "not in this index").
 
 Detection reads Crossref `updated-by`; `update-to` (which a retraction *notice* carries,
 pointing at the paper it retracts) is deliberately not read as a retraction of the queried DOI.
@@ -468,7 +475,7 @@ interface OpenAccessIssue {
 
 | Export | Returns |
 |---|---|
-| `getCitationCount(doi)` | `Promise<number \| null>` from OpenCitations; `null` when unknown or on failure (20 s timeout) |
+| `getCitationCount(doi)` | `Promise<number \| null>` from OpenCitations; `null` when unknown, on failure (20 s timeout), or when the body is not a whole number (an error page reading "500 ..." is no count) |
 | `getCitingWorks(doi)` | `Promise<CitingWork[]>`; `[]` when none or on failure |
 
 ```ts

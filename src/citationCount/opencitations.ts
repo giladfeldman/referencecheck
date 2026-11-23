@@ -60,11 +60,12 @@ export async function getCitationCount(doi: string): Promise<number | null> {
           return null;
         }
         if (typeof value === 'number') {
-          return value >= 0 ? value : null;
+          return Number.isInteger(value) && value >= 0 ? value : null;
         }
         if (typeof value === 'string') {
-          const parsed = parseInt(value, 10);
-          return !isNaN(parsed) && parsed >= 0 ? parsed : null;
+          // Only a whole number: parseInt read "500 Internal Server Error" as 500
+          // citations (v0.3.0 review 12).
+          return /^\s*\d+\s*$/u.test(value) ? Number(value) : null;
         }
         return null;
       };

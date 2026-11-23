@@ -21,9 +21,10 @@
  *
  *   0  host unreachable, or resolving without serving the API (a parked domain,
  *      measured 2026-11-22), AND control reachable -> default list still correct
- *   1  host SERVES the API (JSON with a boolean `retracted`) -> re-evaluate
- *      DEFAULT_RETRACTION_SOURCES
- *   2  control unreachable -> could not verify (no network), not a pass
+ *   1  host SERVES the API (a 200 JSON with a boolean `retracted`, or a JSON
+ *      404) -> re-evaluate DEFAULT_RETRACTION_SOURCES
+ *   2  control unreachable, or the host timed out or answered 5xx -> could not
+ *      verify, not a pass
  *
  * Usage:  node scripts/openretractions-probe.mjs
  *   PROBE_HOST    override the host under test   (default api.openretractions.com)
@@ -70,6 +71,7 @@ if (!target.ok) {
 console.log('\nhost resolves -- checking whether it SERVES the API');
 let served = 'no response';
 let api = false;
+let unverified = null;
 try {
   // The path the library calls (OPEN_RETRACTIONS_API in src/retraction/retractionChecker.ts).
   const res = await fetch(`https://${HOST}/doi/10.1126/science.1256151`, {
@@ -79,12 +81,30 @@ try {
   });
   const body = await res.text();
   served = `HTTP ${res.status}, ${body.length} B: ${body.slice(0, 200)}`;
-  // The API answers JSON with a boolean `retracted`, the shape the library reads.
-  try { api = typeof JSON.parse(body)?.retracted === 'boolean'; } catch { api = false; }
+  // The library takes a JSON object as the API's answer: a 200 with a boolean `retracted`, or a
+  // 404 with a JSON body ("not in this index"). Either means the API is served.
+  let json = null;
+  try { json = JSON.parse(body); } catch { json = null; }
+  const isObject = json !== null && typeof json === 'object' && !Array.isArray(json);
+  api = (res.status === 200 && isObject && typeof json.retracted === 'boolean') || (res.status === 404 && isObject);
+  // A 5xx may be the API, down for now: that settles nothing.
+  if (!api && res.status >= 500) unverified = `HTTP ${res.status}`;
 } catch (err) {
-  served = `request failed: ${err?.message || err}`;
+  const code = err?.cause?.code || err?.code || '';
+  served = `request failed: ${err?.name || ''} ${err?.message || err} ${code}`.trim();
+  // A TLS failure (measured 2026-11-23: ERR_SSL_TLSV1_UNRECOGNIZED_NAME, the parked domain has no
+  // certificate for the name), a refused connection or an unknown name are positive signs that
+  // nothing serves the API here. A timeout or any other failure is not: could not verify.
+  if (!/^(?:ERR_SSL_|ERR_TLS_|ERR_CERT|CERT_|UNABLE_TO_|DEPTH_ZERO|SELF_SIGNED|ECONNREFUSED$|ENOTFOUND$)/u.test(code)) {
+    unverified = `request failed without a sign that no API is there (${`${err?.name || 'error'} ${code}`.trim()})`;
+  }
 }
 console.log(`  ${served}`);
+
+if (unverified) {
+  console.error(`\nCOULD NOT VERIFY: ${unverified}. This is not a pass; re-run later.`);
+  process.exit(2);
+}
 
 if (!api) {
   // Measured 2026-11-22: the name resolves to a parked domain (an HTML redirect to

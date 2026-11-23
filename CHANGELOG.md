@@ -9,6 +9,22 @@ The same sweep found a second class, **a check that reads a field its source doe
 so it can never fire and reports clean**: the expression-of-concern check, below.
 
 ### Fixed
+- **Review 12 (2026-11-23), class "an HTTP reply is taken as the source's answer without
+  checking that its body is one".** Every reader of an external reply was listed and checked.
+  Fixed: a Crossref 200 without a work record is an unavailable retraction source
+  (`server_error`, "200 without a work record"), no longer checked-clean; an OpenRetractions 404
+  counts as "not in this index" only with a JSON body; `validateDOI` reports a Crossref 200
+  without a work record as a source error, not a TypeError; the Crossref search reports a 200
+  without a result list as `lookup_failed`, not `no_match`; `getCitationCount` reads only a
+  whole number (an error page "500 Internal Server Error" was 500 citations); the preprint check
+  treats a 200 whose record is an array as no answer. Already guarded: expression of concern,
+  replies, DOAJ, abstracts. `scripts/openretractions-probe.mjs` no longer passes on a timeout or
+  5xx (exit 2, could not verify) and counts a JSON 404 as the API served. The title part rule:
+  a reference that writes no part is rejected for a record naming one (`..., Part II`); a part
+  written before the title (`Part II: ...`) is read; a numeral opening the next sentence counts
+  only after `Part` (`II Farmaco` was read as part 2, rejecting the right DOI). Corpus unchanged
+  (905 of 905 right DOIs kept, 1 wrong accepted); the last labelled Part I/II row now rejected.
+  Parity test `review12Answers`.
 - **QA 16 (2026-11-22), same class ("clean" vs "could not check"): an OpenRetractions 200
   that is not an answer.** `api.openretractions.com` resolves again, to a parked domain (HTTP
   200 with an HTML redirect to `/lander`; HTTPS fails the TLS handshake). The opt-in

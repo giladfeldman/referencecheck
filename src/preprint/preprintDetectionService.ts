@@ -96,7 +96,7 @@ async function checkPreprintStatus(doi: string): Promise<{ issue: PreprintIssue 
 
     // A 200 without a work record is not an answer (v0.3.0 review 6).
     const data = response.data?.message;
-    if (!data || typeof data !== 'object') return { answered: false, issue: null };
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return { answered: false, issue: null };
 
     // Check if this is a preprint
     if (data.type === 'posted-content' || data.subtype === 'preprint') {

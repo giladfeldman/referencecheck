@@ -36,7 +36,6 @@ const results = await scoreRows(lib, (items) => {
  */
 const KNOWN: Array<{ cls: string; note?: string; has?: string; why: string }> = [
   { cls: 'dedup/neg:part-i-vs-part-ii', why: 'titles one character apart; nothing in the metadata separates Part I from Part II' },
-  { cls: 'doi/wrong:part-ii', has: 'Withdrawal notice', why: 'the quoted title ends before the journal details, so "Part I." is not read as following it (review 11 reads a part number in the next sentence only)' },
   { cls: 'dedup/neg:correction-notice', why: 'a correction notice repeats the work\'s title and authors, one year later' },
   { cls: 'doi/wrong:correction-notice', why: 'a notice titled "Corrigendum: <title>" carries every word of the title' },
   { cls: 'doi/owner:preprint-for-published', why: 'same authors, title and year; the matcher does not read the record type or venue' },
