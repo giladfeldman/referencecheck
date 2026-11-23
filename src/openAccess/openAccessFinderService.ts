@@ -16,7 +16,8 @@ export interface OpenAccessIssue {
   suggestion?: string;
   metadata?: {
     doi?: string;
-    openAccessStatus?: 'gold' | 'green' | 'bronze' | 'closed';
+    /** Unpaywall's `oa_status`; absent when Unpaywall gave none. `closed` is declared, never produced. */
+    openAccessStatus?: 'gold' | 'hybrid' | 'bronze' | 'green' | 'closed';
     url?: string;
     version?: string;
     license?: string;
@@ -41,13 +42,11 @@ async function checkOpenAccessStatus(doi: string): Promise<OpenAccessIssue | nul
       return null; // Paper is not open access
     }
 
-    // Determine OA type
-    let oaType = 'green'; // Default to green (self-archived)
-    if (data.journal_is_oa) {
-      oaType = 'gold'; // Published in OA journal
-    } else if (data.journal_is_in_doaj) {
-      oaType = 'gold'; // In DOAJ
-    }
+    // The OA type is Unpaywall's own `oa_status` (gold, hybrid, bronze, green). Before v0.3.0
+    // review 12 it was guessed from journal_is_oa, else "green", so every bronze and hybrid paper
+    // was reported as green. No oa_status: the type is not reported, never guessed.
+    const OA_TYPES = ['gold', 'hybrid', 'bronze', 'green'] as const;
+    const oaType = OA_TYPES.find((t) => t === data.oa_status);
 
     // Get best OA location
     let bestUrl = null;
@@ -61,12 +60,12 @@ async function checkOpenAccessStatus(doi: string): Promise<OpenAccessIssue | nul
       type: 'open-access',
       severity: 'info',
       code: 'OA_AVAILABLE',
-      description: `This paper is available as ${oaType.toUpperCase()} open access`,
+      description: oaType ? `This paper is available as ${oaType.toUpperCase()} open access` : 'This paper is available as open access (type not reported)',
       location: doi,
       suggestion: bestUrl ? `Access the paper at: ${bestUrl}` : 'Check institutional repository for access',
       metadata: {
         doi,
-        openAccessStatus: oaType as any,
+        openAccessStatus: oaType,
         url: bestUrl || undefined,
         version: bestVersion || undefined,
         license: data.best_oa_location?.license || undefined,
@@ -110,6 +109,7 @@ export async function checkReferenceForOpenAccess(reference: ReferenceInput): Pr
 export function getSummaryData(issues: OpenAccessIssue[]): {
   openAccessCount: number;
   goldOA: number;
+  hybridOA: number;
   greenOA: number;
   bronzeOA: number;
 } {
@@ -120,6 +120,7 @@ export function getSummaryData(issues: OpenAccessIssue[]): {
   return {
     openAccessCount: issues.length,
     goldOA: statuses.filter(s => s === 'gold').length,
+    hybridOA: statuses.filter(s => s === 'hybrid').length,
     greenOA: statuses.filter(s => s === 'green').length,
     bronzeOA: statuses.filter(s => s === 'bronze').length,
   };

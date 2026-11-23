@@ -123,6 +123,35 @@ describe('review 12: a reply that is not the source\'s answer is "could not chec
   });
 });
 
+describe('review 12 round 2: a field is read from the reply, never defaulted', () => {
+  it.each([
+    ['bronze', { is_oa: true, oa_status: 'bronze', journal_is_oa: false }, 'bronze'],
+    ['hybrid', { is_oa: true, oa_status: 'hybrid', journal_is_oa: false }, 'hybrid'],
+    ['green', { is_oa: true, oa_status: 'green', journal_is_oa: false }, 'green'],
+    ['gold', { is_oa: true, oa_status: 'gold', journal_is_oa: true }, 'gold'],
+    ['no oa_status (not guessed)', { is_oa: true, journal_is_oa: false }, undefined],
+  ])('Unpaywall %s: openAccessStatus is the reply oa_status', async (_name, body, want) => {
+    axiosGetMock.mockResolvedValue({ status: 200, data: body });
+    const issues = await lib.checkReferenceForOpenAccess({ doi: '10.1234/oa' });
+    expect(issues.length).toBe(1);
+    expect(issues[0].metadata.openAccessStatus).toBe(want);
+    expect(issues[0].description).toBe(want ? `This paper is available as ${want.toUpperCase()} open access` : 'This paper is available as open access (type not reported)');
+  });
+
+  it('the summary counts hybrid papers', () => {
+    const issue = (s: string) => ({ type: 'open-access', severity: 'info', code: 'OA_AVAILABLE', description: '', location: '', metadata: { openAccessStatus: s } });
+    expect(lib.getOpenAccessSummary([issue('hybrid'), issue('bronze'), issue('gold')])).toEqual({ openAccessCount: 3, goldOA: 1, hybridOA: 1, greenOA: 0, bronzeOA: 1 });
+  });
+
+  it('simple-text stage: a candidate Crossref could not validate is a stage error, not only a rejection', async () => {
+    axiosPostMock.mockResolvedValue({ status: 200, data: '10.1234/review12-st|Causal inference|Smith|2019|J Stat' });
+    axiosGetMock.mockResolvedValueOnce({ status: 200, data: HTML }).mockResolvedValue({ status: 200, data: { message: { items: [] } } });
+    const out = await lib.findDOIFromReferenceDetailed('Smith, J. (2019). Causal inference in practice. Journal of Statistics, 4, 1-10.');
+    expect(out.status).toBe('no_match');
+    expect(out.errors).toContain('simple_text_query: validate 10.1234/review12-st: [Crossref API] 200 without a work record');
+  });
+});
+
 interface Rec { title: string; authors: Array<[string, string]>; year: number }
 const accepts = async (reference: string, rec: Rec) => {
   axiosGetMock.mockResolvedValue({ status: 200, data: { message: { items: [{
@@ -147,6 +176,9 @@ describe('review 12: the part rule', () => {
     ['the same part written after', 'Smith, J. (2019). Causal inference in practice, Part II. Journal of Statistics, 4, 1-10.', { title: 'Causal inference in practice, Part II', authors: SMITH, year: 2019 }],
     ['the part written before the title', 'Smith, J. (2019). Part II: Causal inference in practice. Journal of Statistics, 4, 1-10.', { title: 'Causal inference in practice, Part II', authors: SMITH, year: 2019 }],
     ['"Part II." as its own sentence before the title', 'Smith, J. (2019). Part II. Causal inference in practice. Journal of Statistics, 4, 1-10.', { title: 'Causal inference in practice, Part II', authors: SMITH, year: 2019 }],
+    ['a title ending in a numeral after a short word (review 12 round 2)', 'Smith, J. (2020). Memory of survivors of World War II. Journal of Things, 1, 2-3.', { title: 'Memory of survivors of World War II', authors: SMITH, year: 2020 }],
+    ['a title ending in a three-letter numeral', 'Smith, J. (2020). Attitudes toward Rocky III. Journal of Things, 1, 2-3.', { title: 'Attitudes toward Rocky III', authors: SMITH, year: 2020 }],
+    ['a title with numerals inside and at the end', 'Smith, J. (2020). Psychology of Henry VIII and Pope Pius IX. Journal of Things, 1, 2-3.', { title: 'Psychology of Henry VIII and Pope Pius IX', authors: SMITH, year: 2020 }],
     ['a numeral inside the title', 'Smith, J. (2019). Type II diabetes in rural clinics. Journal of Statistics, 4, 1-10.', { title: 'Type II diabetes in rural clinics', authors: SMITH, year: 2019 }],
     ['a roman numeral opening the next sentence (a journal name)', 'Smith, J. (2019). Causal inference in practice. II Farmaco, 4, 1-10.', { title: 'Causal Inference in Practice', authors: SMITH, year: 2019 }],
   ])('%s is accepted', async (_name, reference, rec) => {

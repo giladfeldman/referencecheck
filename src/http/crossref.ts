@@ -758,13 +758,15 @@ function partNumber(words: readonly string[]): number | null {
   return null;
 }
 
-/** The part number written in a record's title ("... Part II", "... relationships: II. ..."). */
-function recordPart(words: readonly string[]): number | null {
+/** The part numbers written in a record's title ("... Part II", "... relationships: II. ...";
+ *  every one, so "Henry VIII and Pope Pius IX" holds 8 and 9, review 12). */
+function recordParts(words: readonly string[]): number[] {
+  const out: number[] = [];
   for (let i = 1; i < words.length; i++) {
     const n = partNumber(words.slice(i));
-    if (n !== null) return n;
+    if (n !== null) out.push(n);
   }
-  return null;
+  return out;
 }
 
 /** The part a record's title names unambiguously: "Part II" / "Pt 2" anywhere, or a roman
@@ -834,6 +836,12 @@ function ownTitle(referenceText: string, item: any, titleStems: ReadonlySet<stri
     if (!hasSubtitle) {
       for (let i = last; i < seq.length; i++) if (/[:?]|[-–—]$/u.test(seq[i].tok)) { end = i + 1; break; }
     }
+    // A record title ending in a roman numeral ("Rocky III"): "III." does not end a sentence (it
+    // may be a part heading), so the title ends at that word with its full stop (review 12).
+    const recordLast = titleSequence(crossrefTitle(item)).at(-1) ?? '';
+    if (recordLast in ROMAN) {
+      for (let i = last; i < end; i++) if (seq[i].w === recordLast && /\.$/u.test(seq[i].tok)) { end = i + 1; break; }
+    }
     const words = [...new Set(seq.slice(start, end).filter((x) => x.counts).map((x) => x.w))];
     // The part number written after the record's title words (the next sentence too: "Causal
     // Inference. Part I."), "Part" itself left out when the record's title has it.
@@ -849,7 +857,11 @@ function ownTitle(referenceText: string, item: any, titleStems: ReadonlySet<stri
     for (let i = start; written === null && i <= last; i++) if (PART_WORD.test(seq[i].w)) written = partNumber(seq.slice(i).map((x) => x.w));
     const recordWords = titleSequence(crossrefTitle(item));
     // A reference that writes no part is not matched to a record of one part (review 12).
-    const part = written !== null ? written !== recordPart(recordWords) : recordNamedPart(recordWords) !== null;
+    // The record's part written anywhere in the reference's title sentence counts as written: a
+    // numeral after a short word ("World War II", "War" being no title word) is not seen above.
+    const named = recordNamedPart(recordWords);
+    const inSentence = named !== null && seq.slice(start).some((x) => partNumber([x.w]) === named || (x.w in ROMAN && ROMAN[x.w] === named));
+    const part = written !== null ? !recordParts(recordWords).includes(written) : named !== null && !inSentence;
     best = { words, part, hits: hitAt.length };
   }
   return best && { words: best.words, part: best.part };
@@ -1378,6 +1390,9 @@ export async function findDOIFromReferenceDetailed(
               stage: 'simple_text_query',
               reason: `DOI did not validate: ${validation.error ?? 'no Crossref metadata'}`,
             });
+            // Crossref could not answer (a 5xx, a 429, a 200 without a work record): a stage error,
+            // not only a rejected candidate, so "no DOI found" is not read as checked (review 12).
+            if (validation.error?.startsWith('[Crossref')) outcome.errors.push(`simple_text_query: validate ${doi}: ${validation.error}`);
           }
         }
       }

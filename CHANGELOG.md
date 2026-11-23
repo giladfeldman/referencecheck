@@ -9,6 +9,17 @@ The same sweep found a second class, **a check that reads a field its source doe
 so it can never fire and reports clean**: the expression-of-concern check, below.
 
 ### Fixed
+- **Review 12 round 2 (2026-11-23), class "a field is defaulted or guessed instead of read from
+  the reply".** The open-access type was never read from Unpaywall: every open paper was `gold`
+  (an open-access journal) or else `green`, so bronze and hybrid papers were reported as GREEN.
+  `openAccessStatus` is now Unpaywall's `oa_status` (`hybrid` added to the type, `hybridOA` to
+  `getOpenAccessSummary`); with none the type is not reported. In the simple-text stage, a
+  candidate Crossref could not validate (5xx, 429, a 200 without a work record) is now also a
+  stage error in `errors`, so a `no_match` with that error is not read as fully checked. The part
+  rule's own regressions fixed: a record title ending in a numeral the reference also writes
+  ("World War II", "Rocky III") is accepted (the numeral after a short word was not seen, and
+  "III." did not end the title, so journal words were read as title words); a reference part is
+  compared with every numeral of the record title ("Henry VIII and Pope Pius IX").
 - **Review 12 (2026-11-23), class "an HTTP reply is taken as the source's answer without
   checking that its body is one".** Every reader of an external reply was listed and checked.
   Fixed: a Crossref 200 without a work record is an unavailable retraction source

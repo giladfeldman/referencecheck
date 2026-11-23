@@ -451,7 +451,7 @@ access, else `[]` (also on a 404 or network failure).
 
 ### `getOpenAccessSummary(issues)`
 
-`{ openAccessCount, goldOA, greenOA, bronzeOA }`.
+`{ openAccessCount, goldOA, hybridOA, greenOA, bronzeOA }`.
 
 ```ts
 interface OpenAccessIssue {
@@ -462,14 +462,16 @@ interface OpenAccessIssue {
   location: string;
   suggestion?: string;
   metadata?: {
-    doi?; openAccessStatus?: 'gold' | 'green' | 'bronze' | 'closed';
+    doi?; openAccessStatus?: 'gold' | 'hybrid' | 'bronze' | 'green' | 'closed';
     url?; version?; license?; source?;
   };
 }
 ```
 
-`openAccessStatus` is `gold` when the journal is open access or in DOAJ, otherwise `green`;
-`bronze` and `closed` are declared but never produced, so `bronzeOA` is always 0.
+`openAccessStatus` is Unpaywall's own `oa_status` (`gold`, `hybrid`, `bronze`, `green`); when
+Unpaywall gives none it is absent and the description says "type not reported" (before v0.3.0
+it was guessed: `gold` for an open-access journal, otherwise `green`, so bronze and hybrid papers
+were reported as green). `closed` is declared but never produced: a closed paper gives no issue.
 
 ## Citation counts
 
