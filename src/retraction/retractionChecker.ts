@@ -125,12 +125,6 @@ export type RetractionUnavailableReason =
   /** The source has no record of this DOI at all, so it could not answer. */
   | 'not_indexed'
   /**
-   * The source answered 200 with a body that is not a record for one work (an
-   * empty body, an HTML page, a list, a record with no DOI, an OpenRetractions
-   * body with no boolean `retracted`). Before v0.4.0 such a body read as a clean.
-   */
-  | 'malformed_response'
-  /**
    * The DOI given is not DOI-shaped (empty, or not `10.<digits>/<suffix>` /
    * `10/<token>`). Nothing was asked: an empty DOI used to reach Crossref as
    * `/works/`, which answers 200 with a LIST of works, and read as a clean.
@@ -677,7 +671,12 @@ export async function resolveCitingPublicationDate(
     );
     const message = res?.data?.message;
     if (res?.status !== 200 || !isWorkRecord(message)) {
-      return { unavailable: { reason: 'malformed_response', detail: String(res?.status) } };
+      return {
+        unavailable: {
+          reason: 'server_error',
+          detail: res?.status === 200 ? '200 without a work record' : String(res?.status),
+        },
+      };
     }
     for (const field of ['published', 'issued'] as const) {
       const date = datePartsToString(message[field]);

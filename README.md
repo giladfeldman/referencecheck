@@ -219,7 +219,7 @@ checks.
   `checkReplacement: false` turns them off.
 - **Coverage:** `checkRetractionDetailed` and `checkReferenceForEOCDetailed` return
   `complete` and `sourcesUnavailable` (`reason`: `rate_limited`, `timeout`, `server_error`,
-  `network`, and for retractions `not_indexed`, `malformed_response` and `invalid_doi`). An empty result with `complete: false` means
+  `network`, and for retractions `not_indexed` and `invalid_doi`). An empty result with `complete: false` means
   "we did not find out".
 - **Issues:** the per-reference checks return issue objects with `type`, `severity`, `code`,
   `description`, `location`, `suggestion` and `metadata`. The codes are `IS_PREPRINT`,

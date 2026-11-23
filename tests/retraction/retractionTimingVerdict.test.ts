@@ -141,11 +141,16 @@ describe('every result says clean, flagged or could_not_check', () => {
     expect(r.verdict).toBe('flagged');
   });
 
-  it('clean: an OpenRetractions 404 plus a Crossref clean', async () => {
-    axiosGetMock.mockRejectedValue(httpError(404));
+  it.each([
+    ['a JSON 404 (the API: not in its index)', { message: 'not found' }, 'clean'],
+    ['a 404 with no JSON body (a parked host)', undefined, 'could_not_check'],
+  ])('OpenRetractions %s plus a Crossref clean', async (_l, data, verdict) => {
+    const e = httpError(404);
+    if (data) e.response.data = data;
+    axiosGetMock.mockRejectedValue(e);
     serve({ [CITING]: fixture('not-retracted.json') });
     const r = await checkRetraction(CITING, { sources: ['openretractions', 'crossref'] });
-    expect(r.verdict).toBe('clean');
+    expect(r.verdict).toBe(verdict);
   });
 
   it('the batch call carries the verdict on every entry', async () => {
@@ -163,12 +168,12 @@ describe('a 200 that is not an answer is not a clean (the folds fixed in v0.4.0)
     ['JSON with no message', { status: 200, data: { status: 'failed' } }],
     ['a work-list body (what /works/ answers)', { status: 200, data: { status: 'ok', 'message-type': 'work-list', message: { items: [], 'total-results': 0 } } }],
     ['a message with no DOI', { status: 200, data: { status: 'ok', message: { title: ['x'] } } }],
-  ])('Crossref 200 with %s is could_not_check / malformed_response', async (_label, body) => {
+  ])('Crossref 200 with %s is could_not_check / server_error', async (_label, body) => {
     serve({ [CITING]: body });
     const r = await checkRetraction(CITING);
     expect(r.checked).toBe(false);
     expect(r.verdict).toBe('could_not_check');
-    expect(r.sourcesUnavailable).toEqual([{ source: 'crossref', reason: 'malformed_response', detail: '200' }]);
+    expect(r.sourcesUnavailable).toEqual([{ source: 'crossref', reason: 'server_error', detail: '200 without a work record' }]);
   });
 
   it.each([
@@ -286,7 +291,7 @@ describe('retraction timing relative to the citing paper', () => {
     ['no published or issued date', () => { const c = clone(fixture('not-retracted.json')); delete c.data.message.published; delete c.data.message.issued; return c; }, 'no_date'],
     ['a 429', () => httpError(429), 'rate_limited'],
     ['a 404', () => httpError(404), 'not_indexed'],
-    ['a malformed 200', () => ({ status: 200, data: '' }), 'malformed_response'],
+    ['a 200 without a work record', () => ({ status: 200, data: '' }), 'server_error: 200 without a work record'],
   ])('citing DOI lookup with %s gives unknown / citing_date_unavailable', async (_l, body, reason) => {
     serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json'), [CITING]: body() });
     const r = await checkRetraction(JAMA, { citing: { doi: CITING } });

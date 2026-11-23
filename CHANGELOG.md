@@ -33,7 +33,8 @@
 ### Fixed — results that read as clean without an answer
 - A Crossref 200 whose body is not one work's record (empty, HTML, a work list, a record with no
   `DOI`) was read as an empty record and so a checked clean. It is now `could_not_check` with
-  reason `malformed_response`.
+  reason `server_error`, detail `200 without a work record` (0.3.0 already did this for a body
+  that is not an object; 0.4.0 adds a record with no `DOI`).
 - A DOI that is not DOI-shaped (an empty string reached Crossref as `/works/`, which answers 200
   with a list) read as a clean. Nothing is asked now, and the result is `could_not_check` with
   reason `invalid_doi`.
@@ -63,7 +64,7 @@
 - `retractionDate` is now zero-padded; a stored value from an earlier version may be unpadded,
   so compare dates after parsing, never as strings.
 - Switch renderers on `verdict`, and show `could_not_check` as unchecked, never in the clean count.
-- Handle the new `RetractionUnavailableReason` values `malformed_response` and `invalid_doi`.
+- Handle the new `RetractionUnavailableReason` value `invalid_doi`; a Crossref record with no `DOI` now arrives as `server_error`.
 - Pass the manuscript's publication date (or DOI) as `citing` and render `timing` with
   `describeRetractionTiming`, so "cited after it was retracted" and "retracted after it was
   cited" never read the same.

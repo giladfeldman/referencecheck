@@ -120,7 +120,7 @@ v0.1.3 flagged all of them.
 
 1. **`verdict`** (`clean` | `flagged` | `could_not_check`) on every retraction result. Two
    inputs that used to come back as a checked clean are now `could_not_check`: a Crossref 200
-   whose body is not one work's record (`malformed_response`), and a DOI that is not
+   whose record has no `DOI` (`server_error`, `200 without a work record`), and a DOI that is not
    DOI-shaped (`invalid_doi`, previously sent to Crossref as `/works/`, whose list body read as
    clean). Count them as unchecked.
 2. **`timing`** on every flagged result, from `options.citing` — pass the manuscript's
