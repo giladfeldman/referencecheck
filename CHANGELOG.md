@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 — 2026-11-18
+## 0.3.0 — 2026-11-23
 
 A sweep for one defect class across the whole library: **the same input read differently in
 different code paths**. Each input shape now has one reader (`src/util/normalize.ts`), and
