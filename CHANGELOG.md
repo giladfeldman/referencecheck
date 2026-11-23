@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 — 2026-11-18
+## 0.4.0 — 2026-11-23
 
 ### Added
 - **Three verdicts.** Every `RetractionInfo` carries `verdict`: `flagged`, `clean` or
