@@ -844,7 +844,8 @@ function isRetractAndReplaceReason(reason: unknown): boolean {
 function doiCandidatesFromNotes(notes: unknown): string[] {
   if (typeof notes !== 'string') return [];
   const out: string[] = [];
-  for (const m of notes.matchAll(/\b10\.\d{4,9}\/[^\s"<>,;]+/g)) {
+  // Registrant digits as in the shared DOI_SHAPE (3 to 9); Crossref still confirms each candidate.
+  for (const m of notes.matchAll(/\b10\.\d{3,9}\/[^\s"<>,;]+/g)) {
     const full = m[0].replace(/[.)\]]+$/, '');
     out.push(full);
     // Publisher URLs append an article id: .../doi/10.1093/jeb/voae082/7733482

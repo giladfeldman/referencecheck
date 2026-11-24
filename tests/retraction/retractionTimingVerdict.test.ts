@@ -622,6 +622,27 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     }
   );
 
+  it.each([
+    ['a 3-digit registrant (DOI_SHAPE allows 3 to 9)', '10.123/abc.def', '10.123/abc.def'],
+    ['a 9-digit registrant', '10.123456789/x1', '10.123456789/x1'],
+    ['a 10-digit registrant (not DOI-shaped)', '10.1234567890/x1', undefined],
+  ])('a notes DOI with %s is read with the shared DOI shape', async (_l, noted, expected) => {
+    const labs = clone(fixture('retraction/labs-jama.json'));
+    labs.data.message['cr-labs-updates'][0].reasons = ['etract and Replace'];
+    labs.data.message['cr-labs-updates'][0].notes = `Replacement: https://example.org/doi/${noted}.`;
+    const work = clone(fixture('retraction/rr-replacement-infdis.json'));
+    work.data.message.DOI = noted;
+    serve({
+      [JAMA]: fixture('retraction/retracted-rw-jama.json'),
+      [JAMA_NOTICE]: fixture('retraction/jama-notice.json'),
+      ['labs:' + JAMA]: labs,
+      [noted]: work,
+    });
+    const r = await checkRetraction(JAMA);
+    expect(r.replacement.status).toBe('replaced');
+    expect(r.replacement.replacementDOI).toBe(expected);
+  });
+
   it('checkReplacement: false makes no extra request and says unknown / not_requested', async () => {
     serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA, { checkReplacement: false });

@@ -53,7 +53,7 @@
 - **One DOI reader.** The citing DOI is cleaned by `cleanDoiInput`, like the cited DOI (a
   `doi:` label or a percent-encoded DOI was rejected as invalid, so its timing was `unknown`), and
   both are checked against the shared `DOI_SHAPE` (or the shortDOI form): `10.12/x` and a
-  10-digit registrant are `invalid_doi` and never sent to Crossref; `10.231/x` is accepted.
+  10-digit registrant are `invalid_doi` and never sent to Crossref; `10.231/x` is accepted. A replacement DOI named in the Retraction Watch notes is found with the same 3-to-9-digit registrant rule (it needed 4 to 9).
 - **Timing never depends on the machine's time zone.** Dates are compared as year, month and day
   numbers, never through `Date` (which reads `2019-01` as UTC midnight, still 2018 in Los
   Angeles). `tests/retraction/timezone.test.ts` re-runs the comparisons in a fresh Node under
