@@ -215,7 +215,7 @@ export type RetractionReplacementEvidence =
   | 'crossref_is_replaced_by'
   /** The work's own Crossref title starts "RETRACTED AND REPLACED" (seen on Oxford University Press records). */
   | 'title_marker'
-  /** The retraction notice's Crossref title starts "Retraction and replacement of". */
+  /** The retraction notice's Crossref title starts "Retraction and replacement of" (or "Notice of Retraction and Replacement"). */
   | 'notice_title'
   /**
    * The Retraction Watch record served by Crossref Labs
@@ -816,10 +816,22 @@ export function describeRetractionTiming(
 
 const CROSSREF_LABS_API = 'https://api.labs.crossref.org/works';
 
-/** "RETRACTED AND REPLACED: …" on the work itself (measured on OUP records). */
-const REPLACED_TITLE = /^\s*\[?\s*retracted\s+and\s+replaced\b/i;
-/** "Retraction and replacement of: …" on the notice (measured on OUP notices). */
-const REPLACEMENT_NOTICE_TITLE = /^\s*retraction\s+and\s+replacement\b/i;
+/**
+ * "RETRACTED AND REPLACED: …" on the work itself (measured on OUP records). The same three
+ * forms as TITLE_MARKERS: bracketed, followed by a separator, or in capitals. A sentence-case
+ * title that only starts with the words ("Retracted and replaced articles in medicine: a
+ * review") is a paper ABOUT retraction, not a marker.
+ */
+const REPLACED_TITLE_MARKERS: ReadonlyArray<RegExp> = [
+  /^\s*\[\s*retracted\s+and\s+replaced\s*\]/i,
+  /^\s*retracted\s+and\s+replaced\s*[:：\-–—]/i,
+  /^\s*RETRACTED\s+AND\s+REPLACED\b/,
+];
+/**
+ * "Retraction and replacement of: …" on the notice (measured on OUP notices), and JAMA's
+ * "Notice of Retraction and Replacement: …". Only the retraction notice's own title is read.
+ */
+const REPLACEMENT_NOTICE_TITLE = /^\s*(?:notice\s+of\s+)?retraction\s+and\s+replacement\b/i;
 
 const doiKey = (x: string) => x.trim().toLowerCase().replace(/\/{2,}/g, '/');
 const sameDoiLoose = (a: string, b: string) => doiKey(a) === doiKey(b);
@@ -943,7 +955,7 @@ async function findReplacement(
       }
     }
   }
-  if (titlesOf(message).some((t) => REPLACED_TITLE.test(t))) evidence.push('title_marker');
+  if (titlesOf(message).some((t) => REPLACED_TITLE_MARKERS.some((re) => re.test(t)))) evidence.push('title_marker');
 
   if (noticeDOI && !sameDoiLoose(noticeDOI, ownDOI)) {
     const notice = await getWork(noticeDOI, options.creds);

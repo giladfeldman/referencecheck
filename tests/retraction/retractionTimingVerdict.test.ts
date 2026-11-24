@@ -595,6 +595,57 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     expect(r.replacement).toMatchObject({ status: 'unknown', unknownReason: 'malformed_response' });
   });
 
+  // Q1 matrix for the two title readers: case, spacing, bracket, separator, position,
+  // and the near-misses a meta-science bibliography is full of (a title ABOUT retraction).
+  it.each([
+    ['RETRACTED AND REPLACED: Some finding', true],
+    ['RETRACTED AND REPLACED Some finding', true],
+    ['  RETRACTED  AND  REPLACED : Some finding', true],
+    ['[Retracted and replaced] Some finding', true],
+    ['[ RETRACTED AND REPLACED ] Some finding', true],
+    ['Retracted and replaced: Some finding', true],
+    ['Retracted and Replaced – Some finding', true],
+    ['Retracted and replaced articles in medicine: a review', false],
+    ['Retracted and replaced papers', false],
+    ['Some finding: retracted and replaced', false],
+    ['RETRACTED: Some finding', false],
+  ])('the work title %j is a replacement title marker: %s', async (title, marked) => {
+    const work = clone(fixture('retraction/rr-title-carcin.json'));
+    work.data.message.title = [title];
+    serve({
+      [CARCIN]: work,
+      '10.1093/carcin/bgaf065': httpError(429),
+      ['labs:' + CARCIN]: httpError(503),
+    });
+    const r = await checkRetraction(CARCIN);
+    expect(r.isRetracted).toBe(true);
+    expect(r.replacement.evidence.includes('title_marker')).toBe(marked);
+  });
+
+  it.each([
+    ['Retraction and replacement of: Some finding', true],
+    ['RETRACTION AND REPLACEMENT OF Some finding', true],
+    ['  Retraction  and  Replacement: Some finding', true],
+    ['Notice of Retraction and Replacement: Some finding', true],
+    ['NOTICE OF RETRACTION AND REPLACEMENT. Some finding', true],
+    ['Retraction of: Some finding', false],
+    ['Notice of Retraction: Some finding', false],
+    ['Some finding: retraction and replacement', false],
+  ])('the notice title %j is a replacement notice title: %s', async (title, marked) => {
+    const work = clone(fixture('retraction/rr-title-carcin.json'));
+    work.data.message.title = ['Some finding'];
+    const notice = clone(fixture('retraction/rr-notice-carcin.json'));
+    notice.data.message.title = [title];
+    serve({
+      [CARCIN]: work,
+      '10.1093/carcin/bgaf065': notice,
+      ['labs:' + CARCIN]: httpError(503),
+    });
+    const r = await checkRetraction(CARCIN);
+    expect(r.isRetracted).toBe(true);
+    expect(r.replacement.evidence.includes('notice_title')).toBe(marked);
+  });
+
   it('a positive signal stands even when the other lookups failed', async () => {
     serve({
       [CARCIN]: fixture('retraction/rr-title-carcin.json'),
@@ -604,7 +655,7 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     expect((await checkRetraction(CARCIN)).replacement).toEqual({ status: 'replaced', evidence: ['title_marker'] });
   });
 
-  it.each([['etract and Replace'], ['+Retract and Replace'], ['Retract and Replace']])(
+  it.each([['etract and Replace'], ['+Retract and Replace'], ['Retract and Replace'], ['retract and replace'], ['  Retract  and  Replace  ']])(
     'the reason %j is recognised (Labs cuts the first character; the CSV prefixes "+")',
     async (reason) => {
       const labs = clone(fixture('retraction/labs-jama.json'));

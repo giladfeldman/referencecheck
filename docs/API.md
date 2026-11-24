@@ -354,7 +354,9 @@ interface RetractionSourceUnavailable {
   `updated-by` entry is a plain `retraction` on every retract-and-replace case probed.
 - `RetractionReplacementEvidence`, cheapest first: `crossref_is_replaced_by` (Crossref
   `relation['is-replaced-by']` naming another DOI), `title_marker` (the work's own title starts
-  "RETRACTED AND REPLACED"), `notice_title` (the retraction notice's title starts "Retraction and
+  "RETRACTED AND REPLACED" in capitals, bracketed or followed by a separator; a sentence-case title
+  about retraction is not a marker), `notice_title` (the retraction notice's title starts "Notice of
+  Retraction and Replacement" or "Retraction and
   replacement of"), `retraction_watch_reason` (the Retraction Watch record served by Crossref Labs,
   `api.labs.crossref.org`, gives the reason "Retract and Replace"; Crossref labels that block's
   keys unstable, so any unreadable shape is `unknown`, never `not_recorded`). `replacementDOI`

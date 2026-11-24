@@ -17,8 +17,8 @@
   `resolveCitingPublicationDate`, `compareRetractionTiming`, `describeRetractionTiming`.
 - **Retracted and replaced.** Every flagged result carries `replacement`: `replaced`,
   `not_recorded` or `unknown`, with every signal that said so in `evidence`:
-  `crossref_is_replaced_by`, `title_marker` (the work's title starts "RETRACTED AND REPLACED"),
-  `notice_title` (the notice's title starts "Retraction and replacement of"), and
+  `crossref_is_replaced_by`, `title_marker` (the work's title starts "RETRACTED AND REPLACED" in capitals, bracketed, or followed by a separator: a sentence-case title about retraction is not a marker),
+  `notice_title` (the notice's title starts "Retraction and replacement of", or JAMA's "Notice of Retraction and Replacement"), and
   `retraction_watch_reason` (the Retraction Watch reason "Retract and Replace", read from Crossref
   Labs). `replacementDOI` comes from `is-replaced-by` or from a DOI in the Retraction Watch notes
   that Crossref confirms is a work (10.1093/infdis/jiae178 -> 10.1093/infdis/jiae357). Measured
