@@ -485,7 +485,9 @@ function relationSortKey(relation: any): number {
   const parts: unknown[] =
     relation?.updated?.['date-parts']?.[0] ?? relation?.date?.['date-parts']?.[0] ?? [];
   const [y, m, d] = parts.map((n) => (typeof n === 'number' ? n : 0));
-  return (y || 9999) * 10000 + (m || 1) * 100 + (d || 1);
+  // Same unit (epoch ms) as the date-time branch above: mixing the two made an entry with no
+  // date-time always sort before one that has it, so the wrong notice could be dated.
+  return Date.UTC(y || 9999, (m || 1) - 1, d || 1);
 }
 
 /**
@@ -525,6 +527,8 @@ function findTitleMarker(message: any): RetractionUpdateType | null {
     for (const [pattern, type] of TITLE_MARKERS) {
       if (pattern.test(title)) return type;
     }
+    // A retracted-and-replaced title is a retraction marker too (same forms the replacement reader takes).
+    if (REPLACED_TITLE_MARKERS.some((re) => re.test(title))) return 'retraction';
   }
   return null;
 }
@@ -856,22 +860,37 @@ function isRetractAndReplaceReason(reason: unknown): boolean {
   return typeof reason === 'string' && /etract\s+and\s+replace\s*$/i.test(reason.trim());
 }
 
-/** DOI candidates in a Retraction Watch note, the full match first. */
-function doiCandidatesFromNotes(notes: unknown): string[] {
+/**
+ * The DOIs in a Retraction Watch note, one group per DOI written in the note: the full match
+ * first, then the form without a trailing publisher article id. `cued` says the DOI follows a
+ * replacement cue ("see instead", "replaced by", "republished as", ...), skipping a URL prefix.
+ */
+const REPLACEMENT_CUE =
+  /(?:see\s+instead|instead\s+see|replaced\s+(?:by|with)|replacement(?:\s+(?:article|version|paper))?|republished\s+(?:as|in|at)|new\s+version|corrected\s+version)\s*(?:is|at|here)?\s*[:\-–—]?\s*$/i;
+
+function doiCandidatesFromNotes(notes: unknown): Array<{ forms: string[]; cued: boolean }> {
   if (typeof notes !== 'string') return [];
-  const out: string[] = [];
+  const out: Array<{ forms: string[]; cued: boolean }> = [];
   // Registrant digits as in the shared DOI_SHAPE (3 to 9); Crossref still confirms each candidate.
   for (const m of notes.matchAll(/\b10\.\d{3,9}\/[^\s"<>,;]+/g)) {
     const full = m[0].replace(/[.)\]]+$/, '');
-    out.push(full);
+    const forms = [full];
     // Publisher URLs append an article id: .../doi/10.1093/jeb/voae082/7733482
     const trimmed = full.replace(/\/\d+$/, '');
-    if (trimmed !== full) out.push(trimmed);
+    if (trimmed !== full) forms.push(trimmed);
+    const before = notes.slice(0, m.index ?? 0).replace(/(?:https?:\/\/|www\.)\S*$/i, '');
+    out.push({ forms, cued: REPLACEMENT_CUE.test(before) });
   }
   return out;
 }
 
-type LookupFailure = { ok: false; reason: 'lookup_failed' | 'malformed_response'; detail: string };
+type LookupFailure = {
+  ok: false;
+  reason: 'lookup_failed' | 'malformed_response';
+  detail: string;
+  /** Crossref answered 404: the DOI is not a Crossref work (an answer, not a failure to look). */
+  notIndexed?: boolean;
+};
 type Lookup<T> = { ok: true; value: T } | LookupFailure;
 
 async function getWork(doi: string, creds?: MetadataCredentials): Promise<Lookup<any>> {
@@ -888,7 +907,12 @@ async function getWork(doi: string, creds?: MetadataCredentials): Promise<Lookup
     return { ok: true, value: message };
   } catch (error: any) {
     const u = classifyRequestFailure('crossref', error);
-    return { ok: false, reason: 'lookup_failed', detail: `crossref ${doi}: ${u?.reason ?? 'network'}` };
+    return {
+      ok: false,
+      reason: 'lookup_failed',
+      detail: `crossref ${doi}: ${u?.reason ?? 'network'}`,
+      ...(u?.reason === 'not_indexed' ? { notIndexed: true } : {}),
+    };
   }
 }
 
@@ -977,18 +1001,40 @@ async function findReplacement(
       evidence.push('retraction_watch_reason');
       if (!replacementDOI) {
         const exclude = [ownDOI, noticeDOI ?? ''].filter(Boolean);
-        const candidates = rr
-          .flatMap((u) => doiCandidatesFromNotes(u.notes))
-          .filter((c) => !exclude.some((x) => sameDoiLoose(c, x)));
-        // A DOI in free-text notes is reported only once Crossref confirms it
-        // is a work: a publisher URL can carry trailing path segments.
-        for (const c of candidates) {
-          const w = await getWork(c, options.creds);
-          if (w.ok) {
-            replacementDOI = w.value.DOI;
-            break;
+        // A DOI in free-text notes is reported only once Crossref confirms it is a work (a
+        // publisher URL can carry trailing path segments), and only when the note names ONE
+        // confirmed work, or exactly one after a replacement cue. A note that also names an
+        // editorial or a related paper never has its first DOI taken as the replacement.
+        // A DOI whose lookup failed (network) is unresolved: it may be the replacement, so it
+        // blocks any choice it could have changed.
+        const confirmed = new Map<string, { doi: string; cued: boolean }>();
+        let unresolved = 0;
+        let unresolvedCued = 0;
+        for (const group of rr.flatMap((u) => doiCandidatesFromNotes(u.notes))) {
+          const forms = group.forms.filter((c) => !exclude.some((x) => sameDoiLoose(c, x)));
+          let resolved = forms.length === 0;
+          let networkFailure = false; // a failure other than an answered 404
+          for (const c of forms) {
+            const w = await getWork(c, options.creds);
+            if (w.ok && typeof w.value?.DOI === 'string') {
+              resolved = true;
+              if (exclude.some((x) => sameDoiLoose(w.value.DOI, x))) break;
+              const key = doiKey(w.value.DOI);
+              const prev = confirmed.get(key);
+              confirmed.set(key, { doi: w.value.DOI, cued: group.cued || !!prev?.cued });
+              break;
+            }
+            if (!w.ok && !w.notIndexed) networkFailure = true;
+          }
+          if (!resolved && networkFailure) {
+            unresolved += 1;
+            if (group.cued) unresolvedCued += 1;
           }
         }
+        const works = [...confirmed.values()];
+        const cued = works.filter((w) => w.cued);
+        if (works.length === 1 && unresolved === 0) replacementDOI = works[0].doi;
+        else if (cued.length === 1 && unresolvedCued === 0) replacementDOI = cued[0].doi;
       }
     }
   } else failures.push(labs);
