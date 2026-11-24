@@ -609,6 +609,19 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     ['Retracted and replaced papers', false],
     ['Some finding: retracted and replaced', false],
     ['RETRACTED: Some finding', false],
+    ['Retracted and replaced - Some finding', true],
+    ['Retracted and replaced — Some finding', true],
+    ['Retracted and replaced： Some finding', true],
+    ['Retracted and replaced. Some finding', true],
+    ['Retracted and replaced: Some finding', true],
+    ['RETRACTED AND\nREPLACED Some finding', true],
+    ['Retracted & replaced: Some finding', true],
+    ['RETRACTED & REPLACED Some finding', true],
+    ['(Retracted and replaced) Some finding', true],
+    ['RETRACTED AND REPUBLISHED: Some finding', true],
+    ['Retracted and republished: Some finding', true],
+    ['Retracted and republished articles: a bibliometric study', false],
+    ['Retracted and replacement trials', false],
   ])('the work title %j is a replacement title marker: %s', async (title, marked) => {
     const work = clone(fixture('retraction/rr-title-carcin.json'));
     work.data.message.title = [title];
@@ -631,6 +644,10 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     ['Retraction of: Some finding', false],
     ['Notice of Retraction: Some finding', false],
     ['Some finding: retraction and replacement', false],
+    ['Retraction and Republication: Some finding', true],
+    ['Retraction & replacement of: Some finding', true],
+    ['RETRACTION AND REPUBLICATION Some finding', true],
+    ['Retraction and Correction: Some finding', false],
   ])('the notice title %j is a replacement notice title: %s', async (title, marked) => {
     const work = clone(fixture('retraction/rr-title-carcin.json'));
     work.data.message.title = ['Some finding'];
@@ -645,6 +662,24 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     expect(r.isRetracted).toBe(true);
     expect(r.replacement.evidence.includes('notice_title')).toBe(marked);
   });
+
+  it.each([['Error in Analyses'], ['rror in Results and/or Conclusions'], ['Retract and Replace (in part)'], ['Withdrawal']])(
+    'the reason %j is not Retract and Replace',
+    async (reason) => {
+      const labs = clone(fixture('retraction/labs-jama.json'));
+      labs.data.message['cr-labs-updates'][0].reasons = [reason];
+      labs.data.message['cr-labs-updates'][0].notes = '';
+      serve({
+        [JAMA]: fixture('retraction/retracted-rw-jama.json'),
+        [JAMA_NOTICE]: fixture('retraction/jama-notice.json'),
+        ['labs:' + JAMA]: labs,
+      });
+      const r = await checkRetraction(JAMA);
+      expect(r.replacement.evidence).not.toContain('retraction_watch_reason');
+      // Q2: the queried DOI is returned as originalPaperDOI.
+      expect(r.originalPaperDOI).toBe(JAMA);
+    }
+  );
 
   it('a positive signal stands even when the other lookups failed', async () => {
     serve({
