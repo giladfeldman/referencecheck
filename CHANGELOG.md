@@ -21,7 +21,11 @@
   `notice_title` (the notice's title starts "Retraction and replacement of", JAMA's "Notice of Retraction and Replacement", or NEJM's "Retraction and Republication"), and
   `retraction_watch_reason` (the Retraction Watch reason "Retract and Replace", read from Crossref
   Labs). `replacementDOI` comes from `is-replaced-by` or from a DOI in the Retraction Watch notes
-  that Crossref confirms is a work (10.1093/infdis/jiae178 -> 10.1093/infdis/jiae357). Measured
+  that Crossref confirms is a work (10.1093/infdis/jiae178 -> 10.1093/infdis/jiae357). When the
+  notes name more than one work, only the one after a replacement cue ("see instead", "replaced
+  by", "republished as") is taken; with no single cued work, or when a lookup that could change
+  the choice failed, no `replacementDOI` is given (an editorial named in the same note is never
+  reported as the replacement). Measured
   2026-11-18: Crossref's own `updated-by` entry is a plain `retraction` on every
   retract-and-replace case probed; Crossref Labs serves an EMPTY block for 10.1093/carcin/bgs140,
   whose own title says "RETRACTED AND REPLACED"; Labs answered 503 on 2 of 8 probes. So
@@ -40,6 +44,22 @@
   reason `invalid_doi`.
 - An `updated-by` entry typed and labelled `retracion` (a real publisher deposit, found by a full
   scan of Crossref's retraction notices) was not recognised as a retraction.
+- A record whose only signal is a title marker "Retracted and Replaced: …" ("retracted and
+  republished", bracketed or followed by a separator) read as clean: the retraction title reader
+  did not take the forms the replacement reader takes. It is now flagged.
+- With several notices, one dated only by `date-parts` always sorted before one that carries a
+  `date-time` (the two were compared in different units), so the wrong notice could give
+  `retractionDate` and, now, `timing`. Both are compared as UTC dates. Every recorded Crossref
+  notice carries a `date-time`, so this was not seen on real data.
+
+### Not verified
+- No independent answer key exists for `timing` and `replacement`: the tests check them against
+  recorded Crossref and Retraction Watch answers, the same sources the code reads.
+- There is no table of which notice, title and reason forms occur in real data and how often;
+  the readers are tested on the forms listed above.
+- The live comparison with 0.3.0 used a 1-in-40 sample (335 DOIs) of a reference corpus: no
+  retracted paper was gained or lost, and the only differences were zero-padded dates. The full
+  corpus was not run live.
 
 ### Changed
 - **`retractionDate` is zero-padded** (`2019-10-08`, was `2019-10-8`), like

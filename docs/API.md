@@ -361,13 +361,15 @@ interface RetractionSourceUnavailable {
   `api.labs.crossref.org`, gives the reason "Retract and Replace"; Crossref labels that block's
   keys unstable, so any unreadable shape is `unknown`, never `not_recorded`). `replacementDOI`
   comes from `is-replaced-by`, or from a DOI in the Retraction Watch notes that Crossref confirms
-  is a work. `updated-by` `new_version` is deliberately not read as a replacement:
+  is a work; when the notes name more than one work, only the single one after a replacement cue
+  ("see instead", "replaced by", "republished as") is given, and none when no single work is cued
+  or a lookup that could change the choice failed. `updated-by` `new_version` is deliberately not read as a replacement:
   F1000Research 10.12688/f1000research.8114 v1 lists v2 and v3 as new versions, and both were
   retracted too.
 - `RetractionReplacementUnknownReason`: `not_requested` (`checkReplacement: false`),
   `lookup_failed`, `malformed_response`; `detail` names the lookup.
 - Cost: the replacement lookups run for FLAGGED references only: the notice's Crossref record,
-  the Crossref Labs record and, when the notes name a DOI, that DOI (at most a few requests per
+  the Crossref Labs record and, each DOI the notes name (at most a few requests per
   retracted reference; none for a clean one).
 
 ### Timing helpers

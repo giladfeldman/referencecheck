@@ -729,6 +729,45 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     expect(r.replacement.replacementDOI).toBe(expected);
   });
 
+  // v0.4.0 review: a note naming more than one work had its FIRST confirmed DOI reported as the
+  // replacement (an editorial about the paper, a related paper). Bodies derived; see each cell.
+  const A = '10.9999/editorial';
+  const B = '10.9999/newver';
+  const NET = 'network';
+  it.each<[string, string, Record<string, 'work' | 'net'>, string | undefined]>([
+    ['two works, the second after "replaced by"', `Editorial about this: ${A}; replaced by ${B}`, { [A]: 'work', [B]: 'work' }, B],
+    ['two works, the first after "see instead"', `see instead: ${B}; editorial: ${A}`, { [A]: 'work', [B]: 'work' }, B],
+    ['a cue before a URL prefix', `Editorial ${A}. See instead: https://example.org/doi/${B}`, { [A]: 'work', [B]: 'work' }, B],
+    ['two works, no cue: none is chosen', `see also: ${A}; see also: ${B}`, { [A]: 'work', [B]: 'work' }, undefined],
+    ['two works, both after a cue: none is chosen', `replaced by ${A}; replaced by ${B}`, { [A]: 'work', [B]: 'work' }, undefined],
+    ['one work and one 404 (an answer: not a work)', `${A} and ${B}`, { [B]: 'work' }, B],
+    ['the same DOI twice', `${B}; see ${B}`, { [B]: 'work' }, B],
+    ['one work, the cued one failed to load: none is chosen', `${A}; replaced by ${B}`, { [A]: 'work', [B]: 'net' }, undefined],
+    ['one cued work, an uncued one failed to load', `replaced by ${B}; also ${A}`, { [A]: 'net', [B]: 'work' }, B],
+    ['one work, another failed to load, no cue: none is chosen', `${A}; ${B}`, { [A]: 'net', [B]: 'work' }, undefined],
+  ])('notes naming several DOIs: %s', async (_l, notes, works, expected) => {
+    const labs = clone(fixture('retraction/labs-jama.json'));
+    labs.data.message['cr-labs-updates'][0].reasons = ['etract and Replace'];
+    labs.data.message['cr-labs-updates'][0].notes = notes;
+    const bodies: Record<string, any> = {
+      [JAMA]: fixture('retraction/retracted-rw-jama.json'),
+      [JAMA_NOTICE]: fixture('retraction/jama-notice.json'),
+      ['labs:' + JAMA]: labs,
+    };
+    for (const [doi, kind] of Object.entries(works)) {
+      if (kind === 'net') bodies[doi] = httpError(undefined, 'ECONNRESET', NET);
+      else {
+        const w = clone(fixture('retraction/rr-replacement-infdis.json'));
+        w.data.message.DOI = doi;
+        bodies[doi] = w;
+      }
+    }
+    serve(bodies);
+    const r = await checkRetraction(JAMA);
+    expect(r.replacement.status).toBe('replaced');
+    expect(r.replacement.replacementDOI).toBe(expected);
+  });
+
   it('checkReplacement: false makes no extra request and says unknown / not_requested', async () => {
     serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA, { checkReplacement: false });
