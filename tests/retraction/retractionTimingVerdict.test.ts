@@ -613,7 +613,7 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     ['Retracted and replaced — Some finding', true],
     ['Retracted and replaced： Some finding', true],
     ['Retracted and replaced. Some finding', true],
-    ['Retracted and replaced: Some finding', true],
+    [`Retracted${String.fromCharCode(0xa0)}and replaced: Some finding (a no-break space)`, true],
     ['RETRACTED AND\nREPLACED Some finding', true],
     ['Retracted & replaced: Some finding', true],
     ['RETRACTED & REPLACED Some finding', true],
