@@ -148,9 +148,12 @@ export type RetractionVerdict = 'clean' | 'flagged' | 'could_not_check';
  * When the retraction happened relative to the CITING paper's publication.
  *
  * - `before_citing` — the work was already retracted when the citing paper was
- *   published. Citing it as an ordinary reference is an error by the citing authors.
- * - `after_citing` — the citing paper was published first. The citation was made
- *   in good faith; the citing authors could not have known.
+ *   published.
+ * - `after_citing` — the citing paper was published before the retraction.
+ *
+ * This is publication ORDER only. It says nothing about what the citing authors knew: a
+ * citation can be written before a retraction and published after it, and a paper can be
+ * under an expression of concern before it is retracted.
  * - `unknown` — one of the two dates is missing, unparseable, or the two fall in
  *   the same period at the precision available (see `unknownReason`).
  */
@@ -501,22 +504,48 @@ function relationSortKey(relation: any): number {
  */
 function findRetractionRelation(
   message: any
-): { relation: any; type: RetractionUpdateType } | null {
+): { relation: any; type: RetractionUpdateType; dateUsable: boolean } | null {
   const updatedBy = message?.['updated-by'];
   if (!Array.isArray(updatedBy)) return null;
 
+  const workDate = parsePartialDate(
+    datePartsToString(message?.published) ?? datePartsToString(message?.issued)
+  );
   const candidates = updatedBy
-    .map((entry) => ({ relation: entry, type: entryUpdateType(entry) }))
-    .filter((c): c is { relation: any; type: RetractionUpdateType } => c.type !== null);
+    .map((entry) => ({
+      relation: entry,
+      type: entryUpdateType(entry),
+      dateUsable: isNoticeDateUsable(entry, workDate),
+    }))
+    .filter(
+      (c): c is { relation: any; type: RetractionUpdateType; dateUsable: boolean } => c.type !== null
+    );
   if (candidates.length === 0) return null;
 
   candidates.sort((a, b) => {
     const bySeverity =
       UPDATE_TYPES_BY_SEVERITY.indexOf(a.type) - UPDATE_TYPES_BY_SEVERITY.indexOf(b.type);
     if (bySeverity !== 0) return bySeverity;
+    if (a.dateUsable !== b.dateUsable) return a.dateUsable ? -1 : 1;
     return relationSortKey(a.relation) - relationSortKey(b.relation);
   });
   return candidates[0];
+}
+
+/**
+ * Can an `updated-by` entry's date be a notice date? Not when it is on or before the work's own
+ * publication date: a publisher that retracts in place can deposit the ARTICLE's date on its
+ * entry. Measured: 10.1007/s11277-021-09072-0 (published 2021-09-11, retracted 2022-12-06 per
+ * the publisher's page) has a publisher `retraction` entry dated 2021-09-11 and a Retraction
+ * Watch entry dated 2022-12-06. A date at a coarser precision than the work's (2022 against
+ * 2022-03-01) is kept: it may be later.
+ */
+function isNoticeDateUsable(relation: any, workDate: PartialDate | null): boolean {
+  if (!workDate) return true;
+  const own = parsePartialDate(relationDate(relation));
+  if (!own) return true;
+  const c = comparePartialDates(own, workDate);
+  return !(c === -1 || (c === 'same_period' && own.d !== undefined && workDate.d !== undefined));
 }
 
 /** The marker a title carries, if any. */
@@ -685,6 +714,11 @@ export async function resolveCitingPublicationDate(
     for (const field of ['published', 'issued'] as const) {
       const date = datePartsToString(message[field]);
       if (date) return { date, source: 'crossref', field };
+      // `published`, else `issued` means ABSENT, not unreadable: a deposited `published` that is
+      // no calendar date (month 13) says nothing about whether `issued` is right.
+      if (message[field] !== undefined && message[field] !== null) {
+        return { unavailable: { reason: 'no_date', detail: `${field} is not a readable date` } };
+      }
     }
     return { unavailable: { reason: 'no_date' } };
   } catch (error: any) {
@@ -782,9 +816,9 @@ const TYPE_PARTICIPLE: Record<RetractionUpdateType, string> = {
 };
 
 /**
- * One plain sentence a renderer can show, which never blurs the difference
- * between citing an already-retracted paper (the citing authors' error) and
- * citing one retracted later (not their fault).
+ * One plain sentence a renderer can show, which never blurs the difference between a paper
+ * already retracted when the citing paper was published and one retracted later. It states
+ * publication order only, never what the citing authors knew.
  */
 export function describeRetractionTiming(
   timing: RetractionTimingInfo,
@@ -799,9 +833,9 @@ export function describeRetractionTiming(
     : 'the citing paper was published';
   switch (timing.timing) {
     case 'before_citing':
-      return `This work was ${was}${on}, before ${citing}: it was already ${was} when it was cited.`;
+      return `This work was ${was}${on}, before ${citing}: it was already ${was} when the citing paper was published.`;
     case 'after_citing':
-      return `This work was ${was}${on}, after ${citing}: when it was cited it had not yet been ${was}, so the citation was made in good faith.`;
+      return `This work was ${was}${on}, after ${citing}: when the citing paper was published it had not yet been ${was}.`;
     default: {
       const why: Record<RetractionTimingUnknownReason, string> = {
         no_citing_date: 'no publication date for the citing paper was given',
@@ -867,6 +901,9 @@ function isRetractAndReplaceReason(reason: unknown): boolean {
  */
 const REPLACEMENT_CUE =
   /(?:see\s+instead|instead\s+see|replaced\s+(?:by|with)|replacement(?:\s+(?:article|version|paper))?|republished\s+(?:as|in|at)|new\s+version|corrected\s+version)\s*(?:is|at|here)?\s*[:\-–—]?\s*$/i;
+/** "not replaced by X", "no replacement: X": a cue that says the opposite. */
+const NEGATED_CUE =
+  /\b(?:not|never|no)\s+(?:been\s+|yet\s+)?(?:replaced|republished|replacement)\b[^.;]*$/i;
 
 function doiCandidatesFromNotes(notes: unknown): Array<{ forms: string[]; cued: boolean }> {
   if (typeof notes !== 'string') return [];
@@ -879,7 +916,7 @@ function doiCandidatesFromNotes(notes: unknown): Array<{ forms: string[]; cued: 
     const trimmed = full.replace(/\/\d+$/, '');
     if (trimmed !== full) forms.push(trimmed);
     const before = notes.slice(0, m.index ?? 0).replace(/(?:https?:\/\/|www\.)\S*$/i, '');
-    out.push({ forms, cued: REPLACEMENT_CUE.test(before) });
+    out.push({ forms, cued: REPLACEMENT_CUE.test(before) && !NEGATED_CUE.test(before) });
   }
   return out;
 }
@@ -937,7 +974,9 @@ async function getLabsUpdates(doi: string, creds?: MetadataCredentials): Promise
     if (block === undefined || block === null) return { ok: true, value: [] };
     if (Array.isArray(block)) {
       const readable = block.every(
-        (u) => u && typeof u === 'object' && !Array.isArray(u) && Array.isArray(u.reasons)
+        (u) =>
+          u && typeof u === 'object' && !Array.isArray(u) && Array.isArray(u.reasons) &&
+          u.reasons.every((r: unknown) => typeof r === 'string')
       );
       if (readable) return { ok: true, value: block };
       return { ok: false, reason: 'malformed_response', detail: 'crossref-labs: unreadable record' };
@@ -974,14 +1013,16 @@ async function findReplacement(
 
   const rel = message?.relation?.['is-replaced-by'];
   if (Array.isArray(rel)) {
+    const ids = new Map<string, string>();
     for (const r of rel) {
       const id = typeof r?.id === 'string' ? r.id.trim() : '';
       if (String(r?.['id-type']).toLowerCase() === 'doi' && id && !sameDoiLoose(id, ownDOI)) {
-        evidence.push('crossref_is_replaced_by');
-        replacementDOI = id;
-        break;
+        if (!ids.has(doiKey(id))) ids.set(doiKey(id), id);
       }
     }
+    if (ids.size > 0) evidence.push('crossref_is_replaced_by');
+    // Several distinct replacements (v2 and v3): which one is "the" replacement is not said.
+    if (ids.size === 1) replacementDOI = [...ids.values()][0];
   }
   if (titlesOf(message).some((t) => REPLACED_TITLE_MARKERS.some((re) => re.test(t)))) evidence.push('title_marker');
 
@@ -1000,17 +1041,29 @@ async function findReplacement(
     if (rr.length > 0) {
       evidence.push('retraction_watch_reason');
       if (!replacementDOI) {
-        const exclude = [ownDOI, noticeDOI ?? ''].filter(Boolean);
-        // A DOI in free-text notes is reported only once Crossref confirms it is a work (a
-        // publisher URL can carry trailing path segments), and only when the note names ONE
-        // confirmed work, or exactly one after a replacement cue. A note that also names an
-        // editorial or a related paper never has its first DOI taken as the replacement.
-        // A DOI whose lookup failed (network) is unresolved: it may be the replacement, so it
-        // blocks any choice it could have changed.
-        const confirmed = new Map<string, { doi: string; cued: boolean }>();
-        let unresolved = 0;
+        // Not a replacement: the work itself, its notices (every `updated-by` DOI), and the
+        // notice Retraction Watch names (`target-doi`).
+        const exclude = [
+          ownDOI,
+          noticeDOI ?? '',
+          ...(Array.isArray(message?.['updated-by'])
+            ? message['updated-by'].map((u: any) => (typeof u?.DOI === 'string' ? u.DOI : ''))
+            : []),
+          ...rr.map((u) =>
+            typeof u['target-doi'] === 'string'
+              ? u['target-doi'].replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')
+              : ''
+          ),
+        ].filter(Boolean);
+        // A DOI in free-text notes is the replacement only when it follows a replacement cue
+        // ("see instead", "replaced by", ...), Crossref confirms it is a work (a publisher URL
+        // can carry trailing path segments), and it is the ONE such work. A DOI named without a
+        // cue (an editorial, a related paper, another notice) is never taken. A cued DOI whose
+        // lookup failed (not an answered 404) may be the replacement, so it blocks the choice.
+        const confirmed = new Map<string, string>();
         let unresolvedCued = 0;
         for (const group of rr.flatMap((u) => doiCandidatesFromNotes(u.notes))) {
+          if (!group.cued) continue;
           const forms = group.forms.filter((c) => !exclude.some((x) => sameDoiLoose(c, x)));
           let resolved = forms.length === 0;
           let networkFailure = false; // a failure other than an answered 404
@@ -1018,23 +1071,16 @@ async function findReplacement(
             const w = await getWork(c, options.creds);
             if (w.ok && typeof w.value?.DOI === 'string') {
               resolved = true;
-              if (exclude.some((x) => sameDoiLoose(w.value.DOI, x))) break;
-              const key = doiKey(w.value.DOI);
-              const prev = confirmed.get(key);
-              confirmed.set(key, { doi: w.value.DOI, cued: group.cued || !!prev?.cued });
+              if (!exclude.some((x) => sameDoiLoose(w.value.DOI, x))) {
+                confirmed.set(doiKey(w.value.DOI), w.value.DOI);
+              }
               break;
             }
             if (!w.ok && !w.notIndexed) networkFailure = true;
           }
-          if (!resolved && networkFailure) {
-            unresolved += 1;
-            if (group.cued) unresolvedCued += 1;
-          }
+          if (!resolved && networkFailure) unresolvedCued += 1;
         }
-        const works = [...confirmed.values()];
-        const cued = works.filter((w) => w.cued);
-        if (works.length === 1 && unresolved === 0) replacementDOI = works[0].doi;
-        else if (cued.length === 1 && unresolvedCued === 0) replacementDOI = cued[0].doi;
+        if (confirmed.size === 1 && unresolvedCued === 0) replacementDOI = [...confirmed.values()][0];
       }
     }
   } else failures.push(labs);
@@ -1088,12 +1134,14 @@ async function checkWithResolver(
     timing: compareRetractionTiming(info.retractionDate, await resolveCiting()),
     replacement: crossrefMessage
       ? await findReplacement(crossrefMessage, noticeDoiOf(info.retractionNoticeUrl), options)
-      : {
-          status: 'unknown',
-          evidence: [],
-          unknownReason: 'lookup_failed',
-          detail: 'no Crossref record was read (the answer came from OpenRetractions)',
-        },
+      : options.checkReplacement === false
+        ? { status: 'unknown', evidence: [], unknownReason: 'not_requested' }
+        : {
+            status: 'unknown',
+            evidence: [],
+            unknownReason: 'lookup_failed',
+            detail: 'no Crossref record was read (the answer came from OpenRetractions)',
+          },
   };
 }
 
@@ -1230,7 +1278,14 @@ async function lookupRetraction(
         const found = findRetractionRelation(message);
 
         if (found) {
-          const { relation, type } = found;
+          const { relation, type, dateUsable } = found;
+          // An entry that names the work's OWN DOI (an in-place publisher retraction, every
+          // Retraction Watch entry) gives no notice: linking the paper as its notice is wrong.
+          const noticeDoi =
+            typeof relation.DOI === 'string' && relation.DOI.trim() &&
+            !sameDoiLoose(relation.DOI, cleanDOI) && !sameDoiLoose(relation.DOI, String(message.DOI))
+              ? relation.DOI
+              : undefined;
           return {
             crossrefMessage: message,
             info: {
@@ -1239,11 +1294,9 @@ async function lookupRetraction(
             checked: isChecked(),
             sourcesChecked,
             sourcesUnavailable,
-            retractionDate: relationDate(relation),
+            retractionDate: dateUsable ? relationDate(relation) : undefined,
             retractionReason: relation.label || UPDATE_TYPE_WORDING[type],
-            retractionNoticeUrl: relation.DOI
-              ? `https://doi.org/${relation.DOI}`
-              : undefined,
+            retractionNoticeUrl: noticeDoi ? `https://doi.org/${noticeDoi}` : undefined,
             originalPaperDOI: cleanDOI,
             source: 'crossref',
             },

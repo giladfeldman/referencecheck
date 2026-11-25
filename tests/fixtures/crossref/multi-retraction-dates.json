@@ -342,7 +342,7 @@
   },
   "__fixture": {
     "doi": "10.1007/s11277-021-09072-0",
-    "why": "Two `retraction` entries: a publisher notice dated 2021-09-11 and a Retraction Watch record dated 2022-12-06. The retraction happened on the earlier date.",
+    "why": "Two `retraction` entries: a publisher notice dated 2021-09-11 and a Retraction Watch record dated 2022-12-06. 2021-09-11 is the article's own publication date (its `published`), not a notice date: the publisher's page says it was retracted on 6 December 2022 (checked 2026-11-25).",
     "capturedAt": "2026-09-12",
     "note": "Verbatim Crossref body; `reference` array stripped."
   }

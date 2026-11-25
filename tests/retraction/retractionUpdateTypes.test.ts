@@ -113,15 +113,17 @@ describe('the verdict is the most severe notice, not the first one deposited', (
     expect(r.retractionReason).toBe('Retraction');
   });
 
-  it('among equally severe notices the EARLIEST date is reported', async () => {
-    // Two `retraction` entries: publisher 2021-09-11, Retraction Watch
-    // 2022-12-06. The retraction happened on the earlier date; the later one is
-    // when a third party recorded it.
+  it('a notice date that is the article’s own publication date is not a retraction date', async () => {
+    // Two `retraction` entries: publisher 2021-09-11, Retraction Watch 2022-12-06.
+    // 2021-09-11 is the ARTICLE's publication date (its `published`); the publisher's page
+    // says "This article was retracted on 6 December 2022" (checked 2026-11-25). Reporting the
+    // earliest date dated the retraction 15 months too early.
     crossrefGetMock.mockResolvedValue(fixture('multi-retraction-dates.json'));
 
     const r = await checkRetraction(DOI);
 
-    expect(r.retractionDate).toBe('2021-09-11');
+    expect(r.retractionDate).toBe('2022-12-06');
+    expect(r.retractionNoticeUrl).toBeUndefined(); // both entries name the article itself
   });
 });
 

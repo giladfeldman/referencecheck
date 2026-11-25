@@ -158,7 +158,7 @@ Output when run on 2026-11-18 (live data; the citation count changes over time):
 ```text
 flagged retraction 2010-02-06 [ 'crossref' ]
 before_citing not_recorded
-This work was retracted on 2010-02-06, before the citing paper was published (2012-05): it was already retracted when it was cited.
+This work was retracted on 2010-02-06, before the citing paper was published (2012-05): it was already retracted when the citing paper was published.
 true crossref The Lancet
 {
   expanded: true,
@@ -208,9 +208,10 @@ checks.
   says which in one field.
 - **Retraction timing:** pass `{ citing: { publishedDate } }` or `{ citing: { doi } }` and every
   flagged result carries `timing.timing`: `before_citing` (the work was already retracted when
-  the citing paper was published, an error by the citing authors), `after_citing` (retracted
-  later, cited in good faith) or `unknown` with `unknownReason`. `describeRetractionTiming`
-  turns it into one sentence that keeps the two apart.
+  the citing paper was published), `after_citing` (retracted after the citing paper was
+  published) or `unknown` with `unknownReason`. `describeRetractionTiming` turns it into one
+  sentence that keeps the two apart. This is publication order only, not what the citing
+  authors knew: a citation can be written before a retraction and published after it.
 - **Retracted and replaced:** every flagged result carries `replacement.status`: `replaced`
   (with the `evidence` and, when a source names it, `replacementDOI`), `not_recorded`, or
   `unknown` when a lookup failed. `not_recorded` does not mean "not replaced": the sources often

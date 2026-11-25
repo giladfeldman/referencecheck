@@ -285,7 +285,7 @@ interface RetractionInfo {
   sourcesUnavailable: RetractionSourceUnavailable[];
   retractionDate?: string;         // YYYY[-MM[-DD]], zero-padded (before 0.4.0: "2019-10-8"); an unreadable source date as given
   retractionReason?: string;       // the notice label, or the type in words
-  retractionNoticeUrl?: string;    // doi.org link to the notice
+  retractionNoticeUrl?: string;    // doi.org link to the notice; absent when the entry names the work itself
   originalPaperDOI?: string;
   source?: RetractionSourceName;   // the source that produced the answer
   timing?: RetractionTimingInfo;            // every flagged result; absent otherwise
@@ -340,8 +340,9 @@ interface RetractionSourceUnavailable {
 - `RetractionVerdict`: `flagged` (any source flags it), `clean` (every source asked answered and
   none flags it), `could_not_check` (no flag, and a source did not answer, none was asked, or the
   DOI is not DOI-shaped). Derived from `isRetracted` and `checked`, so it never disagrees with them.
-- `RetractionTiming`: `before_citing` (already retracted when the citing paper was published: the
-  citing authors' error), `after_citing` (retracted later: cited in good faith), `unknown`.
+- `RetractionTiming`: `before_citing` (already retracted when the citing paper was published),
+  `after_citing` (retracted after the citing paper was published), `unknown`. Publication order
+  only: it does not say what the citing authors knew.
   `RetractionTimingUnknownReason`: `no_citing_date` (no `citing` given), `citing_date_unavailable`
   (the citing DOI's lookup failed or its record has no date; `detail` says which),
   `no_retraction_date` (e.g. found only by a title marker), `unparseable_retraction_date`,
@@ -361,15 +362,16 @@ interface RetractionSourceUnavailable {
   `api.labs.crossref.org`, gives the reason "Retract and Replace"; Crossref labels that block's
   keys unstable, so any unreadable shape is `unknown`, never `not_recorded`). `replacementDOI`
   comes from `is-replaced-by`, or from a DOI in the Retraction Watch notes that Crossref confirms
-  is a work; when the notes name more than one work, only the single one after a replacement cue
-  ("see instead", "replaced by", "republished as") is given, and none when no single work is cued
-  or a lookup that could change the choice failed. `updated-by` `new_version` is deliberately not read as a replacement:
+  is a work, and only when it follows a replacement cue ("see instead", "replaced by",
+  "republished as"; not negated), is not the work, one of its notices or the notice Retraction
+  Watch names (`target-doi`), and is the one such work; a cued DOI whose lookup failed blocks the
+  choice. Several distinct `is-replaced-by` DOIs give no `replacementDOI`. `updated-by` `new_version` is deliberately not read as a replacement:
   F1000Research 10.12688/f1000research.8114 v1 lists v2 and v3 as new versions, and both were
   retracted too.
 - `RetractionReplacementUnknownReason`: `not_requested` (`checkReplacement: false`),
   `lookup_failed`, `malformed_response`; `detail` names the lookup.
 - Cost: the replacement lookups run for FLAGGED references only: the notice's Crossref record,
-  the Crossref Labs record and, each DOI the notes name (at most a few requests per
+  the Crossref Labs record and, each cued DOI the notes name (at most a few requests per
   retracted reference; none for a clean one).
 
 ### Timing helpers
@@ -379,7 +381,7 @@ interface RetractionSourceUnavailable {
 - `compareRetractionTiming(retractionDate, citing)` → `RetractionTimingInfo`: recompute timing
   from a stored `retractionDate` without a lookup. `citing` is a `CitingPublicationDate` or `null`.
 - `describeRetractionTiming(timing, retractionType?)` → one plain sentence that keeps "already
-  retracted when it was cited" apart from "cited in good faith", using the type's own word
+  retracted when the citing paper was published" apart from "retracted later", using the type's own word
   (withdrawn, removed, partially retracted).
 
 Detection reads Crossref `updated-by`; `update-to` (which a retraction *notice* carries,

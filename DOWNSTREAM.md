@@ -124,8 +124,9 @@ v0.1.3 flagged all of them.
    DOI-shaped (`invalid_doi`, previously sent to Crossref as `/works/`, whose list body read as
    clean). Count them as unchecked.
 2. **`timing`** on every flagged result, from `options.citing` — pass the manuscript's
-   publication date or DOI. `before_citing` (cited after it was retracted: the authors' error)
-   and `after_citing` (retracted after it was cited: not their fault) must render differently;
+   publication date or DOI. `before_citing` (already retracted when the citing paper was
+   published) and `after_citing` (retracted after the citing paper was published) must render
+   differently, and neither says what the authors knew (publication order only);
    `describeRetractionTiming` gives the sentence. An unpublished manuscript has no
    publication date; every retraction found has already happened when it is being cited, so the
    honest input is the date of the check (or of submission), passed as `publishedDate` and

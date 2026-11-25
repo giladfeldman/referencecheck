@@ -313,6 +313,15 @@ describe('retraction timing relative to the citing paper', () => {
     expect(citingCalls(CITING)).toBe(1);
   });
 
+  it('a citing `published` that is no calendar date is unavailable, never replaced by `issued` (consult 2026-11-25)', async () => {
+    const citing = clone(fixture('not-retracted.json'));
+    citing.data.message.published = { 'date-parts': [[2019, 13]] };
+    citing.data.message.issued = { 'date-parts': [[2019, 12, 5]] };
+    serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json'), [CITING]: citing });
+    const r = await checkRetraction(JAMA, { citing: { doi: CITING }, checkReplacement: false });
+    expect(r.timing).toMatchObject({ timing: 'unknown', unknownReason: 'citing_date_unavailable' });
+  });
+
   it('an invalid citing DOI is never sent to Crossref', async () => {
     serve({ [JAMA]: fixture('retraction/retracted-rw-jama.json') });
     const r = await checkRetraction(JAMA, { citing: { doi: 'not-a-doi' }, checkReplacement: false });
@@ -367,10 +376,12 @@ describe('retraction timing relative to the citing paper', () => {
     expect(r.timing).toMatchObject({ timing: 'unknown', unknownReason: 'no_retraction_date' });
   });
 
-  it('a publisher-sourced relation date is compared too (earliest notice, 2021-09-11)', async () => {
+  it('the article’s own publication date on a publisher entry is not the retraction date (2022-12-06)', async () => {
     serve({ '10.1007/s11277-021-09072-0': fixture('multi-retraction-dates.json') });
+    // A citing paper of 2022-01: the earliest-date rule said before_citing; the publisher's
+    // page says the retraction was on 2022-12-06, so it is after_citing.
     const r = await checkRetraction('10.1007/s11277-021-09072-0', { citing: { publishedDate: '2022-01' } });
-    expect(r.timing).toMatchObject({ timing: 'before_citing', retractionDate: '2021-09-11' });
+    expect(r.timing).toMatchObject({ timing: 'after_citing', retractionDate: '2022-12-06' });
   });
 
   it('OpenRetractions retraction_date is compared; an unreadable one is unknown', async () => {
@@ -457,14 +468,15 @@ describe('retraction timing relative to the citing paper', () => {
     expect(citingCalls(CITING_LATE)).toBe(1);
   });
 
-  it('the plain-language sentence keeps "already retracted" and "good faith" apart', () => {
+  it('the plain-language sentence keeps "already retracted" and "retracted later" apart, and claims nothing about the authors', () => {
     const before = mod.describeRetractionTiming(
       { timing: 'before_citing', retractionDate: '2019-10-08', citingPublishedDate: '2025-12-31' }, 'retraction');
     const after = mod.describeRetractionTiming(
       { timing: 'after_citing', retractionDate: '2019-10-08', citingPublishedDate: '2013-07-31' }, 'retraction');
     const unknown = mod.describeRetractionTiming({ timing: 'unknown', unknownReason: 'no_citing_date' }, 'withdrawal');
-    expect(before).toMatch(/already retracted when it was cited/);
-    expect(after).toMatch(/good faith/);
+    expect(before).toMatch(/already retracted when the citing paper was published/);
+    expect(after).toMatch(/when the citing paper was published it had not yet been retracted/);
+    for (const s of [before, after, unknown]) expect(s).not.toMatch(/good faith|error|fault|knew/i);
     expect(after).not.toMatch(/already/);
     expect(unknown).toMatch(/withdrawn/);
     expect(unknown).toMatch(/unknown/);
@@ -556,6 +568,67 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
       replacementDOI: '10.1/replacement',
       evidence: ['crossref_is_replaced_by'],
     });
+  });
+
+  it('is-replaced-by naming two different DOIs: replaced, but neither is "the" replacement (consult 2026-11-25)', async () => {
+    const body = clone(fixture('retraction/retracted-rw-jama.json'));
+    body.data.message.relation = {
+      'is-replaced-by': [
+        { 'id-type': 'doi', id: '10.1/v2' },
+        { 'id-type': 'doi', id: '10.1/v3' },
+        { 'id-type': 'doi', id: '10.1/V2' },
+      ],
+    };
+    serve({ [JAMA]: body, [JAMA_NOTICE]: fixture('retraction/jama-notice.json') });
+    expect((await checkRetraction(JAMA)).replacement).toEqual({
+      status: 'replaced',
+      evidence: ['crossref_is_replaced_by'],
+    });
+  });
+
+  it('the notice Retraction Watch names in target-doi is never the replacement, even when cued (consult 2026-11-25)', async () => {
+    const RW_NOTICE = '10.9999/rw-notice';
+    const labs = clone(fixture('retraction/labs-jama.json'));
+    labs.data.message['cr-labs-updates'][0].reasons = ['etract and Replace'];
+    labs.data.message['cr-labs-updates'][0]['target-doi'] = `https://doi.org/${RW_NOTICE}`;
+    labs.data.message['cr-labs-updates'][0].notes = `Retraction and replacement: https://doi.org/${RW_NOTICE}`;
+    const work = clone(fixture('retraction/rr-replacement-infdis.json'));
+    work.data.message.DOI = RW_NOTICE;
+    serve({
+      [JAMA]: fixture('retraction/retracted-rw-jama.json'),
+      [JAMA_NOTICE]: fixture('retraction/jama-notice.json'),
+      ['labs:' + JAMA]: labs,
+      [RW_NOTICE]: work,
+    });
+    const r = await checkRetraction(JAMA);
+    expect(r.replacement).toEqual({ status: 'replaced', evidence: ['retraction_watch_reason'] });
+  });
+
+  it('a Labs reason that is not a string is unreadable, never not_recorded (consult 2026-11-25)', async () => {
+    const labs = clone(fixture('retraction/labs-jama.json'));
+    labs.data.message['cr-labs-updates'][0].reasons = [{ label: 'Retract and Replace' }];
+    serve({
+      [JAMA]: fixture('retraction/retracted-rw-jama.json'),
+      [JAMA_NOTICE]: fixture('retraction/jama-notice.json'),
+      ['labs:' + JAMA]: labs,
+    });
+    expect((await checkRetraction(JAMA)).replacement).toMatchObject({
+      status: 'unknown',
+      unknownReason: 'malformed_response',
+    });
+  });
+
+  it('a notice entry naming the work itself gives no notice link (F1000: the entry names v1 itself)', async () => {
+    serve({ '10.12688/f1000research.8114.1': fixture('retraction/retracted-f1000-versions.json') });
+    const r = await checkRetraction('10.12688/f1000research.8114.1');
+    expect(r.retractionNoticeUrl).toBeUndefined();
+    expect(r.retractionDate).toBe('2017-05-25');
+  });
+
+  it('OpenRetractions-only with checkReplacement: false says not_requested', async () => {
+    axiosGetMock.mockResolvedValue({ status: 200, data: { retracted: true, retraction_date: '2019-10-08' } });
+    const r = await checkRetraction(JAMA, { sources: ['openretractions'], checkReplacement: false });
+    expect(r.replacement).toEqual({ status: 'unknown', evidence: [], unknownReason: 'not_requested' });
   });
 
   it('is-replaced-by naming the work itself is not a replacement', async () => {
@@ -740,8 +813,13 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     ['a cue before a URL prefix', `Editorial ${A}. See instead: https://example.org/doi/${B}`, { [A]: 'work', [B]: 'work' }, B],
     ['two works, no cue: none is chosen', `see also: ${A}; see also: ${B}`, { [A]: 'work', [B]: 'work' }, undefined],
     ['two works, both after a cue: none is chosen', `replaced by ${A}; replaced by ${B}`, { [A]: 'work', [B]: 'work' }, undefined],
-    ['one work and one 404 (an answer: not a work)', `${A} and ${B}`, { [B]: 'work' }, B],
-    ['the same DOI twice', `${B}; see ${B}`, { [B]: 'work' }, B],
+    ['the cued one and a cued 404 (an answer: not a work)', `replaced by ${A}; replaced by ${B}`, { [B]: 'work' }, B],
+    ['the same DOI cued twice', `replaced by ${B}; see instead ${B}`, { [B]: 'work' }, B],
+    // Consult 2026-11-25 (Sonnet, Sol): a single DOI without a cue is not the replacement.
+    ['one work, no cue (an editorial): none is chosen', `see also editorial ${A}`, { [A]: 'work' }, undefined],
+    ['a cued 404 does not promote an uncued work', `Editorial: ${A}; replaced by ${B}`, { [A]: 'work' }, undefined],
+    ['a negated cue is no cue', `Related work: ${A}; this was not replaced by ${B}`, { [A]: 'work', [B]: 'work' }, undefined],
+    ['the notice Retraction Watch names (target-doi) is not the replacement', `Replacement notice: ${JAMA_NOTICE}`, { [JAMA_NOTICE]: 'work' }, undefined],
     ['one work, the cued one failed to load: none is chosen', `${A}; replaced by ${B}`, { [A]: 'work', [B]: 'net' }, undefined],
     ['one cued work, an uncued one failed to load', `replaced by ${B}; also ${A}`, { [A]: 'net', [B]: 'work' }, B],
     ['one work, another failed to load, no cue: none is chosen', `${A}; ${B}`, { [A]: 'net', [B]: 'work' }, undefined],

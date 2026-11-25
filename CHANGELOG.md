@@ -6,8 +6,8 @@
 - **Three verdicts.** Every `RetractionInfo` carries `verdict`: `flagged`, `clean` or
   `could_not_check`, derived from `isRetracted` and `checked` so it can never disagree with them.
 - **Retraction timing.** `options.citing` (`{ publishedDate }` or `{ doi }`) gives every flagged
-  result `timing.timing`: `before_citing` (already retracted when the citing paper was published:
-  the citing authors' error), `after_citing` (retracted later: cited in good faith) or `unknown`
+  result `timing.timing`: `before_citing` (already retracted when the citing paper was published),
+  `after_citing` (retracted after the citing paper was published) or `unknown`
   with `unknownReason` (`no_citing_date`, `citing_date_unavailable`, `no_retraction_date`,
   `unparseable_retraction_date`, `same_period`). The citing date comes only from the caller or
   from the citing DOI's Crossref `published` (else `issued`) field, and dates are compared at the
@@ -21,11 +21,12 @@
   `notice_title` (the notice's title starts "Retraction and replacement of", JAMA's "Notice of Retraction and Replacement", or NEJM's "Retraction and Republication"), and
   `retraction_watch_reason` (the Retraction Watch reason "Retract and Replace", read from Crossref
   Labs). `replacementDOI` comes from `is-replaced-by` or from a DOI in the Retraction Watch notes
-  that Crossref confirms is a work (10.1093/infdis/jiae178 -> 10.1093/infdis/jiae357). When the
-  notes name more than one work, only the one after a replacement cue ("see instead", "replaced
-  by", "republished as") is taken; with no single cued work, or when a lookup that could change
-  the choice failed, no `replacementDOI` is given (an editorial named in the same note is never
-  reported as the replacement). Measured
+  that Crossref confirms is a work (10.1093/infdis/jiae178 -> 10.1093/infdis/jiae357). A notes
+  DOI is taken only when it follows a replacement cue ("see instead", "replaced by", "republished
+  as"; not a negated one), is not the work, one of its notices or the notice Retraction Watch
+  names, and is the ONE such work; a cued DOI whose lookup failed blocks the choice. An editorial
+  or related paper named in the note is never reported as the replacement, and several
+  `is-replaced-by` DOIs give no single `replacementDOI`. Measured
   2026-11-18: Crossref's own `updated-by` entry is a plain `retraction` on every
   retract-and-replace case probed; Crossref Labs serves an EMPTY block for 10.1093/carcin/bgs140,
   whose own title says "RETRACTED AND REPLACED"; Labs answered 503 on 2 of 8 probes. So
@@ -51,6 +52,20 @@
   `date-time` (the two were compared in different units), so the wrong notice could give
   `retractionDate` and, now, `timing`. Both are compared as UTC dates. Every recorded Crossref
   notice carries a `date-time`, so this was not seen on real data.
+- A notice date on or before the work's own publication date is not taken as the retraction
+  date. 10.1007/s11277-021-09072-0 (published 2021-09-11) has a publisher `retraction` entry
+  dated 2021-09-11 and a Retraction Watch entry dated 2022-12-06; the publisher's page says it
+  was retracted on 6 December 2022. Earlier versions reported `2021-09-11`, and so a paper cited
+  in 2022 read as cited after the retraction. It now reports `2022-12-06`; when the only date is
+  such a date, `retractionDate` is absent and `timing` is `unknown` / `no_retraction_date`.
+- `retractionNoticeUrl` linked the paper itself when the entry names the work's own DOI (every
+  Retraction Watch entry, in-place publisher retractions such as F1000Research). It is now
+  absent in that case: no notice was identified.
+- A citing paper's Crossref `published` that is present but not a calendar date no longer falls
+  back to `issued`; `timing` is `unknown` / `citing_date_unavailable`.
+- A Crossref Labs record whose reasons are not strings is unreadable (`replacement` `unknown`),
+  not "no Retract and Replace reason". An OpenRetractions-only result with
+  `checkReplacement: false` says `not_requested`.
 
 ### Not verified
 - No independent answer key exists for `timing` and `replacement`: the tests check them against
@@ -86,8 +101,13 @@
 - Switch renderers on `verdict`, and show `could_not_check` as unchecked, never in the clean count.
 - Handle the new `RetractionUnavailableReason` value `invalid_doi`; a Crossref record with no `DOI` now arrives as `server_error`.
 - Pass the manuscript's publication date (or DOI) as `citing` and render `timing` with
-  `describeRetractionTiming`, so "cited after it was retracted" and "retracted after it was
-  cited" never read the same.
+  `describeRetractionTiming`, so "already retracted when the citing paper was published" and
+  "retracted after it was published" never read the same. `timing` is publication order only:
+  do not present it as what the authors knew (a citation can be written before a retraction and
+  published after it).
+- `retractionNoticeUrl` can now be absent for a retracted work (the entry named the work
+  itself), and `retractionDate` can differ from 0.3.0 where 0.3.0 reported the work's own
+  publication date.
 - Render `replacement.status: not_recorded` as "no replacement recorded", never "not replaced",
   and `unknown` as "could not check for a replacement".
 
