@@ -811,6 +811,10 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     ['two works, the second after "replaced by"', `Editorial about this: ${A}; replaced by ${B}`, { [A]: 'work', [B]: 'work' }, B],
     ['two works, the first after "see instead"', `see instead: ${B}; editorial: ${A}`, { [A]: 'work', [B]: 'work' }, B],
     ['a cue before a URL prefix', `Editorial ${A}. See instead: https://example.org/doi/${B}`, { [A]: 'work', [B]: 'work' }, B],
+    // The PREDIMED note as Crossref Labs served it on 2026-11-25 (10.1056/nejmoa1200303), DOIs swapped for A/B.
+    ['"republished:" (the NEJM PREDIMED note)', `see also: https://www.npr.org/sections/health-shots/2018/06/13/619619302/x?live=1 ; republished: https://www.nejm.org/doi/full/${B}`, { [B]: 'work' }, B],
+    ['"replaced:" bare', `replaced: ${B}`, { [B]: 'work' }, B],
+    ['"Republication:"', `Republication: https://doi.org/${B}`, { [B]: 'work' }, B],
     ['two works, no cue: none is chosen', `see also: ${A}; see also: ${B}`, { [A]: 'work', [B]: 'work' }, undefined],
     ['two works, both after a cue: none is chosen', `replaced by ${A}; replaced by ${B}`, { [A]: 'work', [B]: 'work' }, undefined],
     ['the cued one and a cued 404 (an answer: not a work)', `replaced by ${A}; replaced by ${B}`, { [B]: 'work' }, B],

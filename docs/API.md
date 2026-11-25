@@ -363,7 +363,7 @@ interface RetractionSourceUnavailable {
   keys unstable, so any unreadable shape is `unknown`, never `not_recorded`). `replacementDOI`
   comes from `is-replaced-by`, or from a DOI in the Retraction Watch notes that Crossref confirms
   is a work, and only when it follows a replacement cue ("see instead", "replaced by",
-  "republished as"; not negated), is not the work, one of its notices or the notice Retraction
+  "republished", "replacement"; not negated), is not the work, one of its notices or the notice Retraction
   Watch names (`target-doi`), and is the one such work; a cued DOI whose lookup failed blocks the
   choice. Several distinct `is-replaced-by` DOIs give no `replacementDOI`. `updated-by` `new_version` is deliberately not read as a replacement:
   F1000Research 10.12688/f1000research.8114 v1 lists v2 and v3 as new versions, and both were

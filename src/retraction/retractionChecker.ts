@@ -900,7 +900,7 @@ function isRetractAndReplaceReason(reason: unknown): boolean {
  * replacement cue ("see instead", "replaced by", "republished as", ...), skipping a URL prefix.
  */
 const REPLACEMENT_CUE =
-  /(?:see\s+instead|instead\s+see|replaced\s+(?:by|with)|replacement(?:\s+(?:article|version|paper))?|republished\s+(?:as|in|at)|new\s+version|corrected\s+version)\s*(?:is|at|here)?\s*[:\-–—]?\s*$/i;
+  /(?:see\s+instead|instead\s+see|replaced(?:\s+(?:by|with))?|replacement(?:\s+(?:article|version|paper))?|republished(?:\s+(?:as|in|at))?|republication|new\s+version|corrected\s+version)\s*(?:is|at|here)?\s*[:\-–—]?\s*$/i;
 /** "not replaced by X", "no replacement: X": a cue that says the opposite. */
 const NEGATED_CUE =
   /\b(?:not|never|no)\s+(?:been\s+|yet\s+)?(?:replaced|republished|replacement)\b[^.;]*$/i;

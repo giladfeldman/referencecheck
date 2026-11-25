@@ -22,8 +22,8 @@
   `retraction_watch_reason` (the Retraction Watch reason "Retract and Replace", read from Crossref
   Labs). `replacementDOI` comes from `is-replaced-by` or from a DOI in the Retraction Watch notes
   that Crossref confirms is a work (10.1093/infdis/jiae178 -> 10.1093/infdis/jiae357). A notes
-  DOI is taken only when it follows a replacement cue ("see instead", "replaced by", "republished
-  as"; not a negated one), is not the work, one of its notices or the notice Retraction Watch
+  DOI is taken only when it follows a replacement cue ("see instead", "replaced by",
+  "republished", "replacement"; not a negated one), is not the work, one of its notices or the notice Retraction Watch
   names, and is the ONE such work; a cued DOI whose lookup failed blocks the choice. An editorial
   or related paper named in the note is never reported as the replacement, and several
   `is-replaced-by` DOIs give no single `replacementDOI`. Measured
