@@ -815,6 +815,12 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     ['"republished:" (the NEJM PREDIMED note)', `see also: https://www.npr.org/sections/health-shots/2018/06/13/619619302/x?live=1 ; republished: https://www.nejm.org/doi/full/${B}`, { [B]: 'work' }, B],
     ['"replaced:" bare', `replaced: ${B}`, { [B]: 'work' }, B],
     ['"Republication:"', `Republication: https://doi.org/${B}`, { [B]: 'work' }, B],
+    // Review of 6193e0a: the cue was lost when the DOI was introduced by a label or a bracket.
+    ['"doi:" label after the cue', `see instead: doi:${B}`, { [B]: 'work' }, B],
+    ['"DOI:" label after the cue', `Replaced by DOI: ${B}`, { [B]: 'work' }, B],
+    ['an angle-bracketed URL after the cue', `replaced by <https://doi.org/${B}>`, { [B]: 'work' }, B],
+    ['a scheme-less doi.org after the cue', `replaced by doi.org/${B}`, { [B]: 'work' }, B],
+    ['a "doi:" label with no cue is no cue', `see also: doi:${A}`, { [A]: 'work' }, undefined],
     ['two works, no cue: none is chosen', `see also: ${A}; see also: ${B}`, { [A]: 'work', [B]: 'work' }, undefined],
     ['two works, both after a cue: none is chosen', `replaced by ${A}; replaced by ${B}`, { [A]: 'work', [B]: 'work' }, undefined],
     ['the cued one and a cued 404 (an answer: not a work)', `replaced by ${A}; replaced by ${B}`, { [B]: 'work' }, B],

@@ -915,7 +915,10 @@ function doiCandidatesFromNotes(notes: unknown): Array<{ forms: string[]; cued: 
     // Publisher URLs append an article id: .../doi/10.1093/jeb/voae082/7733482
     const trimmed = full.replace(/\/\d+$/, '');
     if (trimmed !== full) forms.push(trimmed);
-    const before = notes.slice(0, m.index ?? 0).replace(/(?:https?:\/\/|www\.)\S*$/i, '');
+    // Skip what introduces the DOI itself: a URL prefix, "doi:", "doi.org/", an opening bracket or quote.
+    const before = notes
+      .slice(0, m.index ?? 0)
+      .replace(/(?:(?:https?:\/\/|www\.)\S*|(?:dx\.)?doi\.org\/|\bdoi\s*:?\s*|[<("'\[])+$/i, '');
     out.push({ forms, cued: REPLACEMENT_CUE.test(before) && !NEGATED_CUE.test(before) });
   }
   return out;
