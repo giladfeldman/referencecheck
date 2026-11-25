@@ -145,3 +145,38 @@ describe('F10: "Retracted and replaced." followed by a sentence is not a retract
     expect(r.verdict).toBe(verdict);
   });
 });
+
+describe('round 3 (final range): a malformed field never turns a flagged work into could_not_check or binds a placeholder DOI', () => {
+  const base = { DOI: '10.1111/work', title: ['An ordinary article'], published: { 'date-parts': [[2019, 1, 1]] } };
+
+  it('a string date-parts first element on one of two retraction entries still gives flagged', async () => {
+    serve({
+      '10.1111/work': ok({
+        ...base,
+        'updated-by': [
+          { ...entry('publisher', '10.1111/n1', [2021, 5, 1]), updated: { 'date-parts': ['2020'] } },
+          entry('retraction-watch', '10.1111/n2', [2021, 6, 1]),
+        ],
+      }),
+    });
+    const r = await mod.checkRetraction('10.1111/work', { sources: ['crossref'] });
+    expect(r.verdict).toBe('flagged');
+    expect(r.sourcesUnavailable ?? []).toEqual([]);
+  });
+
+  it('an is-replaced-by id that is not a DOI gives no replacementDOI and an unknown replacement', async () => {
+    serve({
+      '10.1111/work': ok({
+        ...base,
+        'updated-by': [entry('publisher', '10.1111/n1', [2021, 5, 1])],
+        relation: { 'is-replaced-by': [{ 'id-type': 'doi', id: 'unavailable' }] },
+      }),
+      '10.1111/n1': ok({ DOI: '10.1111/n1', title: ['Retraction notice'] }),
+    });
+    const r = await mod.checkRetraction('10.1111/work', { sources: ['crossref'] });
+    expect(r.verdict).toBe('flagged');
+    expect(r.replacement.replacementDOI).toBeUndefined();
+    expect(r.replacement.status).toBe('unknown');
+    expect(r.replacement.unknownReason).toBe('malformed_response');
+  });
+});

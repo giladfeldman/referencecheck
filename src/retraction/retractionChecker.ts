@@ -486,8 +486,11 @@ function relationSortKey(relation: any): number {
   const ts = relation?.updated?.['date-time'] ?? relation?.date?.['date-time'];
   const parsed = ts ? Date.parse(String(ts)) : NaN;
   if (Number.isFinite(parsed)) return parsed;
-  const parts: unknown[] =
+  const rawParts: unknown =
     relation?.updated?.['date-parts']?.[0] ?? relation?.date?.['date-parts']?.[0] ?? [];
+  // A non-array first element (["2020"]) is unreadable, not a crash: a throw here reached the
+  // outer catch and turned a flagged work into could_not_check.
+  const parts: unknown[] = Array.isArray(rawParts) ? rawParts : [];
   const [y, m, d] = parts.map((n) => (typeof n === 'number' ? n : 0));
   // Same unit (epoch ms) as the date-time branch above: mixing the two made an entry with no
   // date-time always sort before one that has it, so the wrong notice could be dated.
@@ -1039,7 +1042,10 @@ async function findReplacement(
     for (const r of rel) {
       const id = typeof r?.id === 'string' ? r.id.trim() : '';
       if (String(r?.['id-type']).toLowerCase() === 'doi' && id && !sameDoiLoose(id, ownDOI)) {
-        if (!ids.has(doiKey(id))) ids.set(doiKey(id), id);
+        // A placeholder ("unavailable") is not a DOI: never bound as replacementDOI.
+        if (!/^10\.\d+\/\S+$/.test(id)) {
+          failures.push({ ok: false, reason: 'malformed_response', detail: 'is-replaced-by: id is not a DOI' });
+        } else if (!ids.has(doiKey(id))) ids.set(doiKey(id), id);
       }
     }
     if (ids.size > 0) evidence.push('crossref_is_replaced_by');

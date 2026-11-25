@@ -70,6 +70,12 @@
 - A Crossref Labs record whose reasons are not strings is unreadable (`replacement` `unknown`),
   not "no Retract and Replace reason". An OpenRetractions-only result with
   `checkReplacement: false` says `not_requested`.
+- A notice whose `date-parts` row is not a list (`["2020"]`) made the check throw when two
+  entries of the same type had to be ordered, so a retracted work read as `could_not_check`.
+  The row is now read as undated.
+- An `is-replaced-by` id that is not DOI-shaped (a placeholder such as `unavailable`) was
+  reported as `replacementDOI`. It is no longer bound; with no other evidence `replacement` is
+  `unknown` / `malformed_response`.
 
 ### Not verified
 - No independent answer key exists for `timing` and `replacement`: the tests check them against
@@ -78,7 +84,13 @@
   the readers are tested on the forms listed above.
 - The live comparison with 0.3.0 used a 1-in-40 sample (335 DOIs) of a reference corpus: no
   retracted paper was gained or lost, and the only differences were zero-padded dates. The full
-  corpus was not run live.
+  corpus was not run live, and the flagged notices in the sample were not read one by one.
+- Review found further edge cases in date ordering (a coarse date against a precise one, rows
+  with only a timestamp) and in the notes reader (quoted or negated cues) by reading the code;
+  they are not yet tested and are not changed in this release.
+- Retraction Watch reasons come from the Crossref Labs API, an experimental service; on
+  2026-11-25 it still answered (10.1093/infdis/jiae178), but whether its data are still
+  updated was not checked.
 
 ### Changed
 - **`retractionDate` is zero-padded** (`2019-10-08`, was `2019-10-8`), like
