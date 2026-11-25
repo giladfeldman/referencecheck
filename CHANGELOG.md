@@ -25,8 +25,10 @@
   DOI is taken only when it follows a replacement cue ("see instead", "replaced by",
   "republished", "replacement"; not a negated one), is not the work, one of its notices or the notice Retraction Watch
   names, and is the ONE such work; a cued DOI whose lookup failed blocks the choice. An editorial
-  or related paper named in the note is never reported as the replacement, and several
-  `is-replaced-by` DOIs give no single `replacementDOI`. Measured
+  or related paper named in the note is never reported as the replacement; a DOI joined to a
+  cued one by "and", ",", "&" or "or" ("replaced by A and B") is cued too, so such a note gives
+  none; and several `is-replaced-by` DOIs give no single `replacementDOI`, nor one from the
+  notes. Measured
   2026-11-18: Crossref's own `updated-by` entry is a plain `retraction` on every
   retract-and-replace case probed; Crossref Labs serves an EMPTY block for 10.1093/carcin/bgs140,
   whose own title says "RETRACTED AND REPLACED"; Labs answered 503 on 2 of 8 probes. So
@@ -52,15 +54,17 @@
   `date-time` (the two were compared in different units), so the wrong notice could give
   `retractionDate` and, now, `timing`. Both are compared as UTC dates. Every recorded Crossref
   notice carries a `date-time`, so this was not seen on real data.
-- A notice date on or before the work's own publication date is not taken as the retraction
-  date. 10.1007/s11277-021-09072-0 (published 2021-09-11) has a publisher `retraction` entry
+- A notice date on the same day as one of the work's own publication dates (`published`,
+  `published-online`, `published-print`, `issued`) is not taken as the retraction date; an
+  earlier notice date is kept (online-first articles), and a real same-day withdrawal loses its
+  date (`no_retraction_date`). 10.1007/s11277-021-09072-0 (published 2021-09-11) has a publisher `retraction` entry
   dated 2021-09-11 and a Retraction Watch entry dated 2022-12-06; the publisher's page says it
   was retracted on 6 December 2022. Earlier versions reported `2021-09-11`, and so a paper cited
   in 2022 read as cited after the retraction. It now reports `2022-12-06`; when the only date is
   such a date, `retractionDate` is absent and `timing` is `unknown` / `no_retraction_date`.
 - `retractionNoticeUrl` linked the paper itself when the entry names the work's own DOI (every
-  Retraction Watch entry, in-place publisher retractions such as F1000Research). It is now
-  absent in that case: no notice was identified.
+  Retraction Watch entry, in-place publisher retractions such as F1000Research). It now uses
+  the one distinct notice DOI another entry of the same type carries, and is absent otherwise.
 - A citing paper's Crossref `published` that is present but not a calendar date no longer falls
   back to `issued`; `timing` is `unknown` / `citing_date_unavailable`.
 - A Crossref Labs record whose reasons are not strings is unreadable (`replacement` `unknown`),

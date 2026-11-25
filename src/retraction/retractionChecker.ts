@@ -58,10 +58,11 @@
  * rendering this to a reader must use `retractionType`, not the word
  * "retracted".
  *
- * Among entries of the selected type the EARLIEST is taken: `10.1007/s11277-021-09072-0`
- * carries two `retraction` entries, a publisher notice dated 2021-09-11 and a
- * Retraction Watch record dated 2022-12-06, and the retraction happened on the
- * earlier date. Selection is by severity, never by array position —
+ * Among entries of the selected type the EARLIEST usable date is taken. A date that is the
+ * work's OWN publication date to the day is not a notice date: `10.1007/s11277-021-09072-0`
+ * carries a publisher `retraction` entry dated 2021-09-11 (its publication date) and a
+ * Retraction Watch record dated 2022-12-06, and the publisher's page says it was retracted on
+ * 6 December 2022. Selection is by severity, never by array position —
  * `10.33552/ojdoh.2018.01.000503` lists `partial_retraction` before `retraction`,
  * and the first pass reported the weaker one.
  *
@@ -508,14 +509,14 @@ function findRetractionRelation(
   const updatedBy = message?.['updated-by'];
   if (!Array.isArray(updatedBy)) return null;
 
-  const workDate = parsePartialDate(
-    datePartsToString(message?.published) ?? datePartsToString(message?.issued)
-  );
+  const workDates = (['published', 'published-online', 'published-print', 'issued'] as const)
+    .map((f) => parsePartialDate(datePartsToString(message?.[f])))
+    .filter((d): d is PartialDate => !!d && d.d !== undefined);
   const candidates = updatedBy
     .map((entry) => ({
       relation: entry,
       type: entryUpdateType(entry),
-      dateUsable: isNoticeDateUsable(entry, workDate),
+      dateUsable: isNoticeDateUsable(entry, workDates),
     }))
     .filter(
       (c): c is { relation: any; type: RetractionUpdateType; dateUsable: boolean } => c.type !== null
@@ -533,19 +534,19 @@ function findRetractionRelation(
 }
 
 /**
- * Can an `updated-by` entry's date be a notice date? Not when it is on or before the work's own
- * publication date: a publisher that retracts in place can deposit the ARTICLE's date on its
- * entry. Measured: 10.1007/s11277-021-09072-0 (published 2021-09-11, retracted 2022-12-06 per
+ * Can an `updated-by` entry's date be a notice date? Not when it IS one of the work's own
+ * publication dates to the day (`published`, `published-online`, `published-print`, `issued`):
+ * a publisher that retracts in place can deposit the ARTICLE's date on its entry. An EARLIER
+ * date is kept: `published` can be a print date later than the online one, and a real notice
+ * can precede it. A same-day withdrawal also loses its date (absent, never wrong). Measured: 10.1007/s11277-021-09072-0 (published 2021-09-11, retracted 2022-12-06 per
  * the publisher's page) has a publisher `retraction` entry dated 2021-09-11 and a Retraction
  * Watch entry dated 2022-12-06. A date at a coarser precision than the work's (2022 against
  * 2022-03-01) is kept: it may be later.
  */
-function isNoticeDateUsable(relation: any, workDate: PartialDate | null): boolean {
-  if (!workDate) return true;
+function isNoticeDateUsable(relation: any, workDates: PartialDate[]): boolean {
   const own = parsePartialDate(relationDate(relation));
-  if (!own) return true;
-  const c = comparePartialDates(own, workDate);
-  return !(c === -1 || (c === 'same_period' && own.d !== undefined && workDate.d !== undefined));
+  if (!own || own.d === undefined) return true;
+  return !workDates.some((w) => w.y === own.y && w.m === own.m && w.d === own.d);
 }
 
 /** The marker a title carries, if any. */
@@ -557,7 +558,12 @@ function findTitleMarker(message: any): RetractionUpdateType | null {
       if (pattern.test(title)) return type;
     }
     // A retracted-and-replaced title is a retraction marker too (same forms the replacement reader takes).
-    if (REPLACED_TITLE_MARKERS.some((re) => re.test(title))) return 'retraction';
+    // Not the full-stop form: "Retracted and replaced. A study of ..." can be a healthy title,
+    // and TITLE_MARKERS take no full stop either. The replacement reader, which reads only
+    // already-flagged works, keeps it.
+    if (REPLACED_TITLE_MARKERS.some((re) => re !== REPLACED_FULL_STOP_MARKER && re.test(title))) {
+      return 'retraction';
+    }
   }
   return null;
 }
@@ -862,9 +868,11 @@ const CROSSREF_LABS_API = 'https://api.labs.crossref.org/works';
  * "republished"; a [bracketed] or (parenthesised) marker; separators : ： - – — and a full stop.
  */
 const REPLACED_PHRASE = String.raw`retracted\s+(?:and|&)\s+(?:replaced|republished)`;
+const REPLACED_FULL_STOP_MARKER = new RegExp(String.raw`^\s*${REPLACED_PHRASE}\s*\.`, 'i');
 const REPLACED_TITLE_MARKERS: ReadonlyArray<RegExp> = [
   new RegExp(String.raw`^\s*[[(]\s*${REPLACED_PHRASE}\s*[\])]`, 'i'),
-  new RegExp(String.raw`^\s*${REPLACED_PHRASE}\s*[:：.\-–—]`, 'i'),
+  new RegExp(String.raw`^\s*${REPLACED_PHRASE}\s*[:：\-–—]`, 'i'),
+  REPLACED_FULL_STOP_MARKER,
   /^\s*RETRACTED\s+(?:AND|&)\s+(?:REPLACED|REPUBLISHED)\b/,
 ];
 /**
@@ -908,18 +916,28 @@ const NEGATED_CUE =
 function doiCandidatesFromNotes(notes: unknown): Array<{ forms: string[]; cued: boolean }> {
   if (typeof notes !== 'string') return [];
   const out: Array<{ forms: string[]; cued: boolean }> = [];
+  // What introduces a DOI itself: a URL prefix, "doi:", "doi.org/", an opening bracket or quote.
+  const introducer = /(?:(?:https?:\/\/|www\.)\S*|(?:dx\.)?doi\.org\/|\bdoi\s*:?\s*|[<("'\[])+$/i;
+  let prevEnd = -1;
+  let prevCued = false;
   // Registrant digits as in the shared DOI_SHAPE (3 to 9); Crossref still confirms each candidate.
   for (const m of notes.matchAll(/\b10\.\d{3,9}\/[^\s"<>,;]+/g)) {
+    const start = m.index ?? 0;
     const full = m[0].replace(/[.)\]]+$/, '');
     const forms = [full];
     // Publisher URLs append an article id: .../doi/10.1093/jeb/voae082/7733482
     const trimmed = full.replace(/\/\d+$/, '');
     if (trimmed !== full) forms.push(trimmed);
-    // Skip what introduces the DOI itself: a URL prefix, "doi:", "doi.org/", an opening bracket or quote.
-    const before = notes
-      .slice(0, m.index ?? 0)
-      .replace(/(?:(?:https?:\/\/|www\.)\S*|(?:dx\.)?doi\.org\/|\bdoi\s*:?\s*|[<("'\[])+$/i, '');
-    out.push({ forms, cued: REPLACEMENT_CUE.test(before) && !NEGATED_CUE.test(before) });
+    const before = notes.slice(0, start).replace(introducer, '');
+    // "Replaced by A and B": B, joined to a cued A by "and", ",", "&" or "or", is cued too,
+    // so the note names two replacements and gives none.
+    const joined =
+      prevEnd >= 0 &&
+      /^[\s,]*(?:and|&|or)?[\s,]*$/i.test(notes.slice(prevEnd, start).replace(introducer, ''));
+    const cued: boolean = (joined && prevCued) || (REPLACEMENT_CUE.test(before) && !NEGATED_CUE.test(before));
+    out.push({ forms, cued });
+    prevEnd = start + m[0].length;
+    prevCued = cued;
   }
   return out;
 }
@@ -1012,6 +1030,7 @@ async function findReplacement(
   const ownDOI = typeof message?.DOI === 'string' ? message.DOI : '';
   const evidence: RetractionReplacementEvidence[] = [];
   let replacementDOI: string | undefined;
+  let replacementAmbiguous = false;
   const failures: LookupFailure[] = [];
 
   const rel = message?.relation?.['is-replaced-by'];
@@ -1026,6 +1045,8 @@ async function findReplacement(
     if (ids.size > 0) evidence.push('crossref_is_replaced_by');
     // Several distinct replacements (v2 and v3): which one is "the" replacement is not said.
     if (ids.size === 1) replacementDOI = [...ids.values()][0];
+    // ...and a notes DOI then cannot settle what the record itself leaves open.
+    if (ids.size > 1) replacementAmbiguous = true;
   }
   if (titlesOf(message).some((t) => REPLACED_TITLE_MARKERS.some((re) => re.test(t)))) evidence.push('title_marker');
 
@@ -1043,7 +1064,7 @@ async function findReplacement(
     const rr = labs.value.filter((u) => u.reasons.some(isRetractAndReplaceReason));
     if (rr.length > 0) {
       evidence.push('retraction_watch_reason');
-      if (!replacementDOI) {
+      if (!replacementDOI && !replacementAmbiguous) {
         // Not a replacement: the work itself, its notices (every `updated-by` DOI), and the
         // notice Retraction Watch names (`target-doi`).
         const exclude = [
@@ -1284,10 +1305,20 @@ async function lookupRetraction(
           const { relation, type, dateUsable } = found;
           // An entry that names the work's OWN DOI (an in-place publisher retraction, every
           // Retraction Watch entry) gives no notice: linking the paper as its notice is wrong.
-          const noticeDoi =
-            typeof relation.DOI === 'string' && relation.DOI.trim() &&
-            !sameDoiLoose(relation.DOI, cleanDOI) && !sameDoiLoose(relation.DOI, String(message.DOI))
-              ? relation.DOI
+          const isNoticeDoi = (d: unknown): d is string =>
+            typeof d === 'string' && !!d.trim() &&
+            !sameDoiLoose(d, cleanDOI) && !sameDoiLoose(d, String(message.DOI));
+          // When the chosen entry names the work itself (a Retraction Watch record dated
+          // earliest), another entry of the same type may still carry the publisher's notice
+          // DOI; it is used only when exactly one distinct such DOI exists.
+          const sameTypeNotices = new Map<string, string>();
+          for (const u of message['updated-by'] as any[]) {
+            if (entryUpdateType(u) === type && isNoticeDoi(u?.DOI)) sameTypeNotices.set(doiKey(u.DOI), u.DOI);
+          }
+          const noticeDoi = isNoticeDoi(relation.DOI)
+            ? relation.DOI
+            : sameTypeNotices.size === 1
+              ? [...sameTypeNotices.values()][0]
               : undefined;
           return {
             crossrefMessage: message,

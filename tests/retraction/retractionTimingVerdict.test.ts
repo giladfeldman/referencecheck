@@ -833,6 +833,12 @@ describe('retracted-and-replaced is told apart only on recorded evidence', () =>
     ['one work, the cued one failed to load: none is chosen', `${A}; replaced by ${B}`, { [A]: 'work', [B]: 'net' }, undefined],
     ['one cued work, an uncued one failed to load', `replaced by ${B}; also ${A}`, { [A]: 'net', [B]: 'work' }, B],
     ['one work, another failed to load, no cue: none is chosen', `${A}; ${B}`, { [A]: 'net', [B]: 'work' }, undefined],
+    // Consult round 2 (Sonnet, 2026-11-25): a DOI joined to a cued one inherits the cue.
+    ['"replaced by A and B": two replacements, none is chosen', `replaced by ${A} and ${B}`, { [A]: 'work', [B]: 'work' }, undefined],
+    ['"replaced by A, B": none is chosen', `replaced by ${A}, ${B}`, { [A]: 'work', [B]: 'work' }, undefined],
+    ['"replaced by A or doi:B": none is chosen', `replaced by ${A} or doi:${B}`, { [A]: 'work', [B]: 'work' }, undefined],
+    ['"A and B" with no cue stays uncued', `see also ${A} and ${B}`, { [A]: 'work', [B]: 'work' }, undefined],
+    ['words between: the second is not joined', `replaced by ${B} and see also ${A}`, { [A]: 'work', [B]: 'work' }, B],
   ])('notes naming several DOIs: %s', async (_l, notes, works, expected) => {
     const labs = clone(fixture('retraction/labs-jama.json'));
     labs.data.message['cr-labs-updates'][0].reasons = ['etract and Replace'];

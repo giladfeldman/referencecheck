@@ -327,7 +327,11 @@ interface RetractionSourceUnavailable {
 - `RetractionSourceName`: `crossref`, `openretractions`.
 - `RetractionUpdateType`: `retraction`, `partial_retraction`, `removal`, `withdrawal`. When
   several are deposited the most severe is reported, and among entries of that type the
-  earliest date.
+  earliest usable date. A notice date on the same day as one of the work's own publication
+  dates (`published`, `published-online`, `published-print`, `issued`) is not usable: it is the
+  publisher stamping the article's date, so `retractionDate` comes from another entry or is
+  absent. When the chosen entry names the work's own DOI, `retractionNoticeUrl` uses the one
+  distinct notice DOI another entry of that type carries, else it is absent.
 - `RetractionUnavailableReason`: `rate_limited`, `timeout`, `server_error`, `network`,
   `not_indexed` (a Crossref 404: the DOI is not a Crossref work, which says nothing about
   retraction). A reply that is not the source's answer is `server_error`: a Crossref 200
@@ -345,7 +349,8 @@ interface RetractionSourceUnavailable {
   only: it does not say what the citing authors knew.
   `RetractionTimingUnknownReason`: `no_citing_date` (no `citing` given), `citing_date_unavailable`
   (the citing DOI's lookup failed or its record has no date; `detail` says which),
-  `no_retraction_date` (e.g. found only by a title marker), `unparseable_retraction_date`,
+  `no_retraction_date` (found only by a title marker, or the only notice date was the work's own
+  publication day, which also drops a real same-day withdrawal's date), `unparseable_retraction_date`,
   `same_period` (the dates cannot be ordered at the precision recorded: `2019` vs `2019-10-08`,
   or the same day).
 - `RetractionReplacementStatus`: `replaced`, `not_recorded` (every lookup answered and none
